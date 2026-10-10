@@ -1,0 +1,2507 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Damian Ściseł i Kapelusz Szyfrów</title>
+<style>
+  html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#0b0714;
+    -webkit-user-select:none;user-select:none;}
+  #gra{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+    image-rendering:auto;cursor:none;box-shadow:0 0 60px rgba(120,60,200,.35);}
+</style>
+</head>
+<body>
+<canvas id="gra" width="1280" height="720"></canvas>
+<script>
+"use strict";
+/* =====================================================================
+   DAMIAN ŚCISEŁ I KAPELUSZ SZYFRÓW
+   Przygodowa gra point & click o cyberbezpieczeństwie.
+   Wszystkie grafiki są rysowane proceduralnie na canvasie.
+   ===================================================================== */
+
+const W = 1280, H = 720, SH = 600;          // SH — wysokość sceny, pod nią pasek UI
+const cv = document.getElementById('gra');
+const ctx = cv.getContext('2d');
+
+function dopasuj() {
+  const s = Math.min(innerWidth / W, innerHeight / H);
+  cv.style.width = (W * s) + 'px';
+  cv.style.height = (H * s) + 'px';
+}
+addEventListener('resize', dopasuj); dopasuj();
+
+/* ---------- narzędzia ---------- */
+const rnd = (a, b) => a + Math.random() * (b - a);
+function mulberry(seed) {
+  return function () {
+    seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+    let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+const lerp = (a, b, t) => a + (b - a) * t;
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const czekaj = ms => new Promise(r => setTimeout(r, ms));
+let teraz = performance.now();
+
+function wPolu(pts, x, y) {           // punkt w wielokącie
+  let w = false;
+  for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+    const [xi, yi] = pts[i], [xj, yj] = pts[j];
+    if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) w = !w;
+  }
+  return w;
+}
+function najblizszyWPolu(pts, x, y) {
+  if (wPolu(pts, x, y)) return [x, y];
+  let best = null, bd = 1e9;
+  for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+    const [ax, ay] = pts[j], [bx, by] = pts[i];
+    const dx = bx - ax, dy = by - ay;
+    const t = clamp(((x - ax) * dx + (y - ay) * dy) / (dx * dx + dy * dy || 1), 0, 1);
+    const px = ax + dx * t, py = ay + dy * t, d = (px - x) ** 2 + (py - y) ** 2;
+    if (d < bd) { bd = d; best = [px, py]; }
+  }
+  // lekko do środka
+  const cx = pts.reduce((s, p) => s + p[0], 0) / pts.length, cy = pts.reduce((s, p) => s + p[1], 0) / pts.length;
+  return [lerp(best[0], cx, .02), lerp(best[1], cy, .04)];
+}
+
+/* ---------- dźwięk (WebAudio, bez plików) ---------- */
+const Dzwiek = {
+  ac: null, wl: true, muzykaGain: null, nastroj: 'spokoj', krok: 0, timer: null,
+  start() {
+    if (this.ac) return;
+    try {
+      this.ac = new (window.AudioContext || window.webkitAudioContext)();
+      this.muzykaGain = this.ac.createGain(); this.muzykaGain.gain.value = .05;
+      this.muzykaGain.connect(this.ac.destination);
+      this.timer = setInterval(() => this.tik(), 230);
+    } catch (e) { this.ac = null; }
+  },
+  ton(f, d = .12, typ = 'square', v = .06, kiedy = 0, cel = null) {
+    if (!this.ac || !this.wl) return;
+    const t = this.ac.currentTime + kiedy;
+    const o = this.ac.createOscillator(), g = this.ac.createGain();
+    o.type = typ; o.frequency.setValueAtTime(f, t);
+    g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(.0001, t + d);
+    o.connect(g); g.connect(cel || this.ac.destination); o.start(t); o.stop(t + d + .02);
+  },
+  klik() { this.ton(660, .05, 'triangle', .05); },
+  zbierz() { [523, 659, 784, 1046].forEach((f, i) => this.ton(f, .14, 'triangle', .07, i * .07)); },
+  sukces() { [392, 523, 659, 784, 659, 784, 1046].forEach((f, i) => this.ton(f, .2, 'square', .045, i * .09)); },
+  blad() { this.ton(196, .25, 'sawtooth', .05); this.ton(147, .3, 'sawtooth', .05, .12); },
+  magia() { for (let i = 0; i < 10; i++) this.ton(800 + i * 140 + rnd(-40, 40), .1, 'sine', .04, i * .03); },
+  grzmot() {
+    if (!this.ac || !this.wl) return;
+    const n = this.ac.sampleRate * 1.6, b = this.ac.createBuffer(1, n, this.ac.sampleRate), d = b.getChannelData(0);
+    for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 2.5);
+    const s = this.ac.createBufferSource(), f = this.ac.createBiquadFilter(), g = this.ac.createGain();
+    f.type = 'lowpass'; f.frequency.value = 400; g.gain.value = .5;
+    s.buffer = b; s.connect(f); f.connect(g); g.connect(this.ac.destination); s.start();
+  },
+  // prosta muzyka proceduralna — wesoła w mieście, niepokojąca w Wieży Cienia
+  tik() {
+    if (!this.ac || !this.wl) return;
+    const k = this.krok++;
+    if (this.nastroj === 'spokoj') {
+      const skala = [262, 294, 330, 392, 440, 523, 587];
+      const mel = [0, 2, 4, 2, 3, 1, 0, -1, 4, 5, 4, 2, 3, 2, 1, -1];
+      const n = mel[k % 16];
+      if (n >= 0) this.ton(skala[n], .22, 'triangle', .5, 0, this.muzykaGain);
+      if (k % 4 === 0) this.ton([131, 98, 110, 87][(k >> 4) % 4], .5, 'sine', .7, 0, this.muzykaGain);
+    } else if (this.nastroj === 'napiecie') {
+      if (k % 8 === 0) this.ton(55, 1.6, 'sawtooth', .5, 0, this.muzykaGain);
+      if (k % 8 === 4) this.ton(58, 1.6, 'sawtooth', .4, 0, this.muzykaGain);
+      if (k % 4 === 2) this.ton([440, 466, 415, 494][(k >> 2) % 4], .15, 'sine', .25, 0, this.muzykaGain);
+      if (k % 6 === 0) { this.ton(60, .1, 'sine', 1.2, 0, this.muzykaGain); this.ton(55, .1, 'sine', 1, .14, this.muzykaGain); }
+    } else if (this.nastroj === 'karczma') {
+      const skala = [294, 330, 349, 392, 440, 466, 523];
+      const mel = [0, 2, 4, 4, 3, 2, 1, -1, 2, 4, 6, 4, 3, 1, 0, -1];
+      const n = mel[k % 16];
+      if (n >= 0) this.ton(skala[n], .18, 'square', .25, 0, this.muzykaGain);
+      if (k % 2 === 0) this.ton(k % 4 ? 220 : 147, .12, 'triangle', .5, 0, this.muzykaGain);
+    }
+  }
+};
+
+/* ---------- stan gry ---------- */
+const NOWY_STAN = () => ({ scena: 'wieza', przedmioty: [], flagi: {}, lekcje: [], punkty: 0, px: 520, py: 540 });
+let S = NOWY_STAN();
+function zapisz() { try { localStorage.setItem('damian-kapelusz-zapis', JSON.stringify(S)); } catch (e) {} }
+function wczytajZapis() { try { const z = localStorage.getItem('damian-kapelusz-zapis'); return z ? JSON.parse(z) : null; } catch (e) { return null; } }
+const flaga = f => !!S.flagi[f];
+const ustaw = (f, v = true) => { S.flagi[f] = v; zapisz(); };
+const ma = p => S.przedmioty.includes(p);
+function dodaj(p) { if (!ma(p)) { S.przedmioty.push(p); Dzwiek.zbierz(); zapisz(); blysk = { t: teraz, tekst: 'Nowy przedmiot: ' + PRZEDMIOTY[p].nazwa }; } }
+function zabierz(p) { S.przedmioty = S.przedmioty.filter(x => x !== p); if (wybrany === p) wybrany = null; zapisz(); }
+function lekcja(id) {
+  if (S.lekcje.includes(id)) return;
+  S.lekcje.push(id); S.punkty += 100; Dzwiek.sukces(); zapisz();
+  blysk = { t: teraz, tekst: '✦ Nowe zaklęcie w Księdze: ' + LEKCJE[id].tytul + ' ✦' };
+}
+let blysk = null;
+
+/* ---------- gracz ---------- */
+const gracz = { x: 520, y: 540, cel: null, kier: 1, faza: 0, idzie: false, poKoncu: null, mowi: false };
+
+/* ---------- wejście ---------- */
+let mysz = { x: 0, y: 0 };
+let wybrany = null;          // wybrany przedmiot z ekwipunku
+let zajety = false;          // trwa scenka
+let mowa = null;             // {kto, tekst, rozwiaz, do}
+let wybor = null;            // {opcje, rozwiaz, hover}
+let mini = null;             // aktywna minigra
+let tryb = 'tytul';          // tytul | gra | ksiega | koniec | pomoc
+let przejscie = null;        // {t, faza, cel, wej}
+let hoverObiekt = null;
+
+function pozMyszy(e) {
+  const r = cv.getBoundingClientRect();
+  return { x: (e.clientX - r.left) * W / r.width, y: (e.clientY - r.top) * H / r.height };
+}
+cv.addEventListener('mousemove', e => { mysz = pozMyszy(e); });
+cv.addEventListener('contextmenu', e => e.preventDefault());
+cv.addEventListener('mousedown', e => {
+  Dzwiek.start();
+  mysz = pozMyszy(e);
+  klik(mysz.x, mysz.y, e.button === 2);
+});
+addEventListener('keydown', e => {
+  Dzwiek.start();
+  if (mini && mini.klawisz) { mini.klawisz(e); return; }
+  if (e.key === 'Escape') {
+    if (wybrany) wybrany = null;
+    else if (tryb === 'ksiega' || tryb === 'pomoc') tryb = 'gra';
+  }
+  if ((e.key === ' ' || e.key === 'Enter' || e.key === '.') && mowa) zakonczMowe();
+  if (e.key === 'F11' && window.electronAPI) {}
+});
+
+/* ---------- mowa i dialogi ---------- */
+function powiedz(kto, tekst) {
+  return new Promise(r => {
+    mowa = { kto, tekst, rozwiaz: r, od: teraz, do: teraz + 1800 + tekst.length * 55 };
+    Dzwiek.ton(kto === 'narrator' ? 330 : 500 + rnd(-60, 60), .04, 'triangle', .03);
+  });
+}
+function zakonczMowe() { if (!mowa) return; const r = mowa.rozwiaz; mowa = null; r(); }
+async function mow(kto, ...linie) { for (const l of linie) await powiedz(kto, l); }
+function wybierz(opcje) {
+  return new Promise(r => { wybor = { opcje, rozwiaz: r, hover: -1 }; });
+}
+async function scenka(fn) {
+  if (zajety) return;
+  zajety = true;
+  try { await fn(); } catch (e) { console.error(e); }
+  zajety = false; zapisz();
+}
+function zwroc(x) { gracz.kier = x < gracz.x ? -1 : 1; }
+
+/* ---------- minigry ---------- */
+function uruchomMini(m) {
+  return new Promise(r => { m.koniec = v => { mini = null; r(v); }; mini = m; m.start && m.start(); });
+}
+
+/* ---------- zmiana sceny ---------- */
+function zmienScene(cel, wej) {
+  return new Promise(r => { przejscie = { t: teraz, cel, wej, r, zmieniona: false }; });
+}
+/* ---------- logika kliknięcia ---------- */
+function klik(x, y, prawy) {
+  if (tryb === 'tytul') { EKRAN_TYTULOWY.klik(x, y); return; }
+  if (tryb === 'koniec') { EKRAN_KONCOWY.klik(x, y); return; }
+  if (tryb === 'ksiega' || tryb === 'pomoc') { tryb = 'gra'; Dzwiek.klik(); return; }
+  if (przejscie) return;
+  if (mini) { mini.klik && mini.klik(x, y, prawy); return; }
+  if (mowa) { if (teraz - mowa.od > 250) zakonczMowe(); return; }
+  if (wybor) {
+    const i = opcjaPod(x, y);
+    if (i >= 0) { const r = wybor.rozwiaz; wybor = null; Dzwiek.klik(); r(i); }
+    return;
+  }
+  if (y >= SH) { klikPasek(x, y, prawy); return; }
+  if (zajety) return;
+  if (prawy && wybrany) { wybrany = null; return; }
+  const ob = obiektPod(x, y);
+  if (ob) {
+    if (prawy) { scenka(async () => { zwroc(ob.cx || x); await powiedz('damian', typeof ob.patrz === 'function' ? ob.patrz() : ob.patrz); }); return; }
+    const p = wybrany;
+    scenka(async () => {
+      const [wx, wy] = ob.idz || [x, y];
+      if (ob.idz !== false) await idzDo(wx, wy);
+      zwroc(ob.cx || x);
+      if (p) {
+        wybrany = null;
+        const h = ob.uzyjZ && ob.uzyjZ[p];
+        if (h) await h();
+        else await powiedz('damian', losowa([
+          'Użycie ' + PRZEDMIOTY[p].dop + ' tutaj nic nie da. Nawet magicznie.',
+          'Nie. To tak nie działa. A sprawdzałem.',
+          'Gdyby to zadziałało, świat byłby dziwniejszy niż jest. A już jest dość dziwny.'
+        ]));
+      } else if (ob.uzyj) await ob.uzyj();
+      else await powiedz('damian', typeof ob.patrz === 'function' ? ob.patrz() : ob.patrz);
+    });
+    return;
+  }
+  if (wybrany) { wybrany = null; return; }
+  scenka(async () => { await idzDo(x, y); });
+}
+const losowa = a => a[Math.floor(Math.random() * a.length)];
+
+function obiektPod(x, y) {
+  const sc = SCENY[S.scena];
+  const lista = (typeof sc.obiekty === 'function' ? sc.obiekty() : sc.obiekty).filter(o => !o.ukryty || !o.ukryty());
+  for (let i = lista.length - 1; i >= 0; i--) {
+    const o = lista[i];
+    if (o.prost) { const [a, b, c, d] = o.prost; if (x >= a && x <= a + c && y >= b && y <= b + d) return o; }
+    else if (o.wiel && wPolu(o.wiel, x, y)) return o;
+  }
+  return null;
+}
+
+/* ---------- pasek UI ---------- */
+const PRZYCISKI = [
+  { id: 'ksiega', x: 1000, y: 616, w: 130, h: 40, tekst: '📖 Księga' },
+  { id: 'podp', x: 1140, y: 616, w: 130, h: 40, tekst: '🦉 Podpowiedź' },
+  { id: 'dzw', x: 1000, y: 664, w: 130, h: 40, tekst: '🔊 Dźwięk' },
+  { id: 'menu', x: 1140, y: 664, w: 130, h: 40, tekst: '⌂ Menu' },
+];
+function slotPrzedmiotu(i) { return { x: 20 + i * 92, y: 618, w: 84, h: 84 }; }
+function klikPasek(x, y, prawy) {
+  for (let i = 0; i < S.przedmioty.length; i++) {
+    const s = slotPrzedmiotu(i);
+    if (x >= s.x && x <= s.x + s.w && y >= s.y && y <= s.y + s.h) {
+      const p = S.przedmioty[i];
+      Dzwiek.klik();
+      if (prawy || zajety) { if (!zajety) scenka(() => powiedz('damian', PRZEDMIOTY[p].opis)); return; }
+      if (wybrany && wybrany !== p) {
+        const k = [wybrany, p].sort().join('+');
+        const h = KOMBINACJE[k]; wybrany = null;
+        scenka(h || (() => powiedz('damian', 'Te dwie rzeczy do siebie nie pasują. Jak skarpetka i hasło.')));
+        return;
+      }
+      if (PRZEDMIOTY[p].uzyj && wybrany === p) { wybrany = null; scenka(PRZEDMIOTY[p].uzyj); return; }
+      wybrany = wybrany === p ? null : p;
+      return;
+    }
+  }
+  for (const b of PRZYCISKI) {
+    if (x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) {
+      Dzwiek.klik();
+      if (zajety && b.id !== 'dzw') return;
+      if (b.id === 'ksiega') tryb = 'ksiega';
+      if (b.id === 'pomoc') tryb = 'pomoc';
+      if (b.id === 'dzw') { Dzwiek.wl = !Dzwiek.wl; b.tekst = Dzwiek.wl ? '🔊 Dźwięk' : '🔇 Cisza'; }
+      if (b.id === 'menu') { zapisz(); tryb = 'tytul'; }
+      if (b.id === 'podp' && !zajety) scenka(() => powiedz('sowa', podpowiedz()));
+    }
+  }
+}
+function opcjaPod(x, y) {
+  if (!wybor) return -1;
+  const n = wybor.opcje.length, h = Math.min(30, 110 / n);
+  for (let i = 0; i < n; i++) {
+    const oy = SH + 8 + i * h;
+    if (y >= oy && y < oy + h && x < 1260) return i;
+  }
+  return -1;
+}
+</script>
+<script>
+"use strict";
+/* =====================================================================
+   GRAFIKA — tła, postacie i przedmioty rysowane kodem
+   ===================================================================== */
+function nowyCanvas(w, h) { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; }
+function lg(g, x0, y0, x1, y1, stopy) { const gr = g.createLinearGradient(x0, y0, x1, y1); stopy.forEach(([o, k]) => gr.addColorStop(o, k)); return gr; }
+function rg(g, x, y, r0, r1, stopy) { const gr = g.createRadialGradient(x, y, r0, x, y, r1); stopy.forEach(([o, k]) => gr.addColorStop(o, k)); return gr; }
+const OBRYS = '#1b0f1e';
+function wiel(g, pts, fill, stroke = OBRYS, lw = 3) {
+  g.beginPath(); g.moveTo(pts[0][0], pts[0][1]);
+  for (let i = 1; i < pts.length; i++) g.lineTo(pts[i][0], pts[i][1]);
+  g.closePath();
+  if (fill) { g.fillStyle = fill; g.fill(); }
+  if (stroke) { g.strokeStyle = stroke; g.lineWidth = lw; g.lineJoin = 'round'; g.stroke(); }
+}
+function elip(g, x, y, rx, ry, fill, stroke = OBRYS, lw = 3) {
+  g.beginPath(); g.ellipse(x, y, Math.abs(rx), Math.abs(ry), 0, 0, Math.PI * 2);
+  if (fill) { g.fillStyle = fill; g.fill(); }
+  if (stroke) { g.strokeStyle = stroke; g.lineWidth = lw; g.stroke(); }
+}
+function prost(g, x, y, w, h, fill, stroke = OBRYS, lw = 3) {
+  g.beginPath(); g.rect(x, y, w, h);
+  if (fill) { g.fillStyle = fill; g.fill(); }
+  if (stroke) { g.strokeStyle = stroke; g.lineWidth = lw; g.stroke(); }
+}
+function zaokr(g, x, y, w, h, r, fill, stroke = OBRYS, lw = 3) {
+  g.beginPath(); g.roundRect(x, y, w, h, r);
+  if (fill) { g.fillStyle = fill; g.fill(); }
+  if (stroke) { g.strokeStyle = stroke; g.lineWidth = lw; g.stroke(); }
+}
+function szum(g, R, x, y, w, h, n, kolory, rozm = 2) {
+  for (let i = 0; i < n; i++) {
+    g.fillStyle = kolory[Math.floor(R() * kolory.length)];
+    g.fillRect(x + R() * w, y + R() * h, rozm * (0.5 + R()), rozm * (0.5 + R()));
+  }
+}
+function winieta(g, w = W, h = SH, moc = .55) {
+  g.fillStyle = rg(g, w / 2, h / 2, h * .35, w * .75, [[0, 'rgba(0,0,0,0)'], [1, `rgba(10,0,20,${moc})`]]);
+  g.fillRect(0, 0, w, h);
+}
+function gwiazdka(g, x, y, r, fill, stroke = OBRYS, lw = 1.5) {
+  const pts = [];
+  for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, rr = i % 2 ? r * .45 : r; pts.push([x + Math.cos(a) * rr, y + Math.sin(a) * rr]); }
+  wiel(g, pts, fill, stroke, lw);
+}
+function napis(g, t, x, y, rozm, kolor, align = 'center', font = 'Georgia, serif', obrys = null, waga = 'bold') {
+  g.font = `${waga} ${rozm}px ${font}`; g.textAlign = align; g.textBaseline = 'middle';
+  if (obrys) { g.strokeStyle = obrys; g.lineWidth = Math.max(3, rozm / 5); g.lineJoin = 'round'; g.strokeText(t, x, y); }
+  g.fillStyle = kolor; g.fillText(t, x, y);
+}
+function kamienneSciany(g, R, x, y, w, h, baza, ciemne, jasne) {
+  g.fillStyle = baza; g.fillRect(x, y, w, h);
+  for (let ry = y; ry < y + h; ry += 34) {
+    let rx = x - R() * 40;
+    while (rx < x + w) {
+      const sw = 50 + R() * 50;
+      g.fillStyle = R() < .5 ? ciemne : jasne;
+      g.globalAlpha = .55 + R() * .35;
+      zaokr(g, rx + 2, ry + 2, sw - 4, 30, 8, g.fillStyle, 'rgba(20,8,30,.6)', 2);
+      g.globalAlpha = 1;
+      rx += sw;
+    }
+  }
+}
+function deski(g, R, y0, y1, kolA, kolB, zbieg = 640) {
+  g.fillStyle = lg(g, 0, y0, 0, y1, [[0, kolA], [1, kolB]]); g.fillRect(0, y0, W, y1 - y0);
+  g.strokeStyle = 'rgba(30,12,8,.55)'; g.lineWidth = 2;
+  for (let i = -14; i <= 14; i++) {
+    g.beginPath(); g.moveTo(zbieg + i * 50, y0); g.lineTo(zbieg + i * 130, y1); g.stroke();
+  }
+  for (let yy = y0 + 18, k = 1; yy < y1; yy += 14 + k * 6, k++) {
+    g.globalAlpha = .25; g.beginPath(); g.moveTo(0, yy); g.lineTo(W, yy); g.stroke(); g.globalAlpha = 1;
+  }
+  szum(g, R, 0, y0, W, y1 - y0, 900, ['rgba(255,220,170,.06)', 'rgba(0,0,0,.08)'], 3);
+}
+function bruk(g, R, y0, y1, baza, kam) {
+  g.fillStyle = baza; g.fillRect(0, y0, W, y1 - y0);
+  for (let yy = y0; yy < y1; yy += 0) {
+    const t = (yy - y0) / (y1 - y0), hh = 8 + t * 18;
+    for (let xx = -R() * 40; xx < W; xx += hh * 2.2) {
+      elip(g, xx + R() * 6, yy + hh / 2, hh * (.9 + R() * .3), hh * .45, kam[Math.floor(R() * kam.length)], 'rgba(40,25,20,.55)', 1.5);
+    }
+    yy += hh;
+  }
+}
+function okno(g, x, y, w, h, swiatlo, ramka = '#4a2a18') {
+  prost(g, x, y, w, h, swiatlo);
+  g.strokeStyle = ramka; g.lineWidth = 4;
+  g.beginPath(); g.moveTo(x + w / 2, y); g.lineTo(x + w / 2, y + h); g.moveTo(x, y + h / 2); g.lineTo(x + w, y + h / 2); g.stroke();
+  prost(g, x, y, w, h, null, OBRYS, 3);
+}
+function krzywyDom(g, R, x, baza, w, h, o = {}) {
+  const sk = o.skos ?? (R() - .5) * 30;
+  const kol = o.kolor || ['#e8d5a8', '#d9c08f', '#c9b6e0', '#e6c9a8', '#bcd3b0'][Math.floor(R() * 5)];
+  const sciana = [[x, baza], [x + w, baza], [x + w + sk, baza - h], [x + sk, baza - h]];
+  wiel(g, sciana, kol);
+  // szachulec
+  g.strokeStyle = '#5a3420'; g.lineWidth = 6;
+  g.beginPath();
+  g.moveTo(x + sk * .5, baza - h * .5); g.lineTo(x + w + sk * .5, baza - h * .5);
+  g.moveTo(x + 4, baza - 2); g.lineTo(x + w / 2 + sk * .5, baza - h * .5);
+  g.moveTo(x + w - 4, baza - 2); g.lineTo(x + w / 2 + sk * .5, baza - h * .5);
+  g.stroke();
+  wiel(g, sciana, null, OBRYS, 3);
+  // dach
+  const dh = o.dach ?? (60 + R() * 70);
+  const dk = o.dachKolor || ['#8c2f2f', '#5b3b7a', '#3d5a6e', '#7a4a22'][Math.floor(R() * 4)];
+  const szczyt = [x + w / 2 + sk + (R() - .5) * 30, baza - h - dh];
+  wiel(g, [[x + sk - 18, baza - h + 6], [x + w + sk + 18, baza - h + 6], szczyt], dk);
+  g.strokeStyle = 'rgba(0,0,0,.25)'; g.lineWidth = 2;
+  for (let i = 1; i < 6; i++) { const t = i / 6; g.beginPath(); g.moveTo(lerp(x + sk - 18, szczyt[0], t), lerp(baza - h + 6, szczyt[1], t)); g.lineTo(lerp(x + w + sk + 18, szczyt[0], t), lerp(baza - h + 6, szczyt[1], t)); g.stroke(); }
+  // komin
+  if (R() < .7) { const kx = x + w * (.2 + R() * .5) + sk; prost(g, kx, baza - h - dh * .7, 16, dh * .5, '#7a5244'); }
+  // okna
+  const ok = o.okna ?? 2;
+  for (let i = 0; i < ok; i++) {
+    const ox = x + 16 + i * (w - 32) / Math.max(1, ok) + sk * .75, oy = baza - h + 18;
+    okno(g, ox, oy, 30, 34, R() < .4 ? '#ffd76a' : '#3a4c6a');
+  }
+  return { sk, szczyt };
+}
+
+/* ---------- postacie ---------- */
+// x,y — stopy; s — skala; k — kierunek (1 prawo, -1 lewo)
+function cien(g, x, y, s, a = .35) { g.fillStyle = `rgba(0,0,0,${a})`; g.beginPath(); g.ellipse(x, y, 34 * s, 9 * s, 0, 0, Math.PI * 2); g.fill(); }
+
+function postac(g, x, y, s, k, c, st = {}) {
+  g.save();
+  g.translate(x, y); g.scale(s * k, s);
+  const faza = st.faza || 0, idzie = st.idzie;
+  const krok = idzie ? Math.sin(faza) * 12 : 0;
+  const pod = idzie ? Math.abs(Math.cos(faza)) * 3 : Math.sin(teraz / 600 + (c.przes || 0)) * 1.2;
+  const wz = c.wzrost || 1;
+  g.translate(0, -pod);
+  const nogi = 62 * wz;
+  // nogi
+  g.lineCap = 'round';
+  for (const [dx, kk] of [[-9, -krok], [9, krok]]) {
+    g.strokeStyle = OBRYS; g.lineWidth = 16;
+    g.beginPath(); g.moveTo(dx, -nogi); g.lineTo(dx + kk, -8); g.stroke();
+    g.strokeStyle = c.spodnie || '#33304a'; g.lineWidth = 11;
+    g.beginPath(); g.moveTo(dx, -nogi); g.lineTo(dx + kk, -8); g.stroke();
+    elip(g, dx + kk + 6, -5, 13, 7, c.buty || '#3b2414', OBRYS, 2.5);
+  }
+  // tułów
+  const ram = -nogi - 62 * wz, szer = c.szer || 26, dol = c.dlugaSzata ? -14 : -nogi + 6;
+  const brzuch = c.brzuch || 0;
+  const tul = [[-szer, ram + 6], [szer, ram + 6], [szer + 8 + brzuch, (ram + dol) / 2 + 10], [szer + 12 + brzuch * .6, dol], [-szer - 12 - brzuch * .3, dol], [-szer - 6, (ram + dol) / 2]];
+  if (c.dlugaSzata && idzie) { tul[3][0] += krok * .4; tul[4][0] += krok * .4; }
+  wiel(g, tul, c.szata || '#5d3a8f');
+  if (c.paski) {
+    g.save(); g.clip(); g.strokeStyle = c.paski; g.lineWidth = 6;
+    for (let i = -60; i < 60; i += 14) { g.beginPath(); g.moveTo(i, ram); g.lineTo(i, dol); g.stroke(); }
+    g.restore(); wiel(g, tul, null);
+  }
+  if (c.obwody) { // cyber-szata Damiana
+    g.strokeStyle = '#4fe3ff'; g.lineWidth = 2; g.globalAlpha = .75;
+    g.beginPath();
+    g.moveTo(-14, dol + 4); g.lineTo(-14, dol - 22); g.lineTo(-4, dol - 32); g.lineTo(-4, ram + 46);
+    g.moveTo(14, dol + 4); g.lineTo(14, dol - 30); g.lineTo(22, dol - 38);
+    g.stroke();
+    for (const [px, py] of [[-4, ram + 46], [22, dol - 38], [-14, dol - 22]]) elip(g, px, py, 3, 3, '#bff6ff', null);
+    g.globalAlpha = 1;
+    // pas
+    prost(g, -szer - 4, ram + 52, szer * 2 + 10, 8, '#e7b93b', OBRYS, 2);
+  }
+  if (c.fartuch) wiel(g, [[-16, ram + 26], [18, ram + 26], [22, dol], [-20, dol]], c.fartuch, OBRYS, 2);
+  // ręce
+  const mach = idzie ? Math.sin(faza) * 14 : 0;
+  const reka = (dx, kat, przod) => {
+    g.save(); g.translate(dx, ram + 12); g.rotate(kat);
+    g.strokeStyle = OBRYS; g.lineWidth = 15; g.beginPath(); g.moveTo(0, 0); g.lineTo(0, 54 * wz); g.stroke();
+    g.strokeStyle = c.rekawy || c.szata || '#5d3a8f'; g.lineWidth = 10; g.beginPath(); g.moveTo(0, 0); g.lineTo(0, 50 * wz); g.stroke();
+    elip(g, 0, 56 * wz, 7, 7, c.skora || '#f1c7a0', OBRYS, 2);
+    if (przod && c.rozdzka) {
+      g.save(); g.translate(0, 56 * wz); g.rotate(-1.2);
+      g.strokeStyle = OBRYS; g.lineWidth = 6; g.beginPath(); g.moveTo(-6, 0); g.lineTo(38, 0); g.stroke();
+      g.strokeStyle = '#a77a4a'; g.lineWidth = 3.5; g.beginPath(); g.moveTo(-6, 0); g.lineTo(38, 0); g.stroke();
+      prost(g, 36, -4, 10, 8, '#c8ccd6', OBRYS, 1.5);
+      const bl = .6 + Math.sin(teraz / 180) * .4;
+      g.fillStyle = `rgba(80,230,255,${.35 * bl})`; g.beginPath(); g.arc(50, 0, 12, 0, 7); g.fill();
+      gwiazdka(g, 50, 0, 5, '#dffcff', null);
+      g.restore();
+    }
+    g.restore();
+  };
+  const gest = st.mowi ? Math.sin(teraz / 160) * .25 : 0;
+  reka(-szer + 4, .15 - mach * .02, false);
+  // głowa
+  const gy = ram - 22 * wz, r = c.glowa || 22;
+  if (c.wlosy && c.fryzura !== 'lysy') {
+    if (c.fryzura === 'warkocze') { elip(g, -20, gy + 8, 7, 14, c.wlosy); elip(g, 20, gy + 8, 7, 14, c.wlosy); }
+    if (c.fryzura === 'dlugie') wiel(g, [[-r - 3, gy - 6], [r + 3, gy - 6], [r + 6, gy + 26], [-r - 6, gy + 26]], c.wlosy);
+  }
+  elip(g, 0, gy, r, r * 1.05, c.skora || '#f1c7a0');
+  // uszy/nos
+  elip(g, -r + 3, gy + 2, 5, 7, c.skora || '#f1c7a0', OBRYS, 2);
+  const nos = c.nos || 7;
+  elip(g, r * .55, gy + 4, nos, nos * .8, c.skora2 || '#e9b48c', OBRYS, 2);
+  // oczy
+  const mrug = !c.bezMrugania && (Math.floor(teraz / 100 + (c.przes || 0) * 7) % 38 === 0);
+  const ox = r * .25;
+  if (c.hipnoza) {
+    for (const ex of [ox - 6, ox + 9]) { elip(g, ex, gy - 4, 6, 6, '#fff', OBRYS, 1.5); g.strokeStyle = '#7b2fbf'; g.lineWidth = 1.5; g.beginPath(); for (let a = 0; a < 12; a += .3) g.lineTo(ex + Math.cos(a + teraz / 200) * a * .4, gy - 4 + Math.sin(a + teraz / 200) * a * .4); g.stroke(); }
+  } else if (mrug) {
+    g.strokeStyle = OBRYS; g.lineWidth = 2.5; g.beginPath(); g.moveTo(ox - 10, gy - 4); g.lineTo(ox - 2, gy - 4); g.moveTo(ox + 5, gy - 4); g.lineTo(ox + 13, gy - 4); g.stroke();
+  } else {
+    elip(g, ox - 6, gy - 4, 4.5, 5.5, '#fff', OBRYS, 1.5); elip(g, ox + 9, gy - 4, 4.5, 5.5, '#fff', OBRYS, 1.5);
+    elip(g, ox - 4.5, gy - 3, 2.2, 2.6, c.oczy || '#2a3a8a', null); elip(g, ox + 10.5, gy - 3, 2.2, 2.6, c.oczy || '#2a3a8a', null);
+  }
+  if (c.okulary) { g.strokeStyle = '#222'; g.lineWidth = 2; g.beginPath(); g.arc(ox - 6, gy - 4, 7, 0, 7); g.moveTo(ox + 16, gy - 4); g.arc(ox + 9, gy - 4, 7, 0, 7); g.moveTo(ox + 1, gy - 4); g.lineTo(ox + 2, gy - 4); g.stroke(); }
+  if (c.brwi) { g.strokeStyle = c.brwi; g.lineWidth = 3; g.beginPath(); g.moveTo(ox - 11, gy - 13); g.lineTo(ox - 1, gy - 12); g.moveTo(ox + 4, gy - 12); g.lineTo(ox + 14, gy - 13); g.stroke(); }
+  // usta
+  const otw = st.mowi ? (Math.sin(teraz / (c.opoznienieUst ? 140 : 70)) * .5 + .5) * 6 : 0;
+  if (c.wasy) { wiel(g, [[ox - 8, gy + 10], [ox + 22, gy + 10], [ox + 26, gy + 16], [ox + 7, gy + 12], [ox - 12, gy + 16]], c.wasy, OBRYS, 1.5); }
+  elip(g, ox + 6, gy + 13, 6, 1.5 + otw, '#7a2a2a', OBRYS, 1.5);
+  if (c.broda) wiel(g, [[-r * .6, gy + 10], [r * .9, gy + 10], [r * .5, gy + 34], [0, gy + 40], [-r * .3, gy + 30]], c.broda, OBRYS, 2);
+  // włosy z wierzchu
+  if (c.wlosy && c.fryzura !== 'lysy') {
+    g.fillStyle = c.wlosy;
+    wiel(g, [[-r - 2, gy + 2], [-r + 2, gy - r + 2], [-4, gy - r - 6], [r - 2, gy - r + 2], [r + 2, gy - 8], [r * .3, gy - r * .6], [-r * .2, gy - r * .5], [-r * .6, gy - 4]], c.wlosy, OBRYS, 2);
+    if (c.fryzura === 'kucyk') { elip(g, -r - 6, gy - 6, 9, 6, c.wlosy); }
+    if (c.fryzura === 'grzywka') { for (let i = 0; i < 4; i++) wiel(g, [[-8 + i * 7, gy - r], [-2 + i * 7, gy - r], [-4 + i * 7, gy - r + 12]], c.wlosy, OBRYS, 1); }
+  }
+  // nakrycie głowy
+  if (c.kapelusz === 'czarodziej') kapeluszCzarodzieja(g, gy - r + 6, c.gwiazdki || 3, st.mowi, c.przes || 0);
+  if (c.kapelusz === 'melonik') { elip(g, 0, gy - r + 4, r + 12, 6, '#2a2222'); wiel(g, [[-r + 2, gy - r + 4], [r - 2, gy - r + 4], [r - 4, gy - r - 20], [-r + 4, gy - r - 20]], '#3a2e2e'); prost(g, -r + 3, gy - r - 2, 2 * r - 6, 5, '#b33', null); }
+  if (c.kapelusz === 'czapka') { wiel(g, [[-r - 1, gy - 6], [r + 1, gy - 6], [r - 2, gy - r - 8], [-r + 2, gy - r - 8]], c.czapkaKolor || '#d33'); wiel(g, [[r - 4, gy - 8], [r + 22, gy - 4], [r + 18, gy - 12], [r - 4, gy - 14]], c.czapkaKolor || '#d33', OBRYS, 2); }
+  if (c.kaptur) { wiel(g, [[-r - 10, gy + 30], [-r - 8, gy - 10], [0, gy - r - 20], [r + 14, gy - 8], [r + 10, gy + 30]], c.kaptur); elip(g, r * .2, gy + 2, r * .85, r * .9, '#0c0810', null); }
+  reka(szer - 4, -.25 - gest + mach * .02, true);
+  g.restore();
+}
+
+function kapeluszCzarodzieja(g, y, gwiazdki, mowi, przes) {
+  const chw = Math.sin(teraz / 700 + przes) * 4 + (mowi ? Math.sin(teraz / 120) * 2 : 0);
+  // rondo
+  elip(g, 2, y + 2, 44, 10, '#4a2478');
+  // stożek z zagiętym czubkiem
+  g.beginPath();
+  g.moveTo(-26, y); g.quadraticCurveTo(-14, y - 50, -6 + chw * .3, y - 82);
+  g.quadraticCurveTo(10 + chw, y - 104, 34 + chw * 1.5, y - 92);
+  g.quadraticCurveTo(14 + chw, y - 82, 12, y - 66);
+  g.quadraticCurveTo(22, y - 30, 30, y);
+  g.closePath();
+  g.fillStyle = lg(g, -26, 0, 30, 0, [[0, '#6c35b0'], [.6, '#8a4fd6'], [1, '#55288f']]); g.fill();
+  g.strokeStyle = OBRYS; g.lineWidth = 3; g.stroke();
+  // otok
+  wiel(g, [[-25, y - 2], [29, y - 2], [27, y - 14], [-22, y - 14]], '#e7b93b', OBRYS, 2);
+  elip(g, 2, y - 8, 4, 4, '#4fe3ff', OBRYS, 1);
+  const poz = [[-6, y - 34, 6], [10, y - 52, 5], [-2, y - 64, 4], [16, y - 26, 4], [-14, y - 22, 4]];
+  for (let i = 0; i < gwiazdki; i++) gwiazdka(g, poz[i][0], poz[i][1], poz[i][2], '#ffd84a', OBRYS, 1);
+  // pompon-gwiazdka na czubku
+  gwiazdka(g, 34 + chw * 1.5, y - 92, 6, '#ffe98a', OBRYS, 1.2);
+}
+
+const STROJE = {
+  damian: { skora: '#f3c9a2', wlosy: '#f2d06b', fryzura: 'grzywka', szata: '#5a2f98', rekawy: '#5a2f98', dlugaSzata: true, obwody: true, kapelusz: 'czarodziej', buty: '#2b1c38', oczy: '#2c6fb3', brwi: '#c9a23f', przes: 0 },
+  zosia: { skora: '#f6d1b3', wlosy: '#b0532a', fryzura: 'warkocze', szata: '#d8434b', rekawy: '#f2f2f2', spodnie: '#f6d1b3', buty: '#8a2222', glowa: 19, wzrost: .72, szer: 20, przes: 2 },
+  kuba: { skora: '#e9bb93', wlosy: '#3b2a1e', fryzura: 'grzywka', szata: '#3f9b4f', rekawy: '#3f9b4f', spodnie: '#2c4a7a', kapelusz: 'czapka', czapkaKolor: '#e8a33a', glowa: 19, wzrost: .74, szer: 20, przes: 3 },
+  maja: { skora: '#f1caa8', wlosy: '#1f1a2e', fryzura: 'kucyk', szata: '#f0c03a', rekawy: '#f0c03a', spodnie: '#6a3f8f', okulary: true, glowa: 19, wzrost: .72, szer: 20, przes: 4 },
+  okazja: { skora: '#efb98f', fryzura: 'lysy', szata: '#ffffff', paski: '#d6334a', rekawy: '#d6334a', spodnie: '#3b3b55', wasy: '#5a3018', kapelusz: 'melonik', brzuch: 22, szer: 32, nos: 10, przes: 5 },
+  bajtek: { skora: '#e8b48a', fryzura: 'lysy', szata: '#7b5a3a', rekawy: '#e9e1cf', fartuch: '#efe7d6', wasy: '#7a3a1a', broda: null, brzuch: 16, szer: 30, nos: 9, przes: 6 },
+  dziecko1: { skora: '#f6d1b3', wlosy: '#e8c25a', fryzura: 'dlugie', szata: '#4b7bd6', rekawy: '#4b7bd6', spodnie: '#333', glowa: 18, wzrost: .68, szer: 18, hipnoza: true, przes: 7 },
+  dziecko2: { skora: '#d9a477', wlosy: '#2b1a10', fryzura: 'grzywka', szata: '#c45bd6', rekawy: '#c45bd6', spodnie: '#333', glowa: 18, wzrost: .7, szer: 18, hipnoza: true, przes: 8 },
+  nieznajomy: { szata: '#2a2236', rekawy: '#2a2236', dlugaSzata: true, kaptur: '#2a2236', skora: '#2a2236', wzrost: .62, szer: 22, przes: 9 },
+};
+STROJE.falszywy = Object.assign({}, STROJE.damian, { gwiazdki: 5, bezMrugania: true, opoznienieUst: true, przes: 11 });
+
+function rysujDamiana(g, x, y, s, k, st, falszywy) {
+  const c = Object.assign({}, falszywy ? STROJE.falszywy : STROJE.damian, { rozdzka: falszywy || ma('rozdzka') });
+  if (!falszywy) cien(g, x, y, s);
+  if (falszywy) {
+    const gl = Math.random() < .08;
+    g.save(); g.globalAlpha = .45; g.globalCompositeOperation = 'lighter';
+    postac(g, x - 4, y, s, k, Object.assign({}, c, { szata: '#a0004a' }), st);
+    postac(g, x + 4, y, s, k, Object.assign({}, c, { szata: '#007a9a' }), st);
+    g.restore();
+    postac(g, x + (gl ? rnd(-8, 8) : 0), y, s, k, c, st);
+    if (gl) { const yy = y - rnd(40, 220) * s; const d = g.getImageData(Math.max(0, x - 80), yy, 160, 10); g.putImageData(d, Math.max(0, x - 80) + rnd(-20, 20), yy); }
+  } else postac(g, x, y, s, k, c, st);
+}
+
+function rysujTrolla(g, x, y, s, st) {
+  g.save(); g.translate(x, y); g.scale(s, s);
+  cien(g, 0, 0, 2.2);
+  const odd = Math.sin(teraz / 900) * 3;
+  // nogi
+  for (const dx of [-36, 36]) { prost(g, dx - 20, -80, 40, 80, '#6f7d6a'); elip(g, dx + 4, -4, 30, 12, '#596553'); }
+  // tułów — głaz
+  wiel(g, [[-90, -70], [-104, -170], [-70, -250 + odd], [60, -262 + odd], [104, -180], [92, -70]], '#8a9884');
+  szum(g, mulberry(4), -90, -250, 190, 170, 120, ['rgba(40,50,40,.35)', 'rgba(220,230,200,.25)'], 5);
+  wiel(g, [[-90, -70], [-104, -170], [-70, -250 + odd], [60, -262 + odd], [104, -180], [92, -70]], null);
+  // przepaska z napisem
+  wiel(g, [[-80, -110], [86, -110], [90, -86], [-84, -86]], '#7a4a22', OBRYS, 2);
+  napis(g, 'FIREWALL', 4, -98, 16, '#ffcf6a', 'center', 'Georgia, serif');
+  // ramiona
+  const m = st.mowi ? Math.sin(teraz / 150) * 8 : 0;
+  wiel(g, [[-96, -230], [-140, -150 + m], [-128, -60], [-100, -66], [-104, -150]], '#7f8d78');
+  wiel(g, [[96, -230], [140, -150 - m], [128, -60], [100, -66], [104, -150]], '#7f8d78');
+  elip(g, -116, -56, 22, 18, '#6f7d6a'); elip(g, 116, -56, 22, 18, '#6f7d6a');
+  // głowa
+  wiel(g, [[-50, -250 + odd], [-56, -310 + odd], [-20, -340 + odd], [36, -336 + odd], [60, -300 + odd], [52, -250 + odd]], '#93a28c');
+  elip(g, -20, -300 + odd, 9, 7, '#ffdc5a', OBRYS, 2); elip(g, 22, -300 + odd, 9, 7, '#ffdc5a', OBRYS, 2);
+  elip(g, -18, -299 + odd, 3, 4, '#111', null); elip(g, 24, -299 + odd, 3, 4, '#111', null);
+  g.strokeStyle = OBRYS; g.lineWidth = 5; g.beginPath(); g.moveTo(-34, -318 + odd); g.lineTo(-6, -310 + odd); g.moveTo(8, -310 + odd); g.lineTo(36, -318 + odd); g.stroke();
+  elip(g, 2, -284 + odd, 12, 9, '#7f8d78', OBRYS, 2);
+  const o = st.mowi ? 4 + Math.sin(teraz / 90) * 4 : 1;
+  wiel(g, [[-26, -264 + odd], [30, -264 + odd], [26, -262 + odd + o], [-22, -262 + odd + o]], '#3a1a1a', OBRYS, 2);
+  wiel(g, [[-20, -264 + odd], [-14, -264 + odd], [-17, -274 + odd]], '#fff', OBRYS, 1); wiel(g, [[16, -264 + odd], [22, -264 + odd], [19, -274 + odd]], '#fff', OBRYS, 1);
+  // mech
+  for (let i = 0; i < 6; i++) elip(g, -40 + i * 16, -338 + odd + Math.sin(i) * 4, 8, 5, '#4f8a3a', null);
+  g.restore();
+}
+
+function rysujSowe(g, x, y, s, st) {
+  g.save(); g.translate(x, y); g.scale(s, s);
+  const kiw = Math.sin(teraz / 800) * .08;
+  g.rotate(kiw);
+  elip(g, 0, -40, 30, 40, '#8a6a4a');
+  elip(g, 0, -30, 20, 26, '#d9c3a0', null);
+  for (let i = 0; i < 4; i++) for (let j = 0; j < 3; j++) { g.strokeStyle = '#a58660'; g.lineWidth = 1.5; g.beginPath(); g.arc(-10 + j * 10, -40 + i * 9, 4, 0, Math.PI); g.stroke(); }
+  elip(g, 0, -86, 30, 26, '#8a6a4a');
+  wiel(g, [[-26, -102], [-30, -124], [-12, -108]], '#8a6a4a', OBRYS, 2); wiel(g, [[26, -102], [30, -124], [12, -108]], '#8a6a4a', OBRYS, 2);
+  elip(g, -12, -88, 11, 11, '#fff3c0'); elip(g, 12, -88, 11, 11, '#fff3c0');
+  const mrug = Math.floor(teraz / 100) % 45 === 0;
+  if (!mrug) { elip(g, -12, -88, 5, 5, '#111', null); elip(g, 12, -88, 5, 5, '#111', null); }
+  else { g.strokeStyle = OBRYS; g.lineWidth = 2; g.beginPath(); g.moveTo(-20, -88); g.lineTo(-4, -88); g.moveTo(4, -88); g.lineTo(20, -88); g.stroke(); }
+  // okulary-binokle
+  g.strokeStyle = '#d4af37'; g.lineWidth = 2; g.beginPath(); g.arc(-12, -88, 13, 0, 7); g.moveTo(25, -88); g.arc(12, -88, 13, 0, 7); g.stroke();
+  wiel(g, [[-5, -78], [5, -78], [0, -66 + (st.mowi ? Math.sin(teraz / 80) * 3 : 0)]], '#e8a33a', OBRYS, 1.5);
+  elip(g, -10, 0, 8, 4, '#e8a33a', OBRYS, 1.5); elip(g, 10, 0, 8, 4, '#e8a33a', OBRYS, 1.5);
+  g.restore();
+}
+
+function rysujKota(g, x, y, s, st) {
+  g.save(); g.translate(x, y); g.scale(s, s);
+  cien(g, 0, 0, 1.2, .25);
+  const odd = Math.sin(teraz / 500) * 2;
+  // ogon
+  g.strokeStyle = OBRYS; g.lineWidth = 12; g.lineCap = 'round';
+  g.beginPath(); g.moveTo(-40, -10); g.quadraticCurveTo(-75, -20, -66 + Math.sin(teraz / 400) * 8, -50); g.stroke();
+  g.strokeStyle = '#e09a4a'; g.lineWidth = 8; g.stroke();
+  elip(g, 0, -20 - odd * .3, 46, 24 + odd * .5, '#e09a4a');
+  for (let i = 0; i < 3; i++) { g.strokeStyle = '#b86e2a'; g.lineWidth = 4; g.beginPath(); g.moveTo(-20 + i * 14, -40); g.lineTo(-24 + i * 14, -24); g.stroke(); }
+  elip(g, 36, -38, 22, 19, '#e09a4a');
+  wiel(g, [[22, -50], [24, -70], [36, -54]], '#e09a4a', OBRYS, 2); wiel(g, [[42, -54], [52, -70], [54, -48]], '#e09a4a', OBRYS, 2);
+  // śpiące oczy
+  g.strokeStyle = OBRYS; g.lineWidth = 2.5; g.beginPath(); g.arc(30, -40, 5, 0, Math.PI); g.moveTo(51, -40); g.arc(46, -40, 5, 0, Math.PI); g.stroke();
+  elip(g, 39, -32, 3, 2, '#d45a6a', null);
+  g.restore();
+  if (st.zzz) napis(g, 'z', x + 40 * s + Math.sin(teraz / 500) * 4, y - 80 * s - (teraz / 30 % 30), 18, 'rgba(255,255,255,.7)');
+}
+
+function rysujGolebia(g, x, y, s, k = 1, st = {}) {
+  g.save(); g.translate(x, y); g.scale(s * k, s);
+  const dziob = st.dziobie ? Math.max(0, Math.sin(teraz / 120)) * 8 : 0;
+  cien(g, 0, 0, .6, .25);
+  elip(g, -4, -22, 22, 16, '#8f95a8');
+  wiel(g, [[-22, -24], [-40, -16], [-22, -14]], '#6d7386', OBRYS, 2);
+  elip(g, -6, -24, 14, 9, '#7c8296', OBRYS, 2);
+  g.save(); g.translate(16, -36 + dziob * .5); g.rotate(dziob * .04);
+  elip(g, 0, 0, 11, 11, '#8f95a8');
+  elip(g, -2, 8, 9, 5, '#5fa88a', null);
+  wiel(g, [[9, -2], [20, 1], [9, 4]], '#e0a040', OBRYS, 1.5);
+  elip(g, 4, -3, 3, 3, '#ff7a1a', OBRYS, 1); elip(g, 4.5, -3, 1.3, 1.3, '#111', null);
+  if (st.zly) { g.strokeStyle = OBRYS; g.lineWidth = 2; g.beginPath(); g.moveTo(-2, -9); g.lineTo(8, -6); g.stroke(); }
+  if (st.korona) { wiel(g, [[-8, -10], [-6, -20], [-2, -13], [2, -22], [5, -13], [9, -20], [9, -10]], '#ffd84a', OBRYS, 1.5); }
+  g.restore();
+  g.strokeStyle = '#e07a5a'; g.lineWidth = 3; g.beginPath(); g.moveTo(-6, -8); g.lineTo(-8, 0); g.moveTo(4, -8); g.lineTo(4, 0); g.stroke();
+  g.restore();
+}
+
+/* ---------- ikony przedmiotów ---------- */
+function ikonaPrzedmiotu(g, id, x, y, s = 1) {
+  g.save(); g.translate(x, y); g.scale(s, s);
+  if (id === 'rozdzka') {
+    g.rotate(-.6);
+    prost(g, -30, -4, 50, 8, '#a77a4a', OBRYS, 2.5);
+    prost(g, 18, -7, 16, 14, '#c8ccd6', OBRYS, 2); prost(g, 22, -4, 3, 3, '#333', null); prost(g, 28, -4, 3, 3, '#333', null);
+    g.fillStyle = 'rgba(80,230,255,.4)'; g.beginPath(); g.arc(40, 0, 14, 0, 7); g.fill();
+    gwiazdka(g, 40, 0, 8, '#dffcff', OBRYS, 1);
+  }
+  if (id === 'list') {
+    g.rotate(.1);
+    wiel(g, [[-28, -20], [24, -24], [28, 18], [-24, 22]], '#f3e7c4');
+    g.strokeStyle = 'rgba(80,60,40,.6)'; g.lineWidth = 2; for (let i = 0; i < 4; i++) { g.beginPath(); g.moveTo(-18, -10 + i * 8); g.lineTo(16, -12 + i * 8); g.stroke(); }
+    elip(g, 12, 12, 8, 8, '#c22', OBRYS, 2); napis(g, '!', 12, 12, 11, '#fff');
+  }
+  if (id === 'lusterko') {
+    prost(g, -5, 8, 10, 26, '#7a4a22', OBRYS, 2);
+    elip(g, 0, -8, 24, 26, '#d4af37');
+    elip(g, 0, -8, 17, 19, lg(g, -17, -27, 17, 11, [[0, '#cff4ff'], [1, '#6aa9d6']]), OBRYS, 2);
+    napis(g, (Math.floor(teraz / 30000) * 7919 % 900000 + 100000 + '').slice(0, 3), 0, -8, 10, '#103050', 'center', 'monospace');
+  }
+  if (id === 'latarnia') {
+    g.fillStyle = `rgba(255,230,120,${.35 + Math.sin(teraz / 300) * .1})`; g.beginPath(); g.arc(0, 2, 30, 0, 7); g.fill();
+    g.strokeStyle = OBRYS; g.lineWidth = 3; g.beginPath(); g.arc(0, -26, 8, Math.PI, 0); g.stroke();
+    prost(g, -16, -22, 32, 6, '#3a3a4a', OBRYS, 2);
+    prost(g, -13, -16, 26, 30, '#ffe9a0', OBRYS, 2);
+    g.strokeStyle = OBRYS; g.lineWidth = 2; g.beginPath(); g.moveTo(0, -16); g.lineTo(0, 14); g.stroke();
+    prost(g, -16, 14, 32, 7, '#3a3a4a', OBRYS, 2);
+    gwiazdka(g, 0, -2, 6, '#fff', null);
+  }
+  if (id === 'okruszki') {
+    wiel(g, [[-26, -6], [26, -6], [20, 22], [-20, 22]], '#c9a26a');
+    g.strokeStyle = OBRYS; g.lineWidth = 2; g.beginPath(); g.moveTo(-26, -6); g.lineTo(-30, -14); g.moveTo(26, -6); g.lineTo(30, -14); g.stroke();
+    const R = mulberry(9); for (let i = 0; i < 14; i++) elip(g, -16 + R() * 32, -10 + R() * 10, 3 + R() * 3, 2 + R() * 2, '#e8c27a', OBRYS, 1);
+  }
+  if (id === 'ciastko') {
+    elip(g, 0, 0, 24, 22, '#d9a35a');
+    const R = mulberry(3); for (let i = 0; i < 6; i++) elip(g, -12 + R() * 24, -10 + R() * 20, 3.5, 3, '#4a2a12', null);
+    wiel(g, [[14, -20], [26, -14], [24, 0], [16, -6]], '#1b0f1e', null);
+  }
+  g.restore();
+}
+</script>
+<script>
+"use strict";
+/* =====================================================================
+   TŁA SCEN — rysowane raz do bufora
+   ===================================================================== */
+const TLA = {};
+
+function zolwZDyskiem(g, x, y, s, R) {
+  g.save(); g.translate(x, y); g.scale(s, s);
+  // płetwy
+  for (const [px, py, r] of [[-120, 40, -.5], [110, 44, .5], [-80, 70, -.2], [70, 74, .2]]) {
+    g.save(); g.translate(px, py); g.rotate(r + Math.sin(teraz / 900 + px) * .12); elip(g, 0, 0, 46, 16, '#5f9a5a'); g.restore();
+  }
+  elip(g, 160, 30, 30, 22, '#6fae68'); elip(g, 172, 24, 4, 4, '#111', null);
+  elip(g, 0, 30, 150, 60, '#7c6a3a');
+  g.strokeStyle = '#4e4220'; g.lineWidth = 3;
+  for (let i = -2; i <= 2; i++) { g.beginPath(); g.ellipse(i * 50, 24, 22, 30, 0, 0, 7); g.stroke(); }
+  // serwery
+  for (const sx of [-80, -28, 28, 80]) { prost(g, sx - 14, -40, 28, 48, '#3a3f55', OBRYS, 2); for (let j = 0; j < 3; j++) prost(g, sx - 9, -34 + j * 14, 18, 4, j % 2 ? '#4fe3ff' : '#7dff7a', null); }
+  // dysk świata
+  elip(g, 0, -48, 190, 34, '#3f8fd4');
+  elip(g, 0, -52, 172, 28, '#5bb35a', null);
+  const r = R || mulberry(77);
+  for (let i = 0; i < 18; i++) { const a = r() * Math.PI * 2, d = r() * .8; const hx = Math.cos(a) * 150 * d, hy = -52 + Math.sin(a) * 22 * d; prost(g, hx - 4, hy - 10, 8, 10, ['#e8d5a8', '#c9b6e0', '#d9c08f'][i % 3], OBRYS, 1); wiel(g, [[hx - 6, hy - 10], [hx + 6, hy - 10], [hx, hy - 17]], '#8c2f2f', OBRYS, 1); }
+  // wieża Damiana z fioletowym dachem
+  prost(g, -10, -110, 20, 56, '#bfb3d6', OBRYS, 2); wiel(g, [[-16, -110], [16, -110], [4, -146], [12, -150]], '#7a3fd0', OBRYS, 2);
+  // wodospad krawędzi
+  g.fillStyle = 'rgba(160,210,255,.45)'; g.fillRect(-190, -48, 6, 40); g.fillRect(184, -48, 6, 44);
+  g.restore();
+}
+
+function niebo(g, R, y1, gora, dol, gwiazdy) {
+  g.fillStyle = lg(g, 0, 0, 0, y1, [[0, gora], [1, dol]]); g.fillRect(0, 0, W, y1);
+  if (gwiazdy) for (let i = 0; i < gwiazdy; i++) { g.fillStyle = `rgba(255,255,255,${.3 + R() * .7})`; const r = R() * 1.8; g.beginPath(); g.arc(R() * W, R() * y1, r, 0, 7); g.fill(); }
+}
+function chmura(g, x, y, s, kol = '#fff4e8') {
+  g.save(); g.translate(x, y); g.scale(s, s);
+  for (const [dx, dy, r] of [[0, 0, 30], [30, -12, 34], [64, 0, 28], [34, 10, 30]]) elip(g, dx, dy, r * 1.3, r, kol, null);
+  g.restore();
+}
+
+/* --- Wieża Damiana --- */
+function tloWieza() {
+  const c = nowyCanvas(W, SH), g = c.getContext('2d'), R = mulberry(11);
+  kamienneSciany(g, R, 0, 0, W, 450, '#3d2e52', '#4d3b68', '#33264a');
+  g.fillStyle = lg(g, 0, 0, 0, 450, [[0, 'rgba(10,0,20,.55)'], [.6, 'rgba(10,0,20,0)']]); g.fillRect(0, 0, W, 450);
+  deski(g, R, 440, SH, '#7a4a2a', '#4a2a16', 600);
+  // listwa
+  prost(g, -5, 432, W + 10, 14, '#2a1b14', OBRYS, 2);
+  // okno łukowe z widokiem na Żółwia
+  g.save(); g.beginPath(); g.moveTo(380, 340); g.lineTo(380, 150); g.arc(500, 150, 120, Math.PI, 0); g.lineTo(620, 340); g.closePath(); g.clip();
+  niebo(g, R, 340, '#090420', '#2a1460', 160);
+  elip(g, 580, 90, 22, 22, '#fff6c8', null); elip(g, 588, 84, 20, 20, '#2a1460', null);
+  zolwZDyskiem(g, 495, 250, .42, mulberry(5));
+  g.restore();
+  g.lineWidth = 14; g.strokeStyle = '#2a1b14';
+  g.beginPath(); g.moveTo(380, 340); g.lineTo(380, 150); g.arc(500, 150, 120, Math.PI, 0); g.lineTo(620, 340); g.closePath(); g.stroke();
+  g.lineWidth = 6; g.beginPath(); g.moveTo(500, 30); g.lineTo(500, 340); g.moveTo(380, 210); g.lineTo(620, 210); g.stroke();
+  prost(g, 360, 336, 280, 18, '#5a3a24');
+  // regał
+  prost(g, 30, 110, 230, 330, '#5a3520');
+  for (let p = 0; p < 4; p++) {
+    const py = 130 + p * 76;
+    prost(g, 40, py + 60, 210, 10, '#3a2214', OBRYS, 2);
+    let bx = 46;
+    while (bx < 238) {
+      const bw = 12 + R() * 14, bh = 40 + R() * 18;
+      const kol = ['#a83232', '#3257a8', '#2f8a4a', '#b58a2a', '#7a3fa8', '#2a8a8a'][Math.floor(R() * 6)];
+      if (R() < .15) { g.save(); g.translate(bx, py + 60); g.rotate(-.25); prost(g, 0, -bh, bw, bh, kol, OBRYS, 1.5); g.restore(); bx += bw + 8; }
+      else { prost(g, bx, py + 60 - bh, bw, bh, kol, OBRYS, 1.5); prost(g, bx + 2, py + 60 - bh + 8, bw - 4, 3, '#e7b93b', null); bx += bw + 1; }
+    }
+  }
+  prost(g, 30, 110, 230, 330, null, OBRYS, 4);
+  // półka na różdżkę
+  prost(g, 940, 280, 160, 14, '#5a3520', OBRYS, 3);
+  wiel(g, [[950, 294], [962, 294], [956, 320]], '#5a3520', OBRYS, 2); wiel(g, [[1080, 294], [1092, 294], [1086, 320]], '#5a3520', OBRYS, 2);
+  // słoiki na półce
+  for (const [x, k] of [[1060, '#7dff7a'], [1084, '#ff7ad9']]) { prost(g, x - 8, 250, 18, 30, k, OBRYS, 2); prost(g, x - 9, 246, 20, 6, '#6a4a2a', OBRYS, 1.5); }
+  // drzwi
+  g.save(); g.beginPath(); g.moveTo(1110, 450); g.lineTo(1110, 240); g.arc(1175, 240, 65, Math.PI, 0); g.lineTo(1240, 450); g.closePath();
+  g.fillStyle = '#6a3e22'; g.fill(); g.clip();
+  for (let i = 0; i < 6; i++) { g.strokeStyle = '#3a2214'; g.lineWidth = 3; g.beginPath(); g.moveTo(1110 + i * 26, 160); g.lineTo(1110 + i * 26, 450); g.stroke(); }
+  g.restore();
+  g.strokeStyle = OBRYS; g.lineWidth = 4; g.beginPath(); g.moveTo(1110, 450); g.lineTo(1110, 240); g.arc(1175, 240, 65, Math.PI, 0); g.lineTo(1240, 450); g.stroke();
+  prost(g, 1112, 300, 126, 10, '#333', OBRYS, 2); prost(g, 1112, 400, 126, 10, '#333', OBRYS, 2);
+  elip(g, 1222, 350, 7, 7, '#e7b93b', OBRYS, 2);
+  // biurko
+  prost(g, 690, 360, 270, 22, '#7a4a2a'); prost(g, 705, 382, 22, 80, '#5a3520'); prost(g, 925, 382, 22, 80, '#5a3520');
+  prost(g, 740, 382, 170, 36, '#6a3e22'); elip(g, 825, 400, 6, 6, '#e7b93b', OBRYS, 2);
+  // księga na biurku
+  wiel(g, [[880, 358], [948, 354], [952, 342], [884, 346]], '#7a1f2a', OBRYS, 2);
+  wiel(g, [[884, 346], [952, 342], [946, 334], [882, 338]], '#f3e7c4', OBRYS, 2);
+  gwiazdka(g, 916, 352, 5, '#e7b93b', null);
+  // świece
+  for (const x of [720, 748]) { prost(g, x - 5, 320, 10, 40, '#f3ead2', OBRYS, 2); }
+  // podstawka kuli
+  wiel(g, [[790, 360], [860, 360], [850, 340], [800, 340]], '#4a3a2a', OBRYS, 2);
+  // dywan
+  elip(g, 560, 525, 230, 50, '#7a2f5a');
+  elip(g, 560, 525, 196, 40, null, '#e7b93b', 4);
+  for (let i = 0; i < 8; i++) { gwiazdka(g, 560 + Math.cos(i / 8 * 6.28) * 150, 525 + Math.sin(i / 8 * 6.28) * 28, 7, '#e7b93b', null); }
+  // poduszka kota
+  elip(g, 300, 470, 70, 18, '#3a8a8a');
+  // kocioł w kącie
+  elip(g, 1020, 470, 50, 14, '#222'); wiel(g, [[972, 430], [1068, 430], [1060, 470], [980, 470]], '#2a2a32');
+  winieta(g);
+  return c;
+}
+
+/* --- Rynek Miasta Bajtów --- */
+function tloRynek() {
+  const c = nowyCanvas(W, SH), g = c.getContext('2d'), R = mulberry(23);
+  niebo(g, R, 400, '#6aa8e0', '#f6c58a', 0);
+  chmura(g, 140, 80, 1.1); chmura(g, 760, 60, .9); chmura(g, 1080, 120, .7);
+  // dalekie dachy
+  g.fillStyle = '#9a8cb8';
+  for (let x = 0; x < W; x += 60) { const h = 40 + R() * 70; g.beginPath(); g.moveTo(x, 330); g.lineTo(x, 330 - h); g.lineTo(x + 30, 330 - h - 30); g.lineTo(x + 60, 330 - h); g.lineTo(x + 60, 330); g.fill(); }
+  // domy — rząd
+  krzywyDom(g, R, 120, 420, 150, 220, { skos: -14, kolor: '#e6c9a8' });
+  krzywyDom(g, R, 270, 420, 130, 250, { skos: 18, kolor: '#c9b6e0' });
+  krzywyDom(g, R, 400, 420, 170, 200, { skos: -8, kolor: '#bcd3b0' });
+  krzywyDom(g, R, 570, 420, 140, 260, { skos: 22, kolor: '#e8d5a8', okna: 2 });
+  krzywyDom(g, R, 710, 420, 150, 210, { skos: -20, kolor: '#d9c08f' });
+  // karczma
+  krzywyDom(g, R, 880, 420, 260, 250, { skos: 10, kolor: '#d4a876', dachKolor: '#5b3b7a', okna: 3 });
+  // drzwi karczmy
+  g.save(); g.beginPath(); g.moveTo(960, 420); g.lineTo(960, 330); g.arc(1000, 330, 40, Math.PI, 0); g.lineTo(1040, 420); g.closePath(); g.fillStyle = '#5a3018'; g.fill(); g.strokeStyle = OBRYS; g.lineWidth = 3; g.stroke(); g.restore();
+  g.fillStyle = 'rgba(255,200,100,.35)'; g.fillRect(990, 330, 20, 14);
+  // szyld karczmy
+  g.strokeStyle = OBRYS; g.lineWidth = 3; g.beginPath(); g.moveTo(1060, 300); g.lineTo(1140, 300); g.stroke();
+  zaokr(g, 1070, 306, 90, 56, 6, '#3a2214');
+  for (const [dx, dy] of [[1095, 330], [1115, 322], [1135, 330]]) { elip(g, dx, dy, 9, 8, '#4fae4f', OBRYS, 1.5); elip(g, dx + 3, dy - 2, 2, 2, '#fff', null); }
+  elip(g, 1115, 348, 26, 10, '#4fae4f', OBRYS, 1.5);
+  napis(g, 'BUG', 1115, 356, 10, '#ffcf6a');
+  // plakat z fałszywym Damianem na domu
+  wiel(g, [[600, 262], [672, 258], [676, 340], [604, 344]], '#f2e6c2');
+  g.save(); g.translate(638, 300); g.rotate(-.04);
+  elip(g, 0, 10, 14, 15, '#f3c9a2', OBRYS, 1.5);
+  wiel(g, [[-20, 0], [20, 0], [6, -34], [16, -38]], '#7a3fd0', OBRYS, 1.5);
+  for (const [sx, sy] of [[-6, -8], [4, -16], [2, -26], [-10, -4], [10, -6]]) gwiazdka(g, sx, sy, 3, '#ffd84a', null);
+  elip(g, 4, 17, 6, 2, '#7a2a2a', null);
+  napis(g, 'DARMOWE', 0, 32, 9, '#c22'); napis(g, 'MOCE!', 0, 40, 9, '#c22');
+  g.restore();
+  // drogowskazy
+  prost(g, 60, 290, 8, 130, '#5a3520');
+  wiel(g, [[20, 300], [140, 300], [140, 326], [20, 326], [6, 313]], '#c9a26a', OBRYS, 2); napis(g, 'Szkoła Mentis', 76, 313, 13, '#3a2214');
+  prost(g, 1214, 290, 8, 130, '#5a3520');
+  wiel(g, [[1150, 300], [1262, 300], [1276, 313], [1262, 326], [1150, 326]], '#c9a26a', OBRYS, 2); napis(g, 'Most Trolla', 1206, 313, 13, '#3a2214');
+  // bruk
+  bruk(g, R, 420, SH, '#8a7a6a', ['#a89888', '#9a8a7a', '#b8a898', '#8f7f70']);
+  g.fillStyle = 'rgba(0,0,0,.18)'; g.fillRect(0, 420, W, 10);
+  // straganik Pana Okazji
+  prost(g, 230, 380, 12, 100, '#5a3520'); prost(g, 430, 380, 12, 100, '#5a3520');
+  for (let i = 0; i < 6; i++) wiel(g, [[218 + i * 38, 370], [256 + i * 38, 370], [252 + i * 38, 396], [222 + i * 38, 396]], i % 2 ? '#fff' : '#d6334a', OBRYS, 2);
+  prost(g, 290, 268, 6, 104, '#5a3520'); prost(g, 374, 268, 6, 104, '#5a3520');
+  zaokr(g, 240, 236, 190, 44, 6, '#f2e6c2');
+  napis(g, 'PAN OKAZJA', 335, 250, 16, '#c22'); napis(g, 'WSZYSTKO ZA DARMO*', 335, 268, 12, '#3a2214');
+  winieta(g, W, SH, .35);
+  return c;
+}
+function ladaStraganu(g) {
+  prost(g, 220, 440, 230, 50, '#8a5a2a');
+  for (let i = 0; i < 6; i++) prost(g, 226 + i * 38, 448, 30, 36, null, '#5a3520', 2);
+  for (let i = 0; i < 5; i++) { elip(g, 250 + i * 40, 436, 14, 8, ['#ffd84a', '#e74c3c', '#7dff7a', '#4fe3ff', '#ff9a3a'][i]); }
+  napis(g, '*prawie', 438, 486, 8, '#3a2214');
+}
+function fontanna(g, x, y) {
+  elip(g, x, y, 120, 32, '#9aa0b0'); elip(g, x, y - 8, 104, 22, '#5aa0d8');
+  for (let i = 0; i < 5; i++) { g.strokeStyle = 'rgba(255,255,255,.5)'; g.lineWidth = 2; g.beginPath(); g.ellipse(x + Math.sin(teraz / 700 + i) * 30, y - 8, 20 + i * 12 + (teraz / 40 % 20), 4 + i, 0, 0, 7); g.stroke(); }
+  wiel(g, [[x - 120, y], [x - 120, y - 30], [x + 120, y - 30], [x + 120, y]], null, null);
+  g.fillStyle = '#8a90a0'; g.beginPath(); g.moveTo(x - 120, y); g.ellipse(x, y, 120, 32, 0, Math.PI, 0, true); g.lineTo(x + 120, y - 20); g.ellipse(x, y - 20, 120, 32, 0, 0, Math.PI, false); g.closePath(); g.fill();
+  g.strokeStyle = OBRYS; g.lineWidth = 3; g.stroke();
+  elip(g, x, y - 20, 120, 30, null, OBRYS, 3);
+  elip(g, x, y - 22, 106, 22, '#5aa0d8', null);
+  // posąg żółwia
+  prost(g, x - 12, y - 80, 24, 60, '#9aa0b0');
+  elip(g, x, y - 96, 40, 20, '#7a8a6a'); elip(g, x + 42, y - 100, 12, 10, '#7a8a6a');
+  // strumień danych
+  for (let i = 0; i < 12; i++) {
+    const t = ((teraz / 600 + i / 12) % 1);
+    napis(g, i % 2 ? '1' : '0', x + 50 + t * 50, y - 104 + t * t * 80, 12, `rgba(120,220,255,${1 - t})`, 'center', 'monospace');
+  }
+}
+
+/* --- Szkoła Magii Mentis --- */
+function tloSzkola() {
+  const c = nowyCanvas(W, SH), g = c.getContext('2d'), R = mulberry(31);
+  g.fillStyle = lg(g, 0, 0, 0, 450, [[0, '#d9c49a'], [1, '#e8d8b0']]); g.fillRect(0, 0, W, 450);
+  szum(g, R, 0, 0, W, 450, 1500, ['rgba(120,90,50,.08)', 'rgba(255,255,255,.1)'], 4);
+  prost(g, 0, 330, W, 120, '#8a5a32'); for (let x = 0; x < W; x += 64) prost(g, x, 330, 64, 120, null, '#5a3520', 2);
+  prost(g, -5, 326, W + 10, 10, '#5a3520', OBRYS, 2);
+  deski(g, R, 450, SH, '#a0703a', '#6a4422', 700);
+  // tablica
+  prost(g, 290, 80, 480, 210, '#2f5a3a'); prost(g, 280, 70, 500, 230, null, '#6a4422', 14); prost(g, 273, 63, 514, 244, null, OBRYS, 3);
+  szum(g, R, 300, 90, 460, 190, 300, ['rgba(255,255,255,.05)'], 6);
+  const kreda = (t, x, y, r = 18) => napis(g, t, x, y, r, 'rgba(240,240,230,.9)', 'left', '"Comic Sans MS", "Segoe Print", cursive', null, 'normal');
+  kreda('Zasady Czarodzieja Sieci:', 310, 104, 20);
+  kreda('1. Hasło = szczoteczka do zębów', 316, 140);
+  kreda('    (nie pożyczasz nikomu!)', 316, 164);
+  kreda('2. Podejrzany list? Pokaż dorosłemu.', 316, 196);
+  kreda('3. Za darmo + podaj hasło = PUŁAPKA', 316, 228);
+  kreda('4. Kod z lusterka też jest tajny!', 316, 260);
+  prost(g, 300, 288, 460, 8, '#6a4422', OBRYS, 1.5); prost(g, 620, 282, 30, 6, '#fff', null);
+  // okno
+  prost(g, 880, 70, 220, 230, '#7ab8e8', OBRYS, 4);
+  g.save(); g.beginPath(); g.rect(880, 70, 220, 230); g.clip();
+  niebo(g, R, 300, '#5a8fd0', '#c8e0f0', 0); chmura(g, 900, 120, .6);
+  g.fillStyle = '#6a7a8a'; wiel(g, [[880, 300], [880, 230], [960, 200], [1040, 250], [1100, 220], [1100, 300]], '#6a7a8a', null);
+  prost(g, 1040, 150, 22, 80, '#2a2236', null); wiel(g, [[1036, 150], [1066, 150], [1051, 120]], '#2a2236', null);
+  for (let i = 0; i < 3; i++) prost(g, 1046, 160 + i * 18, 6, 6, '#7dff7a', null);
+  g.restore();
+  g.strokeStyle = '#6a4422'; g.lineWidth = 10; g.strokeRect(880, 70, 220, 230); g.lineWidth = 6; g.beginPath(); g.moveTo(990, 70); g.lineTo(990, 300); g.moveTo(880, 185); g.lineTo(1100, 185); g.stroke();
+  // grzęda sowy
+  prost(g, 1140, 250, 100, 10, '#5a3520', OBRYS, 2); prost(g, 1186, 260, 8, 190, '#5a3520', OBRYS, 2);
+  // drzwi
+  prost(g, 20, 210, 100, 245, '#6a3e22', OBRYS, 4); prost(g, 34, 228, 72, 90, null, '#4a2a16', 3); prost(g, 34, 336, 72, 100, null, '#4a2a16', 3); elip(g, 100, 340, 6, 6, '#e7b93b', OBRYS, 2);
+  // napis
+  zaokr(g, 820, 18, 300, 40, 6, '#5a2f98'); napis(g, '✦ SZKOŁA MAGII MENTIS ✦', 970, 38, 18, '#ffd84a');
+  // plakat o hasłach
+  wiel(g, [[150, 120], [250, 116], [254, 250], [154, 254]], '#fff6d8');
+  napis(g, 'TWOJE HASŁO', 202, 140, 12, '#5a2f98'); napis(g, 'jest jak', 202, 158, 11, '#333', 'center', 'Georgia', null, 'normal');
+  prost(g, 186, 172, 30, 54, '#4fae4f', OBRYS, 2); prost(g, 186, 166, 30, 10, '#fff', OBRYS, 2);
+  napis(g, 'szczoteczka!', 202, 240, 11, '#333');
+  winieta(g, W, SH, .3);
+  return c;
+}
+function lawka(g, x, y, w) {
+  prost(g, x, y - 60, w, 14, '#9a6a3a'); prost(g, x + 10, y - 46, 10, 46, '#6a4422'); prost(g, x + w - 20, y - 46, 10, 46, '#6a4422');
+  prost(g, x + 6, y - 46, w - 12, 20, '#7a5230');
+}
+function kociol(g, x, y) {
+  g.fillStyle = 'rgba(120,255,140,.25)'; g.beginPath(); g.arc(x, y - 70, 70 + Math.sin(teraz / 300) * 6, 0, 7); g.fill();
+  for (const dx of [-40, 40]) prost(g, x + dx - 4, y - 20, 8, 22, '#222', OBRYS, 2);
+  g.fillStyle = '#2a2a32'; g.beginPath(); g.ellipse(x, y - 50, 62, 50, 0, 0, Math.PI * 2); g.fill(); g.strokeStyle = OBRYS; g.lineWidth = 3; g.stroke();
+  elip(g, x, y - 90, 58, 14, '#3a3a44');
+  elip(g, x, y - 90, 50, 10, '#5fe07a', null);
+  for (let i = 0; i < 5; i++) {
+    const t = (teraz / 900 + i / 5) % 1;
+    elip(g, x - 30 + i * 15 + Math.sin(t * 9 + i) * 6, y - 92 - t * 70, 5 + t * 6, 5 + t * 6, `rgba(130,255,150,${1 - t})`, null);
+    if (i % 2) napis(g, ['A', '7', '!', 'ż', '#'][i], x - 30 + i * 15, y - 100 - t * 90, 14, `rgba(220,255,220,${1 - t})`);
+  }
+  napis(g, 'KOCIOŁ HASEŁ', x, y - 30, 11, '#7dff7a');
+}
+
+/* --- Karczma Pod Zbugowanym Smokiem --- */
+function tloKarczma() {
+  const c = nowyCanvas(W, SH), g = c.getContext('2d'), R = mulberry(41);
+  g.fillStyle = '#5a3a24'; g.fillRect(0, 0, W, 470);
+  for (let x = 0; x < W; x += 40) { prost(g, x, 0, 40, 470, R() < .5 ? '#5e3d26' : '#55361f', 'rgba(20,10,5,.6)', 2); }
+  prost(g, 0, 60, W, 26, '#3a2214', OBRYS, 3);
+  for (const x of [200, 520, 840, 1160]) prost(g, x, 0, 30, 470, '#3a2214', OBRYS, 3);
+  deski(g, R, 470, SH, '#6a4422', '#3a2214', 640);
+  // kominek
+  prost(g, 70, 230, 210, 240, '#7a6a5a'); kamienneSciany(g, R, 70, 230, 210, 240, '#7a6a5a', '#8a7a6a', '#6a5a4a');
+  prost(g, 60, 220, 230, 20, '#3a2214', OBRYS, 3);
+  g.fillStyle = '#140a06'; g.beginPath(); g.moveTo(110, 470); g.lineTo(110, 330); g.arc(175, 330, 65, Math.PI, 0); g.lineTo(240, 470); g.fill();
+  // tablica ogłoszeń
+  prost(g, 520, 120, 210, 170, '#b8925a', OBRYS, 4);
+  szum(g, R, 522, 122, 206, 166, 300, ['rgba(80,50,20,.25)'], 3);
+  for (const [x, y, k, r] of [[536, 136, '#fff6d8', -.08], [600, 140, '#ffe0e0', .06], [660, 132, '#e0f0ff', -.04], [548, 214, '#fff6d8', .05]]) {
+    g.save(); g.translate(x + 26, y + 30); g.rotate(r); prost(g, -26, -30, 52, 60, k, OBRYS, 1.5);
+    for (let i = 0; i < 4; i++) prost(g, -18, -20 + i * 11, 36, 3, 'rgba(60,40,30,.5)', null);
+    elip(g, 0, -26, 3, 3, '#c22', null); g.restore();
+  }
+  napis(g, 'TABLICA OGŁOSZEŃ', 625, 106, 15, '#ffcf6a', 'center', 'Georgia', OBRYS);
+  // półki z kuflami za barem
+  for (const py of [200, 270]) {
+    prost(g, 850, py, 330, 10, '#3a2214', OBRYS, 2);
+    for (let i = 0; i < 9; i++) { const k = ['#c9a26a', '#4fae4f', '#a83232', '#3257a8'][i % 4]; if (i % 3 === 0) { prost(g, 862 + i * 35, py - 30, 20, 30, '#ddd', OBRYS, 1.5); } else { prost(g, 866 + i * 35, py - 36, 12, 36, k, OBRYS, 1.5); prost(g, 869 + i * 35, py - 46, 6, 12, k, OBRYS, 1.5); } }
+  }
+  // beczki
+  for (const [x, y] of [[1220, 470], [1200, 400]]) { elip(g, x, y - 40, 40, 50, '#7a4a22'); prost(g, x - 40, y - 60, 80, 6, '#333', null); prost(g, x - 40, y - 26, 80, 6, '#333', null); }
+  // okno
+  prost(g, 340, 120, 120, 120, '#1a2a4a', OBRYS, 4); g.fillStyle = '#ffeebb'; g.beginPath(); g.arc(420, 150, 10, 0, 7); g.fill();
+  g.strokeStyle = '#3a2214'; g.lineWidth = 6; g.beginPath(); g.moveTo(400, 120); g.lineTo(400, 240); g.moveTo(340, 180); g.lineTo(460, 180); g.stroke();
+  // drzwi wyjściowe
+  prost(g, 0, 250, 56, 222, '#4a2a16', OBRYS, 4); elip(g, 44, 360, 5, 5, '#e7b93b', OBRYS, 2);
+  // żyrandol
+  g.strokeStyle = OBRYS; g.lineWidth = 3; g.beginPath(); g.moveTo(640, 0); g.lineTo(640, 40); g.stroke();
+  elip(g, 640, 44, 60, 8, '#3a2214');
+  winieta(g, W, SH, .45);
+  return c;
+}
+function ogien(g, x, y, s = 1) {
+  for (let i = 0; i < 7; i++) {
+    const h = (50 + Math.sin(teraz / 90 + i * 2) * 14) * s, xx = x - 40 * s + i * 13 * s;
+    g.fillStyle = i % 2 ? 'rgba(255,170,40,.9)' : 'rgba(255,90,30,.9)';
+    g.beginPath(); g.moveTo(xx - 10 * s, y); g.quadraticCurveTo(xx, y - h * 1.3, xx + 10 * s, y); g.fill();
+  }
+  g.fillStyle = 'rgba(255,240,140,.9)'; g.beginPath(); g.moveTo(x - 20 * s, y); g.quadraticCurveTo(x, y - 40 * s, x + 20 * s, y); g.fill();
+}
+function bar(g) {
+  prost(g, 820, 380, 400, 26, '#8a5a2a'); prost(g, 830, 406, 380, 74, '#6a3e22');
+  for (let i = 0; i < 6; i++) prost(g, 840 + i * 62, 416, 50, 54, null, '#4a2a16', 3);
+  prost(g, 820, 380, 400, 100, null, OBRYS, 3);
+  prost(g, 900, 360, 22, 22, '#ddd', OBRYS, 2); prost(g, 1100, 362, 18, 20, '#c9a26a', OBRYS, 2);
+}
+
+/* --- Most Trolla --- */
+function tloMost() {
+  const c = nowyCanvas(W, SH), g = c.getContext('2d'), R = mulberry(51);
+  niebo(g, R, 440, '#2a1450', '#e8875a', 60);
+  // góry
+  g.fillStyle = '#4a2f6a'; g.beginPath(); g.moveTo(0, 380); for (let x = 0; x <= W; x += 80) g.lineTo(x, 260 + R() * 90); g.lineTo(W, 440); g.lineTo(0, 440); g.fill();
+  g.fillStyle = '#35204f'; g.beginPath(); g.moveTo(0, 420); for (let x = 0; x <= W; x += 60) g.lineTo(x, 330 + R() * 70); g.lineTo(W, 440); g.lineTo(0, 440); g.fill();
+  // Wieża Cienia na urwisku
+  wiel(g, [[1010, 440], [1060, 250], [1180, 240], [1240, 440]], '#2a1838');
+  prost(g, 1090, 80, 60, 180, '#1a1024'); wiel(g, [[1080, 84], [1160, 84], [1120, 20]], '#1a1024');
+  for (let i = 0; i < 4; i++) prost(g, 1110, 100 + i * 36, 18, 16, '#3aff7a', OBRYS, 2);
+  g.fillStyle = 'rgba(80,255,120,.12)'; g.beginPath(); g.arc(1120, 150, 90, 0, 7); g.fill();
+  // przepaść
+  g.fillStyle = lg(g, 0, 440, 0, SH, [[0, '#2a1838'], [1, '#05020a']]); g.fillRect(300, 440, 680, 160);
+  g.fillStyle = 'rgba(120,180,255,.25)'; for (let i = 0; i < 4; i++) g.fillRect(560 + i * 20, 560, 8, 40);
+  // lewy klif
+  wiel(g, [[0, 430], [330, 430], [350, 470], [320, 600], [0, 600]], '#6a5a4a');
+  szum(g, R, 0, 430, 340, 170, 400, ['#5a4a3a', '#7a6a5a', '#4a3a2a'], 6);
+  g.fillStyle = '#4f8a3a'; g.fillRect(0, 426, 330, 10);
+  // prawy klif
+  wiel(g, [[950, 430], [1280, 430], [1280, 600], [960, 600], [930, 470]], '#6a5a4a');
+  szum(g, R, 930, 430, 350, 170, 400, ['#5a4a3a', '#7a6a5a', '#4a3a2a'], 6);
+  g.fillStyle = '#4f8a3a'; g.fillRect(950, 426, 330, 10);
+  // most — łuk kamienny
+  g.fillStyle = '#7a7070';
+  g.beginPath(); g.moveTo(300, 450); g.lineTo(980, 450); g.lineTo(980, 540); g.quadraticCurveTo(640, 470, 300, 540); g.closePath(); g.fill();
+  g.strokeStyle = OBRYS; g.lineWidth = 3; g.stroke();
+  for (let x = 310; x < 980; x += 44) { g.strokeStyle = 'rgba(30,20,20,.5)'; g.lineWidth = 2; g.beginPath(); g.moveTo(x, 452); g.lineTo(x, 500 - Math.abs(x - 640) * .04); g.stroke(); }
+  prost(g, 300, 440, 680, 14, '#8a8080', OBRYS, 2);
+  for (let x = 320; x < 980; x += 70) { prost(g, x, 412, 16, 30, '#8a8080', OBRYS, 2); }
+  prost(g, 300, 408, 680, 8, '#9a9090', OBRYS, 2);
+  // tabliczka
+  prost(g, 250, 360, 8, 70, '#5a3520'); zaokr(g, 196, 340, 120, 34, 4, '#c9a26a'); napis(g, 'Most. Opłata: weryfikacja', 256, 357, 9.5, '#3a2214');
+  winieta(g, W, SH, .45);
+  return c;
+}
+
+/* --- Wieża Cienia --- */
+function tloWiezaCienia() {
+  const c = nowyCanvas(W, SH), g = c.getContext('2d'), R = mulberry(61);
+  kamienneSciany(g, R, 0, 0, W, 470, '#1a1424', '#231b30', '#15101c');
+  deski(g, R, 460, SH, '#2a2030', '#100a14', 640);
+  // okno z burzą
+  prost(g, 120, 70, 130, 200, '#0a0614', OBRYS, 4);
+  g.strokeStyle = '#2a2236'; g.lineWidth = 8; g.beginPath(); g.moveTo(185, 70); g.lineTo(185, 270); g.moveTo(120, 170); g.lineTo(250, 170); g.stroke();
+  // kable
+  g.lineWidth = 6;
+  for (let i = 0; i < 7; i++) { g.strokeStyle = ['#2a4a2a', '#4a2a4a', '#2a2a4a'][i % 3]; g.beginPath(); g.moveTo(640, 360); g.quadraticCurveTo(300 + i * 120, 600, 80 + i * 180, 460); g.stroke(); }
+  // zasłona
+  prost(g, 1010, 60, 190, 12, '#3a2214', OBRYS, 2);
+  for (let i = 0; i < 7; i++) { g.fillStyle = i % 2 ? '#6a1a2a' : '#7a2232'; g.fillRect(1014 + i * 26, 72, 26, 400); }
+  prost(g, 1014, 72, 182, 400, null, OBRYS, 3);
+  winieta(g, W, SH, .6);
+  return c;
+}
+function podrabiarka(g, x, y) {
+  prost(g, x - 120, y - 260, 240, 260, '#3a3a4a'); szum(g, mulberry(2), x - 118, y - 258, 236, 256, 150, ['rgba(0,0,0,.3)'], 4);
+  prost(g, x - 120, y - 260, 240, 260, null, OBRYS, 4);
+  zaokr(g, x - 90, y - 236, 180, 110, 10, '#06140a');
+  g.save(); g.beginPath(); g.roundRect(x - 90, y - 236, 180, 110, 10); g.clip();
+  const lin = Math.floor(teraz / 120);
+  if (flaga('falszywy_znikl')) { napis(g, 'BŁĄD 404:', x, y - 196, 16, '#ff5a5a', 'center', 'monospace'); napis(g, 'OSZUSTWO NIE', x, y - 172, 14, '#ff5a5a', 'center', 'monospace'); napis(g, 'ZNALEZIONE', x, y - 154, 14, '#ff5a5a', 'center', 'monospace'); }
+  else for (let i = 0; i < 8; i++) napis(g, ['WYGRAŁEŚ SMOKA!', 'podaj hasło', 'DARMOWE MOCE', 'kliknij tu!!!', 'Twój Damian :)', '10 MINUT!'][(i + lin) % 6], x - 82, y - 226 + i * 14, 11, '#3aff7a', 'left', 'monospace', null, 'normal');
+  g.restore();
+  // twarz na lejku
+  wiel(g, [[x - 60, y - 260], [x + 60, y - 260], [x + 100, y - 340], [x - 100, y - 340]], '#55556a');
+  prost(g, x - 100, y - 350, 200, 14, '#77778a', OBRYS, 2);
+  napis(g, 'PODRABIARKA 3000', x, y - 100, 15, '#ffcf6a', 'center', 'Georgia', OBRYS);
+  for (let i = 0; i < 5; i++) { const on = (Math.floor(teraz / 300) + i) % 3 === 0; elip(g, x - 80 + i * 40, y - 60, 9, 9, on ? '#ff4a4a' : '#5a1a1a', OBRYS, 2); }
+  // dźwignia
+  prost(g, x + 120, y - 120, 30, 16, '#555', OBRYS, 2); g.strokeStyle = OBRYS; g.lineWidth = 6; g.beginPath(); g.moveTo(x + 140, y - 112); g.lineTo(x + 170, y - 160); g.stroke(); elip(g, x + 172, y - 164, 10, 10, '#c22');
+}
+function ekranyCienia(g) {
+  for (const [x, y, w, h, i] of [[330, 110, 120, 80, 0], [470, 60, 100, 70, 1], [760, 70, 110, 76, 2], [880, 170, 90, 70, 3], [320, 220, 90, 70, 4]]) {
+    const a = .6 + Math.sin(teraz / 300 + i) * .3;
+    g.fillStyle = `rgba(60,255,120,${.12 * a})`; g.fillRect(x - 10, y - 10, w + 20, h + 20);
+    zaokr(g, x, y + Math.sin(teraz / 800 + i) * 4, w, h, 6, '#0a2a14', '#3aff7a', 2);
+    const yy = y + Math.sin(teraz / 800 + i) * 4;
+    // mini twarz w kapeluszu
+    elip(g, x + w / 2, yy + h * .62, 12, 13, `rgba(58,255,122,${a})`, null);
+    wiel(g, [[x + w / 2 - 16, yy + h * .5], [x + w / 2 + 16, yy + h * .5], [x + w / 2 + 2, yy + h * .12]], `rgba(58,255,122,${a})`, null);
+    if (Math.random() < .03) { g.fillStyle = 'rgba(255,255,255,.4)'; g.fillRect(x, yy + Math.random() * h, w, 3); }
+  }
+}
+
+function tloTytul() {
+  const c = nowyCanvas(W, H), g = c.getContext('2d'), R = mulberry(99);
+  g.fillStyle = lg(g, 0, 0, 0, H, [[0, '#05020f'], [.6, '#1a0b3a'], [1, '#2a1050']]); g.fillRect(0, 0, W, H);
+  for (let i = 0; i < 400; i++) { g.fillStyle = `rgba(255,255,255,${R() * .9})`; g.beginPath(); g.arc(R() * W, R() * H, R() * 1.8, 0, 7); g.fill(); }
+  for (let i = 0; i < 3; i++) { g.fillStyle = `rgba(${[120, 60, 200][i]},${[60, 120, 255][i]},255,.06)`; g.beginPath(); g.ellipse(R() * W, R() * H, 300, 120, R() * 3, 0, 7); g.fill(); }
+  return c;
+}
+</script>
+<script>
+"use strict";
+/* =====================================================================
+   FABUŁA — przedmioty, zaklęcia (lekcje), postacie mówiące, sceny
+   ===================================================================== */
+const PRZEDMIOTY = {
+  rozdzka: { nazwa: 'Różdżka USB', dop: 'różdżki', opis: 'Różdżka USB. Pasuje do każdego portu — za trzecim razem, po dwukrotnym obróceniu.' },
+  list: { nazwa: 'Zmięty list', dop: 'listu', opis: 'List z czerwoną pieczęcią, który dostała Zosia. Warto mu się dokładnie przyjrzeć. (Kliknij go dwa razy, żeby zbadać.)',
+    uzyj: () => zbadajList() },
+  lusterko: { nazwa: 'Lusterko Dwóch Kroków', dop: 'lusterka', opis: 'Lusterko Kuby. Pokazuje magiczny kod, który zmienia się co 30 sekund. To weryfikacja dwuetapowa w wersji fantasy.' },
+  latarnia: { nazwa: 'Latarnia Prawdy', dop: 'latarni', opis: 'Latarnia babci Mai. W jej świetle widać, co jest prawdziwe, a co podrobione.' },
+  okruszki: { nazwa: 'Miska okruszków', dop: 'okruszków', opis: 'Okruszki z karczmy. Smaczne dla gołębi. Dla czarodziejów — średnio.' },
+};
+const KOMBINACJE = {
+  'latarnia+list': async () => { await powiedz('damian', 'W świetle latarni list wygląda jeszcze podejrzaniej. Ale tę zagadkę rozwiążę zwykłym rozumem.'); },
+  'lusterko+rozdzka': async () => { await powiedz('damian', 'Różdżka i lusterko. Hasło i kod. Razem tworzą coś mocniejszego niż każde z osobna. Zapamiętam to.'); },
+};
+
+const LEKCJE = {
+  phishing: { tytul: 'Zaklęcie Czujnego Oka', tekst: 'Podejrzana wiadomość ma znaki ostrzegawcze: dziwny adres nadawcy, ogólne powitanie, nagroda za piękna, żeby była prawdziwa, pośpiech („tylko 10 minut!”), dziwny link i prośba o hasło. Nie klikaj — pokaż dorosłemu.' },
+  okazja: { tytul: 'Zaklęcie Zbyt Dobrej Okazji', tekst: 'Darmowe monety, skórki czy smoki w zamian za login to pułapka. Jeśli coś jest zbyt piękne, by było prawdziwe — zwykle nie jest prawdziwe.' },
+  haslo: { tytul: 'Zaklęcie Smoczego Hasła', tekst: 'Silne hasło to kilka losowych słów + cyfra lub znak, np. Pingwin-Kalafior-Rakieta-7! Bez imienia, daty urodzenia, adresu i imienia zwierzaka. Do każdego konta inne hasło. Nie naklejaj go na czapkę!' },
+  slowo: { tytul: 'Zaklęcie Słowa Bezpieczeństwa', tekst: 'Ustal z rodziną tajne słowo-klucz. Gdy ktoś w wiadomości lub nagraniu podaje się za bliską osobę i czegoś chce — zapytaj o to słowo.' },
+  prywatnosc: { tytul: 'Zaklęcie Niewidzialnego Płaszcza', tekst: 'Nie publikuj adresu, numeru telefonu, planów wyjazdu, informacji o kluczach ani zdjęć dokumentów. To, co wrzucisz do Sieci, może przeczytać każdy — także złodziej.' },
+  tajemnica: { tytul: 'Zaklęcie Zamkniętych Ust', tekst: 'Hasła nie podajesz NIKOMU: koledze, „administratorowi”, „nauczycielowi” w wiadomości ani trollowi. Znać je mogą tylko twoi rodzice lub opiekunowie.' },
+  '2fa': { tytul: 'Zaklęcie Dwóch Kroków', tekst: 'Weryfikacja dwuetapowa (2FA): oprócz hasła potrzebny jest kod z twojego telefonu. Nawet jeśli ktoś pozna hasło, bez kodu nie wejdzie. Kodu też nikomu nie podawaj!' },
+  deepfake: { tytul: 'Zaklęcie Prawdziwej Twarzy', tekst: 'Zdjęcia, głos i nagrania można podrobić (deepfake). Uważaj na nienaturalne mruganie, usta nienadążające za głosem, rozmyte krawędzie i dziwne szczegóły. Sprawdź osobę innym sposobem.' },
+  ratunek: { tytul: 'Zaklęcie Odzyskania', tekst: 'Gdy ktoś przejmie twoje konto: powiedz dorosłemu, zmień hasło, włącz 2FA, wyloguj inne urządzenia, ostrzeż znajomych i zgłoś to w serwisie. Nie płać i nie odpisuj oszustowi.' },
+};
+
+// kolory i imiona mówiących
+const MOWCY = {
+  damian: { imie: 'Damian', kolor: '#d9a8ff' },
+  narrator: { imie: '', kolor: '#fff3c8' },
+  zosia: { imie: 'Zosia', kolor: '#ff9a8a' },
+  kuba: { imie: 'Kuba', kolor: '#9aff9a' },
+  maja: { imie: 'Maja', kolor: '#ffe27a' },
+  okazja: { imie: 'Pan Okazja', kolor: '#ff7a9a' },
+  bajtek: { imie: 'Bajtek', kolor: '#f0c890' },
+  troll: { imie: 'Troll Firewall', kolor: '#b8e0a0' },
+  sowa: { imie: 'Sowa Administratorka', kolor: '#ffd08a' },
+  golab: { imie: 'Gołąb Grzegorz', kolor: '#b8c0ff' },
+  nieznajomy: { imie: '???', kolor: '#a8a0c0' },
+  falszywy: { imie: 'Damian?', kolor: '#7affa8' },
+  dziecko1: { imie: 'Ola', kolor: '#8ac8ff' },
+  dziecko2: { imie: 'Staś', kolor: '#e8a0ff' },
+  kot: { imie: 'Ciasteczko', kolor: '#ffbf7a' },
+};
+
+/* ---------- pomocnicze scenki ---------- */
+async function narr(...l) { await mow('narrator', ...l); }
+const skalaOd = (y0, y1, s0, s1) => y => lerp(s0, s1, clamp((y - y0) / (y1 - y0), 0, 1));
+
+/* =====================================================================
+   SCENY
+   ===================================================================== */
+const SCENY = {};
+
+/* ---------- 1. Wieża Damiana ---------- */
+SCENY.wieza = {
+  nazwa: 'Wieża Damiana', tlo: 'wieza', start: [560, 530, 1],
+  wejscia: { rynek: [1080, 480, -1] },
+  podloga: [[70, 448], [1210, 448], [1270, 598], [10, 598]],
+  skala: skalaOd(448, 598, .82, 1.02),
+  mowcy: { kot: () => [330, 420] },
+  anim(g) {
+    // kula
+    const bl = flaga('wizja') ? .4 : .7 + Math.sin(teraz / 120) * .3;
+    g.fillStyle = `rgba(150,90,255,${.25 * bl})`; g.beginPath(); g.arc(825, 315, 60, 0, 7); g.fill();
+    elip(g, 825, 315, 30, 30, rg(g, 815, 305, 2, 32, [[0, '#ffffff'], [.4, `rgba(190,140,255,${.8})`], [1, '#4a1a8a']]));
+    if (!flaga('wizja')) { g.save(); g.globalAlpha = bl; gwiazdka(g, 825, 315, 8 + Math.sin(teraz / 90) * 3, '#fff', null); g.restore(); }
+    // płomienie świec
+    for (const x of [720, 748]) { const f = Math.sin(teraz / 70 + x) * 2; g.fillStyle = 'rgba(255,200,80,.25)'; g.beginPath(); g.arc(x, 312, 18, 0, 7); g.fill(); wiel(g, [[x - 5, 320], [x + 5, 320], [x + f, 300]], '#ffcf4a', null); }
+    // różdżka na półce
+    if (!ma('rozdzka') && !flaga('rozdzka_wzieta')) { g.save(); g.translate(1000, 272); ikonaPrzedmiotu(g, 'rozdzka', 0, 0, .9); g.restore(); }
+  },
+  postacie(lista) { lista.push({ y: 470, rysuj: g => rysujKota(g, 300, 470, .9, { zzz: true }) }); },
+  obiekty: () => [
+    { nazwa: 'Kryształowa kula', prost: [790, 280, 70, 80], idz: [800, 470], cx: 825,
+      patrz: () => flaga('wizja') ? 'Kula pokazuje teraz reklamę eliksiru na łysienie. Nawet magia ma reklamy.' : 'Kryształowa Kula migocze jak powiadomienie, którego nie da się wyłączyć.',
+      uzyj: async () => {
+        if (flaga('wizja')) { await powiedz('damian', 'Kula pokazuje teraz tylko reklamę eliksiru na łysienie. Nawet magia ma reklamy.'); return; }
+        Dzwiek.magia(); efektWizji = teraz;
+        await narr('Damian zagląda w Kryształową Kulę. Mgła rozstępuje się...',
+          'W kuli pojawia się Rynek Miasta Bajtów. Dzieci płaczą. Gołębie roznoszą listy z czerwoną pieczęcią.',
+          '...a na murach wiszą plakaty z twarzą. TWOJĄ twarzą, Damianie.');
+        await powiedz('damian', 'Moją?! Ja nie rozwieszam plakatów. Ja rozdaję sprawdziany.');
+        await narr('Postać na plakacie ma fioletowy kapelusz. I uśmiecha się odrobinę za szeroko. Jak ktoś, kto bardzo chce poznać twoje hasło.');
+        await powiedz('damian', 'Ktoś się pode mnie podszywa. Trzeba iść do miasta. Tylko zabiorę różdżkę z półki.');
+        efektWizji = 0; ustaw('wizja');
+      } },
+    { nazwa: 'Różdżka USB', prost: [960, 240, 90, 50], idz: [1000, 460], cx: 1000, ukryty: () => ma('rozdzka') || flaga('rozdzka_wzieta'),
+      patrz: 'Moja Różdżka USB. Najlepsza różdżka na Dysku. Ma nawet diodę.',
+      uzyj: async () => { dodaj('rozdzka'); ustaw('rozdzka_wzieta'); await powiedz('damian', 'Różdżka USB. Kompatybilna z każdym portem, z wyjątkiem tego, który akurat masz pod ręką.'); } },
+    { nazwa: 'Księga Zaklęć', prost: [878, 330, 78, 30], idz: [900, 470], cx: 915,
+      patrz: 'Moja Księga Zaklęć Bezpieczeństwa. Zapisuję w niej wszystko, czego się nauczę.',
+      uzyj: async () => { await powiedz('damian', 'Każde poznane zaklęcie trafia do Księgi. Otwieram ją przyciskiem „Księga” na dole.'); tryb = 'ksiega'; } },
+    { nazwa: 'Ciasteczko (kot)', prost: [230, 420, 140, 60], idz: [360, 520], cx: 300,
+      patrz: 'To Ciasteczko, mój kot. Akceptuje wszystkie ciasteczka. Dlatego tak przytył.',
+      uzyj: async () => { await powiedz('kot', 'Mrrrau.'); await powiedz('damian', 'Wiem, wiem. Nie akceptuj plików cookie od nieznajomych stron. Mądry kot.'); await powiedz('kot', 'Mrrr... zzz.'); } },
+    { nazwa: 'Okno', prost: [380, 30, 240, 310], idz: [500, 460], cx: 500,
+      patrz: 'Za oknem płynie Wielki Żółw Pingu. Prędkość: trzy węzły i jeden megabit.',
+      uzyj: async () => { await powiedz('damian', 'Gdzieś tam, na krawędzi Dysku, Internet spada w kosmos. Dlatego nikt nie widział, gdzie kończą się zgubione skarpetki i maile.'); } },
+    { nazwa: 'Regał z książkami', prost: [30, 110, 230, 330], idz: [200, 470], cx: 150,
+      patrz: 'Moje książki: „Hasła dla opornych”, „Zaklęcia SQL i jak ich unikać”, „Smoki — teoria i praktyka gaszenia”.' },
+    { nazwa: 'Kociołek', prost: [960, 420, 120, 60], idz: [1000, 520], cx: 1020,
+      patrz: 'Kociołek na kawę. Kawa czarodzieja musi być mocna jak hasło i gorąca jak serwer w lipcu.' },
+    { nazwa: 'Drzwi do miasta', prost: [1110, 175, 130, 275], idz: [1150, 470], cx: 1200, wyjscie: true,
+      patrz: 'Drzwi prowadzą w dół, krętymi schodami, prosto na Rynek Miasta Bajtów.',
+      uzyj: async () => {
+        if (!flaga('wizja')) { await powiedz('damian', 'Najpierw sprawdzę, czemu Kryształowa Kula tak migocze. Nigdy nie migocze przed obiadem.'); return; }
+        if (!ma('rozdzka')) { await powiedz('damian', 'Bez różdżki nie wychodzę. Czarodziej bez różdżki to tylko facet w bardzo dziwnym kapeluszu.'); return; }
+        await zmienScene('rynek', 'wieza');
+      } },
+  ],
+  async wejscie() {
+    if (flaga('intro')) return;
+    await scenka(async () => {
+      await narr('Daleko stąd, w najdalszym zakątku przestrzeni adresowej, przez kosmos płynie Wielki Żółw Pingu.',
+        'Na jego skorupie stoją cztery serwery chłodzone gwiezdnym wiatrem, a na serwerach spoczywa Płaski Świat Sieci.',
+        'Nikt nie wie, kto go podłączył do prądu. Ale wszyscy wiedzą, kto naprawia tu hasła, zaklęcia i zepsute drukarki.',
+        'Damian Ściseł. Haker-czarodziej. Nauczyciel. Właściciel najbardziej fioletowego kapelusza w znanym Internecie.');
+      await powiedz('damian', 'Ach, poranek. Kawa zaparzona, firewall nastawiony, kot śpi. Wszystko w normie.');
+      Dzwiek.magia();
+      await narr('Nagle Kryształowa Kula na biurku zaczyna niespokojnie migotać.');
+      await powiedz('damian', 'Hm. Kula nigdy nie migocze przed obiadem. Chyba że dzieje się coś bardzo złego. Albo ktoś znów pobrał „darmowe” tapety.');
+      await narr('(Lewy przycisk myszy — chodzisz i używasz. Prawy — oglądasz. Kliknij w kulę na biurku.)');
+      ustaw('intro');
+    });
+  },
+};
+let efektWizji = 0;
+
+/* ---------- 2. Rynek Miasta Bajtów ---------- */
+SCENY.rynek = {
+  nazwa: 'Rynek Miasta Bajtów', tlo: 'rynek', start: [800, 575, 1],
+  wejscia: { wieza: [800, 575, 1], szkola: [90, 480, 1], karczma: [1000, 445, 1], most: [1200, 480, -1] },
+  podloga: [[0, 432], [1280, 432], [1280, 598], [0, 598]],
+  skala: skalaOd(432, 598, .74, 1.04),
+  mowcy: { zosia: () => [560, 380], okazja: () => [340, 210], golab: () => [728, 380] },
+  anim(g) {},
+  postacie(lista) {
+    lista.push({ y: 505, rysuj: g => fontanna(g, 640, 505) });
+    lista.push({ y: 512, rysuj: g => { const sc = SCENY.rynek.skala(512); cien(g, 560, 512, sc * .75); postac(g, 560, 512, sc, 1, STROJE.zosia, { mowi: mowa && mowa.kto === 'zosia' }); if (!flaga('zosia_ok') && !mowa) for (let i = 0; i < 2; i++) { const t = (teraz / 700 + i * .5) % 1; elip(g, 576 + i * 6, 418 + t * 20, 2, 3, `rgba(120,190,255,${1 - t})`, null); } } });
+    lista.push({ y: 455, rysuj: g => { postac(g, 340, 462, .86, 1, STROJE.okazja, { mowi: mowa && mowa.kto === 'okazja' }); } });
+    lista.push({ y: 490, rysuj: g => ladaStraganu(g) });
+    if (!flaga('golab_odlecial')) lista.push({ y: 486, rysuj: g => rysujGolebia(g, 728, 486 - 22, .9, -1, { dziobie: !(mowa && mowa.kto === 'golab') }) });
+  },
+  obiekty: () => [
+    { nazwa: 'Stragan „Wszystko za darmo*”', prost: [218, 236, 240, 254], idz: [420, 520], cx: 340, patrz: 'Na szyldzie „WSZYSTKO ZA DARMO*”. Gwiazdka jest malutka. Pod nią napisano jeszcze mniejszymi literami: „*prawie”.' },
+    { nazwa: 'Fontanna z Żółwiem', prost: [530, 380, 220, 130], idz: [700, 560], cx: 640, patrz: 'Fontanna z posągiem Wielkiego Żółwia. Tryska z niej strumień zer i jedynek. Lekko pachnie ozonem.' },
+    { nazwa: 'Zosia', prost: [520, 400, 80, 115], idz: [520, 570], cx: 560, patrz: 'Zosia z klasy szóstej. Siedzi na fontannie i płacze. Woda w fontannie przez to jeszcze bardziej mokra.', uzyj: rozmowaZosia },
+    { nazwa: 'Pan Okazja', prost: [290, 300, 110, 175], idz: [420, 520], cx: 340, patrz: 'Pan Okazja. Uśmiecha się jak ktoś, kto chce ci sprzedać twój własny rower.', uzyj: rozmowaOkazja },
+    { nazwa: 'Gołąb', prost: [700, 440, 60, 50], idz: [760, 530], cx: 728, ukryty: () => flaga('golab_odlecial'),
+      patrz: 'Gołąb. Patrzy na mnie zbyt inteligentnie jak na gołębia.',
+      uzyj: async () => {
+        await powiedz('golab', 'Gruuu.');
+        await powiedz('damian', 'Wiesz coś o listach z czerwoną pieczęcią?');
+        await powiedz('golab', 'Gru. Gru-gru.');
+        await narr('Gołąb odwraca się demonstracyjnie. W jego oku błyska coś, co u ludzi nazwano by „planem”.');
+      } },
+    { nazwa: 'Plakat', prost: [598, 255, 80, 92], idz: [640, 450], cx: 638,
+      patrz: 'Plakat: „DAMIAN ROZDAJE DARMOWE MOCE! Podaj hasło gołębiowi pocztowemu!”. Ja bym tak nigdy nie napisał. Gołąb to fatalny menedżer haseł.',
+      uzyj: async () => {
+        await powiedz('damian', 'Przyjrzyjmy się... Kapelusz na plakacie ma PIĘĆ gwiazdek. Mój ma trzy.');
+        await powiedz('damian', 'Ktoś tu nie odrobił pracy domowej. Zapamiętam to.');
+        ustaw('plakat_gwiazdki');
+      } },
+    { nazwa: 'Karczma „Pod Zbugowanym Smokiem”', prost: [955, 290, 90, 130], idz: [1000, 445], cx: 1000, wyjscie: true,
+      patrz: 'Karczma „Pod Zbugowanym Smokiem”. Smok na szyldzie ma trzy głowy, bo malarz zapomniał usunąć kopie zapasowe.',
+      uzyj: () => zmienScene('karczma', 'rynek') },
+    { nazwa: 'Do Szkoły Mentis', prost: [0, 280, 150, 320], idz: [40, 500], cx: 0, wyjscie: true, patrz: 'Ścieżka do Szkoły Magii Mentis.', uzyj: () => zmienScene('szkola', 'rynek') },
+    { nazwa: 'Do Mostu Trolla', prost: [1150, 280, 130, 320], idz: [1250, 500], cx: 1280, wyjscie: true, patrz: 'Droga do Mostu Trolla. Dalej jest już tylko przepaść i Wieża Cienia.', uzyj: () => zmienScene('most', 'rynek') },
+  ],
+  async wejscie(z) {
+    if (flaga('rynek_byl')) return;
+    ustaw('rynek_byl');
+    await scenka(async () => {
+      await narr('Rynek Miasta Bajtów. Krzywe domy opierają się o siebie jak zmęczeni programiści w piątek po południu.');
+      await powiedz('damian', 'Coś tu nie gra. Zwykle słychać śmiech dzieci. Teraz słychać tylko płacz... i gruchanie.');
+    });
+  },
+};
+
+async function rozmowaZosia() {
+  if (!flaga('zosia1')) {
+    await powiedz('zosia', 'Pan Damian?! Prawdziwy? Ten z plakatu?');
+    await powiedz('damian', 'Prawdziwy. Z plakatu — nie. Co się stało, Zosiu?');
+    await powiedz('zosia', 'Gołąb przyniósł mi list! Że wygrałam prawdziwego smoka! Wystarczyło kliknąć w link i wpisać hasło do mojego Zaczarowanego Pamiętnika...');
+    await powiedz('zosia', 'A teraz ktoś pisze z mojego Pamiętnika do wszystkich moich znajomych i prosi ich o hasła! A ja nie mogę się zalogować!');
+    await powiedz('damian', 'Spokojnie. Bardzo dobrze, że mi powiedziałaś. Kiedy dzieje się coś takiego, zawsze mów dorosłemu — rodzicom albo nauczycielowi.');
+    await powiedz('damian', 'Pokaż mi ten list. Znajdziemy, gdzie oszust zostawił ślady.');
+    dodaj('list'); ustaw('zosia1');
+    await narr('(Przedmioty są na dole ekranu. Kliknij list dwa razy, aby go zbadać.)');
+    return;
+  }
+  const opcje = ['Jak się czujesz, Zosiu?', 'Kto ci przyniósł ten list?'];
+  if (flaga('list_zbadany')) opcje.push('Wiem już, skąd przyszedł list.');
+  opcje.push('Odzyskamy twój Pamiętnik. Obiecuję.', 'Na razie!');
+  const i = await wybierz(opcje), o = opcje[i];
+  if (o.startsWith('Jak')) { await powiedz('zosia', 'Głupio mi... Dałam się nabrać jak dziecko.'); await powiedz('damian', 'Jesteś dzieckiem. A na takie sztuczki nabierają się też dorośli. Wstydzić się powinien oszust, nie ty.'); }
+  if (o.startsWith('Kto')) { await powiedz('zosia', 'Gołąb! Ten tam, przy fontannie. Ciągle się na mnie gapi.'); await powiedz('damian', 'Gołębie pocztowe roznoszą wszystko, co im się da. Jak skrzynka mailowa. Nie każda wiadomość jest od dobrego nadawcy.'); }
+  if (o.startsWith('Wiem')) { await powiedz('zosia', 'Z Wieży Cienia? Za Mostem Trolla? Tam nawet duchy chodzą parami!'); await powiedz('damian', 'Spokojnie. Mam różdżkę. I bardzo dobry kapelusz.'); }
+  if (o.startsWith('Odzyskamy')) { await powiedz('zosia', 'Naprawdę? Dziękuję, panie Damianie!'); }
+}
+
+async function rozmowaOkazja() {
+  if (!flaga('okazja1')) { await powiedz('okazja', 'Witaj, witaj, szanowny kliencie! Darmowe złote monety! Darmowe smoki! Darmowe skórki do różdżek!'); ustaw('okazja1'); }
+  const opcje = ['Ile to kosztuje?', 'Dobrze, oto mój login i hasło...', 'Czy to pan rozsyła listy ze smokami?', 'Do widzenia.'];
+  for (;;) {
+    const i = await wybierz(opcje);
+    if (i === 0) { await powiedz('okazja', 'Nic! Zupełnie nic! Podaj mi tylko login i hasło, a ja... eee... dopiszę monety do twojego konta!'); await powiedz('damian', 'Jeśli coś jest za darmo, a w zamian chcą mojego hasła, to znaczy, że to ja jestem towarem.'); }
+    if (i === 1) {
+      await powiedz('damian', 'Mój login to... Hm. Nie. Zaraz, zaraz.');
+      await powiedz('damian', 'Nigdy nie podaję hasła w zamian za „darmowe” nagrody. Prawdziwy sklep nie potrzebuje mojego hasła, żeby mi coś dać.');
+      await powiedz('okazja', 'Szkoda. To znaczy... brawo! Bardzo mądrze! Ehm. Następny proszę!');
+      lekcja('okazja');
+    }
+    if (i === 2) { await powiedz('okazja', 'Ja?! Ja tylko handluję! Listy roznosi gołąb. Ja tam gołębiom nie ufam. Mają za dużo wolnego czasu.'); await powiedz('damian', 'Pan Okazja jest podejrzany. Ale może być tylko zwykłym naciągaczem, a nie złoczyńcą. Jedno nie wyklucza drugiego.'); }
+    if (i === 3) { await powiedz('okazja', 'Wracaj, gdy zmądrzejesz! To znaczy... zgłupiejesz!'); return; }
+  }
+}
+
+async function zbadajList() {
+  const wynik = await uruchomMini(miniList());
+  if (!wynik) { await powiedz('damian', 'Wrócę do tego listu później.'); return; }
+  lekcja('phishing'); ustaw('list_zbadany');
+  await powiedz('damian', 'Sześć znaków ostrzegawczych w jednym liście! To phishing, czyli „łowienie” haseł na przynętę.');
+  await powiedz('damian', 'A tu, malutkim drukiem: „Odbiór smoka: Wieża za Mostem Trolla”. Wieża Cienia! Tam się wszystko zaczyna.');
+  await powiedz('damian', 'Ale troll Firewall nikogo nie przepuszcza bez weryfikacji. Potrzebuję czegoś więcej niż uśmiechu. Może w szkole ktoś mi pomoże.');
+  if (S.scena === 'rynek' && !flaga('golab_odlecial')) {
+    await narr('Gołąb przy fontannie nagle zrywa się do lotu i znika gdzieś w stronę mostu. Bardzo szybko. Jak na gołębia, bardzo nerwowo.');
+  }
+  ustaw('golab_odlecial');
+}
+
+/* ---------- 3. Szkoła Magii Mentis ---------- */
+SCENY.szkola = {
+  nazwa: 'Szkoła Magii Mentis', tlo: 'szkola', start: [160, 520, 1],
+  wejscia: { rynek: [160, 520, 1] },
+  podloga: [[130, 462], [1250, 462], [1270, 598], [10, 598]],
+  skala: skalaOd(462, 598, .84, 1.02),
+  mowcy: { kuba: () => [640, 340], sowa: () => [1190, 120] },
+  anim(g) {},
+  postacie(lista) {
+    lista.push({ y: 470, rysuj: g => lawka(g, 520, 470, 220) });
+    lista.push({ y: 468, rysuj: g => {
+      postac(g, 630, 462, .9, -1, STROJE.kuba, { mowi: mowa && mowa.kto === 'kuba' });
+      if (!flaga('haslo_kuby')) { g.save(); g.translate(612, 332); g.rotate(-.15); prost(g, -20, -12, 40, 24, '#ffef6a', OBRYS, 1.5); napis(g, 'kuba2014', 0, 0, 9, '#333', 'center', 'monospace'); g.restore(); }
+    } });
+    lista.push({ y: 470.5, rysuj: g => { prost(g, 528, 410, 204, 12, '#9a6a3a'); prost(g, 536, 422, 188, 26, '#7a5230'); } });
+    lista.push({ y: 560, rysuj: g => lawka(g, 760, 600, 260) });
+    lista.push({ y: 545, rysuj: g => kociol(g, 300, 545) });
+    lista.push({ y: 250, rysuj: g => rysujSowe(g, 1190, 252, .9, { mowi: mowa && mowa.kto === 'sowa' }) });
+  },
+  obiekty: () => [
+    { nazwa: 'Kuba', prost: [580, 320, 100, 150], idz: [720, 500], cx: 630, patrz: () => flaga('haslo_kuby') ? 'Kuba. Ma nowe, smocze hasło. I nikomu go nie pokazuje.' : 'Kuba. Na czapce ma przyklejoną karteczkę: „kuba2014”. Chyba wiem, co to jest...', uzyj: rozmowaKuba },
+    { nazwa: 'Kocioł Haseł', prost: [230, 420, 140, 130], idz: [400, 540], cx: 300,
+      patrz: 'Kocioł Haseł. Wrzucasz słowa, wyciągasz hasła. Smakuje lepiej niż zupa szczawiowa.',
+      uzyj: async () => {
+        if (!flaga('kuba1')) { await powiedz('damian', 'Kocioł Haseł. Przyda się, gdy ktoś będzie potrzebował nowego hasła.'); return; }
+        if (flaga('haslo_kuby')) { await powiedz('damian', 'Kocioł odpoczywa. Ugotował już jedno smocze hasło.'); return; }
+        await kuchniaHasel();
+      } },
+    { nazwa: 'Tablica', prost: [280, 70, 500, 230], idz: [540, 480], cx: 530,
+      patrz: 'Na tablicy wypisałem zasady. Moje ulubione: „Hasło jest jak szczoteczka do zębów — nie pożyczasz go nikomu”.' },
+    { nazwa: 'Sowa Administratorka', prost: [1150, 140, 90, 120], idz: [1150, 480], cx: 1190, patrz: 'Sowa Administratorka. Pilnuje szkolnego serwera. Nigdy nie śpi. Głównie dlatego, że jest sową.', uzyj: rozmowaSowa },
+    { nazwa: 'Okno', prost: [880, 70, 220, 230], idz: [990, 480], cx: 990, patrz: 'Za oknem widać Most Trolla i ciemną wieżę na urwisku. Nawet chmury omijają ją szerokim łukiem.' },
+    { nazwa: 'Plakat', prost: [150, 115, 105, 140], idz: [220, 480], cx: 200, patrz: 'Plakat: „Twoje hasło jest jak szczoteczka do zębów”. Sam go rysowałem. Szczoteczka wyszła trochę jak ogórek.' },
+    { nazwa: 'Wyjście na Rynek', prost: [20, 210, 100, 245], idz: [130, 500], cx: 0, wyjscie: true, patrz: 'Drzwi na Rynek.', uzyj: () => zmienScene('rynek', 'szkola') },
+  ],
+  async wejscie() {
+    if (flaga('szkola_byl')) return;
+    ustaw('szkola_byl');
+    await scenka(async () => {
+      await narr('Szkoła Magii Mentis. Tutaj dzieci uczą się czarów, matematyki i tego, że „hasło123” to nie jest zaklęcie ochronne.');
+    });
+  },
+};
+
+async function rozmowaKuba() {
+  if (!flaga('kuba1')) {
+    await powiedz('kuba', 'Dzień dobry, panie Damianie! Słyszałem o Zosi. Ja się nie dam nabrać. Moje hasło jest super tajne!');
+    await powiedz('damian', 'Kuba... masz je przyklejone do czapki.');
+    await powiedz('kuba', 'No bo inaczej bym zapomniał! „kuba2014” — moje imię i rok urodzenia. Sprytne, nie?');
+    await powiedz('damian', 'Sprytne jak zamek z kluczem włożonym od zewnątrz. Takie hasło zgadnie każdy, kto zna twoje imię. Czyli cała szkoła.');
+    await powiedz('damian', 'Chodź do Kotła Haseł. Ugotujemy ci Smocze Hasło: długie, dziwne i łatwe do zapamiętania.');
+    ustaw('kuba1');
+    return;
+  }
+  if (!flaga('haslo_kuby')) { await powiedz('kuba', 'To co, gotujemy to hasło w Kotle? Stoi tam, w rogu, i bulgocze!'); return; }
+  if (!flaga('slowo')) { await rozmowaSlowo(); return; }
+  const op = ['Pamiętasz nasze Słowo Bezpieczeństwa?', 'Jak tam nowe hasło?', 'Na razie, Kuba!'];
+  const i = await wybierz(op);
+  if (i === 0) { await powiedz('kuba', 'Pierogi na Żółwiu! Ale ćśś, to tajemnica!'); }
+  if (i === 1) { await powiedz('kuba', 'Super! Zapamiętałem je w trzy sekundy. A karteczkę z czapki wyrzuciłem. Zjadła ją sowa.'); await powiedz('sowa', 'Huu. Była niesmaczna.'); }
+}
+
+async function rozmowaSlowo() {
+  await powiedz('damian', 'Kuba, jeszcze jedno. Ktoś podszywa się pode mnie. Wygląda jak ja, ma taki sam kapelusz...');
+  await powiedz('damian', 'Ustalmy Słowo Bezpieczeństwa. Jeśli ktoś wygląda jak ja, ale go nie zna — to nie ja. Przekaż to wszystkim dzieciom.');
+  await powiedz('kuba', 'Może... „Pierogi na Żółwiu”?');
+  await powiedz('damian', 'Idealne. Nikt by na to nie wpadł. Ja ledwo na to wpadłem.');
+  ustaw('slowo'); lekcja('slowo');
+}
+
+async function kuchniaHasel() {
+  const ok = await uruchomMini(miniHaslo());
+  if (!ok) { await powiedz('damian', 'Wrócimy do Kotła za chwilę.'); return; }
+  ustaw('haslo_kuby'); lekcja('haslo');
+  await powiedz('kuba', 'Wow! Długie, dziwne... i od razu je zapamiętałem! A tę karteczkę z czapki wyrzucę.');
+  await powiedz('kuba', 'Panie Damianie, mama dała mi Lusterko Dwóch Kroków. Pokazuje magiczny kod, który zmienia się co 30 sekund. Tylko nie wiem, po co.');
+  await powiedz('damian', 'To weryfikacja dwuetapowa! Kiedy logujesz się do konta, podajesz hasło ORAZ kod z lusterka. Nawet jeśli ktoś pozna hasło, bez kodu nie wejdzie.');
+  await powiedz('damian', 'Pożyczysz mi je? Troll Firewall bardzo lubi takie kody.');
+  await powiedz('kuba', 'Jasne! Tylko proszę oddać. I nie pokazywać kodu obcym!');
+  dodaj('lusterko');
+  await rozmowaSlowo();
+}
+
+async function rozmowaSowa() {
+  if (!flaga('sowa1')) {
+    ustaw('sowa1');
+    await powiedz('sowa', 'Huu. Damian. Ktoś próbował dziś zalogować się na konto szkoły 2137 razy. Za każdym razem hasłem „sowa”.');
+    await powiedz('damian', 'I co?');
+    await powiedz('sowa', 'I za 2138. razem by się udało, gdybym wcześniej nie zmieniła hasła. Huu. Jak utkniesz, kliknij przycisk „Podpowiedź”. Przylecę.');
+    return;
+  }
+  await powiedz('sowa', podpowiedz());
+}
+
+/* ---------- 4. Karczma ---------- */
+SCENY.karczma = {
+  nazwa: 'Karczma „Pod Zbugowanym Smokiem”', tlo: 'karczma', start: [110, 520, 1], nastroj: 'karczma',
+  wejscia: { rynek: [110, 520, 1] },
+  podloga: [[60, 482], [1170, 482], [1240, 598], [10, 598]],
+  skala: skalaOd(482, 598, .86, 1.02),
+  mowcy: { bajtek: () => [1010, 210], maja: () => [760, 340], nieznajomy: () => [400, 360] },
+  anim(g) { ogien(g, 175, 466, 1.1); g.fillStyle = `rgba(255,160,60,${.08 + Math.sin(teraz / 100) * .03})`; g.beginPath(); g.arc(175, 420, 200, 0, 7); g.fill(); },
+  postacie(lista) {
+    lista.push({ y: 380, rysuj: g => postac(g, 1010, 400, .92, -1, STROJE.bajtek, { mowi: mowa && mowa.kto === 'bajtek' }) });
+    lista.push({ y: 482, rysuj: g => bar(g) });
+    // stolik
+    lista.push({ y: 520, rysuj: g => { prost(g, 300, 470, 200, 14, '#7a4a22'); prost(g, 390, 484, 20, 50, '#5a3520'); if (flaga('nieznajomy_uciekl') && !ma('okruszki') && !flaga('okruszki_wziete')) { elip(g, 440, 468, 22, 8, '#c9a26a'); for (let i = 0; i < 6; i++) elip(g, 430 + i * 4, 464, 2, 2, '#e8c27a', null); } } });
+    if (!flaga('nieznajomy_uciekl')) lista.push({ y: 500, rysuj: g => { postac(g, nieznajomyX, 500, .95, -1, STROJE.nieznajomy, { mowi: mowa && mowa.kto === 'nieznajomy', idzie: nieznajomyIdzie, faza: teraz / 90 }); wiel(g, [[nieznajomyX - 26, 432], [nieznajomyX - 40, 436], [nieznajomyX - 26, 440]], '#e0a040', OBRYS, 1.5); } });
+    lista.push({ y: 505, rysuj: g => postac(g, 760, 505, .82, -1, STROJE.maja, { mowi: mowa && mowa.kto === 'maja' }) });
+  },
+  obiekty: () => [
+    { nazwa: 'Bajtek (karczmarz)', prost: [960, 230, 110, 150], idz: [960, 500], cx: 1010, patrz: 'Bajtek, karczmarz. Wie wszystko o wszystkich. Tak jak każdy dobry serwer.', uzyj: rozmowaBajtek },
+    { nazwa: 'Postać w kapturze', prost: [nieznajomyX - 50, 360, 100, 140], idz: [300, 540], cx: nieznajomyX, ukryty: () => flaga('nieznajomy_uciekl'),
+      patrz: 'Postać w kapturze. Jest dziwnie niska. I dziwnie... dziobata.', uzyj: rozmowaNieznajomy },
+    { nazwa: 'Miska okruszków', prost: [410, 450, 60, 30], idz: [420, 540], cx: 440, ukryty: () => !flaga('nieznajomy_uciekl') || ma('okruszki') || flaga('okruszki_wziete'),
+      patrz: 'Miska okruszków, którą zostawił tajemniczy gość. Kto zamawia w karczmie same okruszki?',
+      uzyj: async () => { dodaj('okruszki'); ustaw('okruszki_wziete'); await powiedz('damian', 'Kto normalny zamawia w karczmie miskę okruszków? Wezmę je. Mam przeczucie, że się przydadzą.'); } },
+    { nazwa: 'Maja', prost: [720, 380, 80, 125], idz: [680, 540], cx: 760, patrz: 'Maja. Właśnie przypięła coś na Tablicy Ogłoszeń i jest z siebie bardzo dumna.', uzyj: rozmowaMaja },
+    { nazwa: 'Tablica Ogłoszeń', prost: [520, 100, 210, 190], idz: [625, 500], cx: 625,
+      patrz: 'Tablica Ogłoszeń. Taki średniowieczny portal społecznościowy. Każdy może przeczytać, co tu wisi.',
+      uzyj: async () => { if (!flaga('maja1')) { await powiedz('damian', 'Najnowsze ogłoszenie przypięła chyba Maja. Najpierw z nią porozmawiam.'); return; } await tablicaMai(); } },
+    { nazwa: 'Kominek', prost: [70, 230, 210, 240], idz: [200, 520], cx: 175, patrz: 'Kominek. Ogień trzaska jak stary modem przy łączeniu.' },
+    { nazwa: 'Wyjście na Rynek', prost: [0, 250, 60, 222], idz: [50, 520], cx: 0, wyjscie: true, patrz: 'Drzwi na Rynek.', uzyj: () => zmienScene('rynek', 'karczma') },
+  ],
+  async wejscie() {
+    if (flaga('karczma_byl')) return;
+    ustaw('karczma_byl');
+    await scenka(async () => {
+      await narr('Karczma „Pod Zbugowanym Smokiem”. Pachnie tu kwasem chlebowym, dymem i plotkami. Głównie plotkami.');
+    });
+  },
+};
+let nieznajomyX = 400, nieznajomyIdzie = false;
+
+async function rozmowaNieznajomy() {
+  await powiedz('nieznajomy', 'Gru... ekhm. Znaczy... dzień dobry. Dobry dzień.');
+  await powiedz('damian', 'Dzień dobry. Czy my się skądś nie znamy?');
+  await powiedz('nieznajomy', 'Nie! Nigdy! Muszę lecieć. Znaczy: iść! Iść muszę. Na nogach. Jak każdy normalny człowiek.');
+  nieznajomyIdzie = true; Dzwiek.ton(900, .08, 'square', .03);
+  while (nieznajomyX > 30) { nieznajomyX -= 7; await czekaj(16); }
+  for (let i = 0; i < 6; i++) Dzwiek.ton(1200 + i * 80, .04, 'triangle', .03, i * .05);
+  nieznajomyIdzie = false; ustaw('nieznajomy_uciekl');
+  await narr('Zza drzwi dobiega łopot skrzydeł. Bardzo dużo łopotu, jak na kogoś, kto chodzi „na nogach”.');
+  await powiedz('damian', 'Zostawił na stole miskę okruszków. Ciekawe.');
+}
+
+async function rozmowaBajtek() {
+  if (!flaga('bajtek1')) { await powiedz('bajtek', 'Witaj, czarodzieju! Co podać? Kwas chlebowy? Herbatę z bitów? Ciasteczko? Tylko nie mów, że ciasteczko śledzące!'); ustaw('bajtek1'); }
+  const op = ['Słyszałeś coś o fałszywym Damianie?', 'Kim jest ten zakapturzony gość?', 'Co nowego w mieście?', 'Do zobaczenia.'];
+  for (;;) {
+    const i = await wybierz(op);
+    if (i === 0) {
+      await powiedz('bajtek', 'Ano słyszałem. Gość w fioletowym kapeluszu chodzi po mieście i prosi dzieciaki o hasła. Wygląda jak ty, kubek w kubek.');
+      await powiedz('bajtek', 'Tylko jakoś dziwnie... Mówi, a usta mu się spóźniają. Jak w źle zdubbingowanym filmie. I nigdy nie mruga.');
+      await powiedz('damian', 'Nie mruga? Usta się spóźniają? To brzmi jak deepfake — podróbka czyjejś twarzy i głosu zrobiona magiczną maszyną.');
+      await powiedz('bajtek', 'Babcia Mai ma podobno latarnię, w której świetle widać, co prawdziwe, a co udawane. Zapytaj małą.');
+      ustaw('plotka');
+    }
+    if (i === 1) { if (flaga('nieznajomy_uciekl')) await powiedz('bajtek', 'Już wyszedł. Zamówił miskę okruszków, zapłacił guzikiem i wyleciał. Dosłownie wyleciał.'); else await powiedz('bajtek', 'Nie wiem. Zamówił miskę okruszków i siedzi. Dziwny klient. Ale grzeczny. Gruchający, ale grzeczny.'); }
+    if (i === 2) { await powiedz('bajtek', 'Gołębie latają ostatnio jak oszalałe. Wszystkie w stronę Wieży Cienia. Albo jakaś gołębia konferencja, albo coś śmierdzi.'); }
+    if (i === 3) { await powiedz('bajtek', 'Uważaj na siebie! I na swój kapelusz!'); return; }
+  }
+}
+
+async function rozmowaMaja() {
+  if (!flaga('maja1')) {
+    ustaw('maja1');
+    await powiedz('maja', 'Cześć, panie Damianie! Właśnie przypięłam ogłoszenie na Tablicy! Wszyscy w mieście mogą je przeczytać! Super, nie?');
+    await powiedz('damian', 'Wszyscy w mieście... Pokaż, co tam napisałaś.');
+    await tablicaMai();
+    return;
+  }
+  if (!flaga('tablica_ok')) { await powiedz('maja', 'To co, poprawimy moje ogłoszenie? Jest na Tablicy.'); await tablicaMai(); return; }
+  await powiedz('maja', 'Ogłoszenie poprawione! Teraz szukam drużyny do Smoczych Szachów, ale bez podawania adresu. Dziękuję!');
+}
+
+async function tablicaMai() {
+  if (flaga('tablica_ok')) { await powiedz('damian', 'Ogłoszenie Mai jest teraz bezpieczne. Nawet złodziej by się znudził.'); return; }
+  const ok = await uruchomMini(miniTablica());
+  if (!ok) { await powiedz('damian', 'Wrócimy do tego ogłoszenia.'); return; }
+  ustaw('tablica_ok'); lekcja('prywatnosc');
+  await powiedz('maja', 'Ojej... Nie pomyślałam, że złodziej też umie czytać.');
+  await powiedz('damian', 'Złodzieje czytają ogłoszenia najdokładniej ze wszystkich. Zwłaszcza te z adresem i informacją, gdzie leży klucz.');
+  await powiedz('maja', 'Mam coś dla pana! To Latarnia Prawdy mojej babci. W jej świetle widać, co prawdziwe, a co udawane. Przyda się panu bardziej niż mnie.');
+  dodaj('latarnia');
+  await powiedz('damian', 'Dziękuję, Maju. Coś mi mówi, że w Wieży Cienia będzie bardzo potrzebna.');
+}
+
+/* ---------- 5. Most Trolla ---------- */
+SCENY.most = {
+  nazwa: 'Most Trolla', tlo: 'most', start: [80, 500, 1], nastroj: 'napiecie',
+  wejscia: { rynek: [80, 500, 1], wiezacienia: [1180, 470, -1] },
+  get podloga() {
+    return flaga('troll_ok') ? [[0, 444], [1280, 444], [1280, 598], [965, 598], [955, 528], [325, 528], [315, 598], [0, 598]]
+      : [[0, 444], [690, 444], [690, 528], [325, 528], [315, 598], [0, 598]];
+  },
+  wezly: [[330, 490], [950, 490]],
+  skala: skalaOd(444, 598, .8, 1.02),
+  mowcy: { troll: () => flaga('troll_ok') ? [1110, 220] : [800, 230] },
+  anim(g) {},
+  postacie(lista) {
+    const [tx, ty] = flaga('troll_ok') ? [1110, 455] : [800, 505];
+    lista.push({ y: ty, rysuj: g => rysujTrolla(g, tx, ty, .66, { mowi: mowa && mowa.kto === 'troll' }) });
+  },
+  obiekty: () => [
+    { nazwa: 'Troll Firewall', prost: flaga('troll_ok') ? [1030, 230, 160, 230] : [720, 280, 160, 230], idz: flaga('troll_ok') ? [1000, 500] : [660, 500], cx: flaga('troll_ok') ? 1110 : 800,
+      patrz: 'Troll Firewall. Zbudowany z granitu, uporu i listy zasad. Nie przepuszcza nikogo bez sprawdzenia.',
+      uzyj: rozmowaTroll,
+      uzyjZ: { lusterko: kodTrolla, okruszki: async () => { await powiedz('troll', 'TROLL NIE GOŁĄB. TROLL JEŚĆ KAMIENIE.'); } } },
+    { nazwa: 'Wieża Cienia', prost: [1060, 0, 220, 430], idz: [1250, 470], cx: 1280, wyjscie: true,
+      patrz: 'Wieża Cienia. W jej oknach migocze zielone światło ekranów. Coś tam bardzo intensywnie pracuje.',
+      uzyj: async () => {
+        if (!flaga('troll_ok')) { await powiedz('troll', 'STÓJ! NIKT NIE PRZEJŚĆ BEZ SPRAWDZENIA!'); return; }
+        if (!ma('latarnia') || !flaga('slowo')) { await powiedz('damian', 'Zanim tam wejdę, muszę się lepiej przygotować. W szkole i w karczmie ktoś na pewno wie coś więcej.'); await idzDo(900, 500); return; }
+        await zmienScene('wiezacienia', 'most');
+      } },
+    { nazwa: 'Przepaść', prost: [330, 540, 620, 60], idz: false, cx: 640, patrz: 'Przepaść. Gdyby wrzucić tu kamień, plusk usłyszałbym po trzech aktualizacjach systemu.' },
+    { nazwa: 'Tabliczka', prost: [196, 340, 120, 34], idz: [260, 470], cx: 256, patrz: '„Most. Opłata: weryfikacja”. Przynajmniej nie biorą gotówki.' },
+    { nazwa: 'Powrót na Rynek', prost: [0, 300, 60, 300], idz: [20, 500], cx: 0, wyjscie: true, patrz: 'Droga na Rynek.', uzyj: () => zmienScene('rynek', 'most') },
+  ],
+  async wejscie() {
+    if (flaga('most_byl')) return;
+    ustaw('most_byl');
+    await scenka(async () => {
+      Dzwiek.grzmot();
+      await narr('Most Trolla. Pod nim przepaść tak głęboka, że na dnie podobno wciąż ładuje się strona internetowa z 1999 roku.',
+        'Za mostem, na urwisku, wznosi się Wieża Cienia. W jej oknach migocze zielone światło ekranów.');
+      await powiedz('troll', 'STÓJ! JA FIREWALL! JA NIE PRZEPUSZCZAĆ NIKOGO BEZ SPRAWDZENIA!');
+      await rozmowaTroll();
+    });
+  },
+};
+
+async function rozmowaTroll() {
+  if (flaga('troll_ok')) { await powiedz('troll', 'TY PRZECHODZIĆ. TY ZWERYFIKOWANY. TROLL DUMNY.'); return; }
+  if (!flaga('troll_haslo')) {
+    await powiedz('troll', 'KTO CHCE PRZEJŚĆ, MUSI PODAĆ HASŁO!');
+    const i = await wybierz(['„Dobrze, moje hasło to...”', '„Nie podam ci hasła. Hasła nie mówi się nikomu.”', '„Jestem Damian! Przecież widać!”']);
+    if (i === 0) {
+      await powiedz('damian', 'Moje hasło to... Zaraz. Nie! Nie podam ci hasła!');
+      await powiedz('troll', 'HA! PRAWIE! DOBRZE, ŻE SIĘ ZATRZYMAĆ. TROLL TYLKO SPRAWDZAĆ, CZY TY MĄDRY.');
+    } else if (i === 2) {
+      await powiedz('troll', 'WCZORAJ TEŻ PRZYJŚĆ „DAMIAN”. TEN SAM KAPELUSZ. TROLL GO PRZEPUŚCIĆ. TROLL TERAZ SMUTNY.');
+      await powiedz('troll', 'WYGLĄD TO NIE DOWÓD! I HASŁA TEŻ NIKOMU NIE PODAWAĆ. NAWET TROLLOWI. TROLL TYLKO SPRAWDZAĆ.');
+    } else {
+      await powiedz('troll', 'DOBRZE! BARDZO DOBRZE! HASŁA NIE PODAWAĆ NIKOMU! NAWET TROLLOWI! TROLL TYLKO SPRAWDZAĆ, CZY TY MĄDRY.');
+    }
+    ustaw('troll_haslo'); lekcja('tajemnica');
+    await powiedz('troll', 'ALE TROLL I TAK NIE PRZEPUŚCIĆ. TY UDOWODNIĆ, ŻE TY TO TY. INACZEJ. MAGICZNYM KODEM, CO MA TYLKO PRAWDZIWY WŁAŚCICIEL.');
+    if (!ma('lusterko')) await powiedz('damian', 'Kod, który zmienia się co chwilę i ma go tylko właściciel... Muszę zdobyć coś takiego.');
+    else await powiedz('damian', 'Mam Lusterko Dwóch Kroków od Kuby! Pokażę je trollowi. (Wybierz lusterko z ekwipunku i kliknij trolla.)');
+    return;
+  }
+  const i = await wybierz(['Jak mogę udowodnić, kim jestem?', 'Kto przechodził przez most?', 'Do widzenia.']);
+  if (i === 0) await powiedz('troll', 'KOD! MAGICZNY KOD, CO ZMIENIA SIĘ CO CHWILĘ. TYLKO PRAWDZIWY WŁAŚCICIEL GO MIEĆ. HASŁO PLUS KOD. DWA KROKI!');
+  if (i === 1) { await powiedz('troll', 'FAŁSZYWY DAMIAN. I GOŁĘBIE. DUŻO GOŁĘBI. GOŁĘBIE LATAĆ NAD TROLLEM. TROLL NIE UMIEĆ SPRAWDZAĆ GOŁĘBI.'); await powiedz('damian', 'Firewall, który nie sprawdza tego, co przelatuje górą. Klasyka.'); }
+  if (i === 2) await powiedz('troll', 'WRACAJ Z KODEM!');
+}
+
+async function kodTrolla() {
+  if (flaga('troll_ok')) { await powiedz('troll', 'TY JUŻ ZWERYFIKOWANY.'); return; }
+  if (!flaga('troll_haslo')) { await rozmowaTroll(); if (!flaga('troll_haslo')) return; }
+  await powiedz('troll', 'LUSTERKO! POKAŻ KOD! WPISZ GO NA MOIM KAMIENNYM ZAMKU. SZYBKO, ZANIM SIĘ ZMIENI!');
+  const ok = await uruchomMini(miniKod());
+  if (!ok) { await powiedz('troll', 'ZŁY KOD! SPRÓBUJ JESZCZE RAZ, JAK BĘDZIESZ GOTOWY.'); return; }
+  lekcja('2fa');
+  await powiedz('troll', 'KOD DOBRY! HASŁO PLUS KOD TO DWA KROKI. NAWET JAK ZŁY CZARODZIEJ POZNAĆ HASŁO, BEZ LUSTERKA NIE PRZEJŚĆ!');
+  await powiedz('damian', 'I pamiętaj: kodu z lusterka też nikomu się nie podaje. Ktoś, kto prosi o taki kod, to prawie na pewno oszust.');
+  await powiedz('troll', 'TROLL ZAPAMIĘTAĆ. TROLL SIĘ ODSUNĄĆ.');
+  ustaw('troll_ok'); Dzwiek.grzmot();
+}
+
+/* ---------- 6. Wieża Cienia — finał ---------- */
+SCENY.wiezacienia = {
+  nazwa: 'Wieża Cienia', tlo: 'wiezacienia', start: [140, 530, 1], nastroj: 'napiecie',
+  wejscia: { most: [140, 530, 1] },
+  podloga: [[60, 470], [960, 470], [1220, 598], [10, 598]],
+  skala: skalaOd(470, 598, .86, 1.04),
+  mowcy: { falszywy: () => [falszX, 290], dziecko1: () => [250, 360], dziecko2: () => [330, 360], golab: () => [golabX, 380], sowa: () => [700, 140] },
+  anim(g) {
+    if (Math.random() < .004) { blyskawica = teraz; Dzwiek.grzmot(); }
+    const b = clamp(1 - (teraz - blyskawica) / 300, 0, 1);
+    if (b > 0) { g.fillStyle = `rgba(220,230,255,${b * .9})`; g.fillRect(124, 74, 122, 192); }
+    ekranyCienia(g);
+  },
+  przod(g) {
+    const b = clamp(1 - (teraz - blyskawica) / 300, 0, 1);
+    if (b > 0) { g.fillStyle = `rgba(200,210,255,${b * .15})`; g.fillRect(0, 0, W, SH); }
+  },
+  postacie(lista) {
+    lista.push({ y: 430, rysuj: g => podrabiarka(g, 640, 430) });
+    lista.push({ y: 498, rysuj: g => postac(g, 250, 498, .84, 1, Object.assign({}, STROJE.dziecko1, { hipnoza: !flaga('falszywy_znikl') }), { mowi: mowa && mowa.kto === 'dziecko1' }) });
+    lista.push({ y: 500, rysuj: g => postac(g, 330, 500, .86, 1, Object.assign({}, STROJE.dziecko2, { hipnoza: !flaga('falszywy_znikl') }), { mowi: mowa && mowa.kto === 'dziecko2' }) });
+    if (!flaga('falszywy_znikl')) lista.push({ y: 520, rysuj: g => { if (rozpad > 0) g.globalAlpha = clamp(1 - (teraz - rozpad) / 2500, 0, 1); rysujDamiana(g, falszX, 520, .98, -1, { mowi: mowa && mowa.kto === 'falszywy' }, true); g.globalAlpha = 1; } });
+    if (flaga('golab_wyszedl')) lista.push({ y: 540, rysuj: g => { rysujGolebia(g, golabX, 540, 1.6, -1, { korona: true, zly: true }); if (flaga('golab_zlapany')) { g.strokeStyle = '#c9a26a'; g.lineWidth = 4; for (let i = 0; i < 7; i++) { g.beginPath(); g.moveTo(golabX - 54 + i * 18, 548); g.lineTo(golabX - 54 + i * 18, 460); g.stroke(); } elip(g, golabX, 460, 56, 10, '#8a5a2a'); prost(g, golabX - 60, 540, 120, 12, '#8a5a2a', OBRYS, 2); napis(g, 'KWARANTANNA', golabX, 470, 11, '#ffcf6a', 'center', 'Georgia', OBRYS); } } });
+  },
+  obiekty: () => [
+    { nazwa: 'Fałszywy Damian', prost: [falszX - 55, 280, 110, 245], idz: [falszX - 150, 530], cx: falszX, ukryty: () => flaga('falszywy_znikl'),
+      patrz: () => flaga('podrobka_wykryta') ? 'Podróbka. Teraz, gdy wiem, na co patrzeć, widać to od razu.' : 'Wygląda jak ja. Ma kapelusz jak ja. Ale coś się nie zgadza... Może w świetle latarni zobaczę więcej?',
+      uzyj: rozmowaFalszywy,
+      uzyjZ: { latarnia: latarniaNaFalszywego } },
+    { nazwa: 'Ola', prost: [210, 380, 80, 120], idz: [300, 560], cx: 250, patrz: () => flaga('falszywy_znikl') ? 'Ola. Już obudzona.' : 'Ola. Ma spiralki w oczach. Zahipnotyzowana obietnicą darmowych mocy.',
+      uzyj: async () => { if (flaga('falszywy_znikl')) await powiedz('dziecko1', 'Dziękujemy, panie Damianie! Już nigdy nie podam nikomu hasła!'); else await powiedz('dziecko1', 'Daaarmowe mooooce...'); } },
+    { nazwa: 'Staś', prost: [290, 380, 80, 120], idz: [380, 560], cx: 330, patrz: () => flaga('falszywy_znikl') ? 'Staś. Przeciera oczy.' : 'Staś. Trzyma kartkę z napisanym hasłem. Gotowy, żeby je oddać.',
+      uzyj: async () => { if (flaga('falszywy_znikl')) await powiedz('dziecko2', 'Ale wstyd... Prawie oddałem hasło gołębiowi!'); else await powiedz('dziecko2', 'Którego... pana Damiana... mamy słuchać...?'); } },
+    { nazwa: 'Podrabiarka 3000', prost: [520, 80, 240, 350], idz: [640, 490], cx: 640,
+      patrz: 'Podrabiarka 3000. Wrzucasz czyjeś zdjęcia i nagrania, wychodzi podróbka, która mówi, co zechcesz. Dlatego warto uważać, ile swoich zdjęć i filmików wrzucamy publicznie.',
+      uzyj: async () => { if (!flaga('falszywy_znikl')) await powiedz('damian', 'Gdybym ją teraz wyłączył, dzieci dalej by nie wiedziały, komu wierzyć. Najpierw muszę im POKAZAĆ, że tamten to podróbka.'); else await powiedz('damian', 'Podrabiarka wyłączona. Wyświetla tylko „BŁĄD 404: OSZUSTWO NIE ZNALEZIONE”.'); } },
+    { nazwa: 'Zasłona', prost: [1010, 60, 190, 412], idz: [960, 520], cx: 1100, ukryty: () => flaga('golab_wyszedl'),
+      patrz: () => flaga('falszywy_znikl') ? 'Zza zasłony dochodzi nerwowe gruchanie.' : 'Ciężka zasłona. Coś się za nią porusza. Coś małego. Z piórami.',
+      uzyj: async () => { if (!flaga('falszywy_znikl')) { await powiedz('damian', 'Najpierw zajmę się tym, który udaje mnie.'); return; } await powiedz('damian', 'Zasłona ani drgnie. Ktoś ją mocno trzyma... dziobem. Musiałbym go czymś wywabić.'); },
+      uzyjZ: { okruszki: okruszkiNaZaslone } },
+    { nazwa: 'Ekrany', prost: [310, 50, 600, 160], idz: false, cx: 600, patrz: 'Na ekranach setki listów „WYGRAŁEŚ SMOKA!” i moja twarz. Ktoś tu ma bardzo dużo wolnego czasu. I skrzydeł.' },
+    { nazwa: 'Wyjście na most', prost: [0, 300, 60, 300], idz: [30, 540], cx: 0, wyjscie: true, patrz: 'Droga z powrotem na most.', uzyj: () => zmienScene('most', 'wiezacienia') },
+  ],
+  async wejscie() {
+    if (flaga('finał1')) return;
+    await scenka(async () => {
+      Dzwiek.grzmot(); blyskawica = teraz;
+      await narr('Wieża Cienia. W środku pachnie kurzem, ozonem i... okruszkami?');
+      await powiedz('falszywy', 'Witajcie, dzieci! To ja, wasz ukochany Damian! Podajcie mi swoje hasła, a dostaniecie DARMOWE MOCE!');
+      await powiedz('dziecko1', 'Taaak, panie Damianie...');
+      await powiedz('damian', 'STOP! Ola, Staś! To nie jestem ja! To znaczy... ja jestem ja. ON nie jest mną!');
+      await powiedz('falszywy', 'Nie słuchajcie go! To ON jest podróbką! Spójrzcie, ma taki sam kapelusz!');
+      await powiedz('dziecko2', 'Jest dwóch panów Damianów... Którego mamy słuchać?');
+      await powiedz('damian', 'Muszę im pokazać, który z nas jest prawdziwy. Rozmową... i światłem.');
+      ustaw('finał1');
+    });
+  },
+};
+let falszX = 860, golabX = 1080, blyskawica = 0, rozpad = 0;
+
+async function rozmowaFalszywy() {
+  const op = ['„Jak ma na imię mój kot?”'];
+  if (flaga('slowo')) op.push('„Podaj nasze Słowo Bezpieczeństwa.”');
+  op.push('„Skąd masz ten kapelusz?”', 'Odejdź od rozmowy.');
+  const i = await wybierz(op), o = op[i];
+  if (o.includes('kot')) {
+    await powiedz('falszywy', 'Ciasteczko! Wszyscy to wiedzą! Wrzucałeś jego zdjęcia do Sieci dwa razy dziennie!');
+    await powiedz('dziecko1', 'On wie! To prawdziwy pan Damian!');
+    await powiedz('damian', 'Ups. Informacje, które sam opublikowałem, każdy może poznać. To słaby sprawdzian. Potrzebuję czegoś, co znamy TYLKO my.');
+  } else if (o.includes('Słowo')) {
+    await powiedz('falszywy', 'Słowo... bezpieczeństwa? Oczywiście! To... „Hasło123”! Nie! „Darmowe Moce”! Nie... „Gru”!');
+    await powiedz('dziecko2', 'Kuba mówił nam, jakie jest prawdziwe słowo. „Pierogi na Żółwiu”! On go nie zna!');
+    if (!flaga('slowo_uzyte')) { ustaw('slowo_uzyte'); await powiedz('damian', 'Właśnie. Słowo Bezpieczeństwa zna tylko prawdziwa osoba. Żadna maszyna go nie zgadnie.'); }
+    await sprawdzFinal();
+  } else if (o.includes('kapelusz')) {
+    await powiedz('falszywy', 'Z... z Internetu. Znaczy: od zawsze! To mój kapelusz! Mam go od urodzenia!');
+    await powiedz('damian', 'Urodziłeś się w kapeluszu? Ciekawe. Ja dostałem swój na osiemnastkę.');
+  }
+}
+
+async function latarniaNaFalszywego() {
+  if (flaga('podrobka_wykryta')) { await powiedz('damian', 'Już wiem, że to podróbka. Teraz muszą to zobaczyć wszyscy.'); await sprawdzFinal(); return; }
+  Dzwiek.magia();
+  await narr('Damian unosi Latarnię Prawdy. Ciepłe światło pada na fałszywego Damiana...');
+  const ok = await uruchomMini(miniDeepfake());
+  if (!ok) { await powiedz('damian', 'Muszę przyjrzeć się dokładniej.'); return; }
+  ustaw('podrobka_wykryta'); lekcja('deepfake');
+  await powiedz('damian', 'Widzicie? Nie mruga, usta nie nadążają za głosem, kontury się rozmywają, nie ma cienia, a na kapeluszu ma pięć gwiazdek zamiast trzech!');
+  await powiedz('dziecko1', 'Rzeczywiście... On jest jakiś... nieprawdziwy!');
+  await sprawdzFinal();
+}
+
+async function sprawdzFinal() {
+  if (!flaga('podrobka_wykryta') || !flaga('slowo_uzyte')) {
+    if (flaga('podrobka_wykryta') && !flaga('slowo_uzyte')) await powiedz('dziecko2', 'Ale... skąd mamy mieć pewność? Może jest jakiś sposób, żeby sprawdzić, kto jest kim?');
+    if (!flaga('podrobka_wykryta') && flaga('slowo_uzyte')) await powiedz('dziecko1', 'Nie zna słowa... ale wygląda zupełnie jak pan! Jak to możliwe?');
+    return;
+  }
+  Dzwiek.grzmot(); blyskawica = teraz;
+  await powiedz('falszywy', 'BŁĄD... BŁĄD... P-p-podróbka wykryta... Twarz nie zna-a-aleziona...');
+  rozpad = teraz; Dzwiek.blad();
+  await czekaj(2500);
+  ustaw('falszywy_znikl');
+  await powiedz('dziecko1', 'Co... gdzie my jesteśmy? Panie Damianie!');
+  await powiedz('dziecko2', 'Prawie oddałem hasło komuś, kto nawet nie istnieje!');
+  await powiedz('golab', 'GRU! NIE! Moja piękna podróbka!');
+  await powiedz('damian', 'Ten głos zza zasłony... Znam to „gru”. Wyjdź! ...No dobrze. Nie chcesz po dobroci.');
+  if (!ma('okruszki')) await powiedz('damian', 'Gdybym tylko miał coś, czego żaden gołąb nie odmówi... W karczmie ktoś chyba zamawiał przekąski.');
+  else await powiedz('damian', 'Na szczęście mam coś, czego żaden gołąb nie odmówi. (Użyj okruszków na zasłonie.)');
+}
+
+async function okruszkiNaZaslone() {
+  if (!flaga('falszywy_znikl')) { await powiedz('damian', 'Najpierw zajmę się podróbką. Okruszki poczekają.'); return; }
+  zabierz('okruszki');
+  await narr('Damian sypie okruszki przed zasłoną. Przez chwilę panuje cisza. Potem zasłona drga.', 'Raz. Drugi. Trzeci...');
+  golabX = 1080; ustaw('golab_wyszedl');
+  await narr('Zza zasłony wychodzi... Gołąb Grzegorz. W malutkiej złotej koronie.');
+  await powiedz('golab', 'Gru! Okruszki! Nie mogłem się oprzeć! To moja jedyna słabość!');
+  await powiedz('golab', 'Tak! To ja! Krul Smokuf! Wielki Phisher! To ja rozsyłałem listy, zbierałem hasła, a Podrabiarka robiła z twojej twarzy reklamę!');
+  await powiedz('damian', 'Ale... po co gołębiowi hasła?');
+  await powiedz('golab', 'Do Piekarni Sieciowej! Chciałem zamówić WSZYSTKIE bułki świata na cudzy rachunek! Gru-ha-ha!');
+  await powiedz('damian', 'Zgubiło cię to samo, co wszystkich oszustów: chciwość. I okruszki.');
+  await narr('Przez okno wlatuje Sowa Administratorka i zatrzaskuje Grzegorza w klatce z napisem „KWARANTANNA”.');
+  ustaw('golab_zlapany');
+  await powiedz('sowa', 'Huu. Zgłoszenie przyjęte. Grzegorz trafi do Biura Uczciwego Gruchania.');
+  await powiedz('damian', 'Zostało ostatnie zadanie: pomóc odzyskać Pamiętnik Zosi i konta wszystkich oszukanych dzieci.');
+  let ok = false;
+  while (!ok) ok = await uruchomMini(miniRatunek());
+  lekcja('ratunek');
+  await powiedz('dziecko1', 'Już wiemy, co robić! I powiemy wszystkim w szkole!');
+  await zakonczenie();
+}
+
+async function zakonczenie() {
+  Dzwiek.nastroj = 'spokoj';
+  await narr('Tego wieczoru na Rynku Miasta Bajtów znowu słychać było śmiech dzieci.',
+    'Zosia odzyskała swój Zaczarowany Pamiętnik i włączyła Lusterko Dwóch Kroków. Kuba ma najlepsze hasło w szkole. Maja szuka drużyny do szachów, nie podając adresu.',
+    'Pan Okazja otworzył stragan „Wszystko za uczciwą cenę”. Interes idzie kiepsko, ale sumienie ma czyste.',
+    'A Gołąb Grzegorz? Siedzi w kwarantannie i uczy się na pamięć Księgi Zaklęć Bezpieczeństwa. Jest już na stronie trzeciej.',
+    'Damian Ściseł wrócił do swojej wieży, poprawił fioletowy kapelusz i nalał sobie kawy.');
+  await powiedz('damian', 'No dobrze. A teraz... ktoś musi naprawić tę drukarkę.');
+  ustaw('koniec'); S.punkty += 100; zapisz();
+  tryb = 'koniec';
+}
+
+/* ---------- podpowiedzi Sowy ---------- */
+function podpowiedz() {
+  const f = flaga;
+  if (!f('wizja')) return 'Huu. Kryształowa Kula na biurku migocze. Kliknij w nią.';
+  if (!ma('rozdzka') && !f('rozdzka_wzieta')) return 'Huu. Różdżka USB leży na półce po prawej. Weź ją.';
+  if (S.scena === 'wieza') return 'Huu. Drzwi po prawej prowadzą na Rynek.';
+  if (!f('zosia1')) return 'Huu. Na Rynku płacze Zosia. Porozmawiaj z nią.';
+  if (!f('list_zbadany')) return 'Huu. Kliknij dwa razy list w ekwipunku na dole i znajdź wszystkie podejrzane fragmenty.';
+  if (!f('kuba1')) return 'Huu. Idź do Szkoły Mentis (w lewo z Rynku) i porozmawiaj z Kubą.';
+  if (!f('haslo_kuby')) return 'Huu. Użyj Kotła Haseł w szkole, żeby ugotować Kubie smocze hasło.';
+  if (!f('maja1') || !f('tablica_ok')) return 'Huu. W karczmie (drzwi na Rynku) Maja powiesiła ogłoszenie. Pomóż jej je poprawić.';
+  if (!f('troll_haslo')) return 'Huu. Idź na Most Trolla (w prawo z Rynku) i porozmawiaj z trollem.';
+  if (!f('troll_ok')) return 'Huu. Wybierz Lusterko Dwóch Kroków na dole ekranu, a potem kliknij trolla.';
+  if (!f('finał1')) return 'Huu. Most jest wolny. Idź w prawo do Wieży Cienia. Ostrożnie.';
+  if (!f('podrobka_wykryta')) return 'Huu. Wybierz Latarnię Prawdy z ekwipunku i kliknij fałszywego Damiana.';
+  if (!f('slowo_uzyte')) return 'Huu. Porozmawiaj z fałszywym Damianem i zapytaj go o Słowo Bezpieczeństwa.';
+  if (!ma('okruszki') && !f('golab_wyszedl')) return 'Huu. Tajemniczy gość w karczmie zostawił miskę okruszków. Porozmawiaj z nim, potem weź okruszki.';
+  if (!f('golab_wyszedl')) return 'Huu. Wybierz okruszki z ekwipunku i kliknij zasłonę.';
+  return 'Huu. Świetnie ci idzie. Dasz radę.';
+}
+</script>
+<script>
+"use strict";
+/* =====================================================================
+   MINIGRY (zagadki)
+   ===================================================================== */
+function zawin(g, tekst, maxW) {
+  const slowa = tekst.split(' '), linie = []; let l = '';
+  for (const s of slowa) { const t = l ? l + ' ' + s : s; if (g.measureText(t).width > maxW && l) { linie.push(l); l = s; } else l = t; }
+  if (l) linie.push(l);
+  return linie;
+}
+function przycisk(g, b, hover, kolor = '#5a2f98') {
+  zaokr(g, b.x, b.y, b.w, b.h, 10, hover ? '#ffd84a' : kolor, OBRYS, 3);
+  napis(g, b.tekst, b.x + b.w / 2, b.y + b.h / 2 + 1, 18, hover ? '#2a1438' : '#fff', 'center', '"Trebuchet MS", sans-serif');
+}
+const w = (b, x, y) => x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h;
+function pergamin(g, x, y, ww, hh) {
+  g.fillStyle = 'rgba(8,2,16,.72)'; g.fillRect(0, 0, W, H);
+  zaokr(g, x, y, ww, hh, 18, lg(g, x, y, x, y + hh, [[0, '#f6ead0'], [1, '#e2cfa2']]), OBRYS, 4);
+  szum(g, mulberry(5), x + 10, y + 10, ww - 20, hh - 20, 500, ['rgba(120,90,40,.08)'], 5);
+}
+function komunikatMini(g, m) {
+  if (!m.kom) return;
+  const a = clamp(1 - (teraz - m.komT - 3500) / 500, 0, 1);
+  if (a <= 0) return;
+  g.save(); g.globalAlpha = a; g.font = 'bold 19px "Trebuchet MS", sans-serif';
+  const lin = zawin(g, m.kom, 900);
+  zaokr(g, 640 - 470, 640 - lin.length * 12, 940, 24 + lin.length * 24, 10, m.komDobry ? '#1e6a3a' : '#7a1f2a', OBRYS, 3);
+  lin.forEach((l, i) => napis(g, l, 640, 652 - lin.length * 12 + i * 24, 19, '#fff', 'center', '"Trebuchet MS", sans-serif'));
+  g.restore();
+}
+function kom(m, t, dobry) { m.kom = t; m.komT = teraz; m.komDobry = dobry; dobry ? Dzwiek.zbierz() : Dzwiek.blad(); }
+
+/* --- 1. List z czerwoną pieczęcią: znajdź znaki phishingu --- */
+function miniList() {
+  const linie = [
+    { t: 'Od: Krul Smokuf <krol@smoki-za-darmo.xyz.zz>', z: 'Dziwny nadawca! „Krul Smokuf” z błędami i podejrzany adres. Prawdziwy król umiałby się podpisać.' },
+    { t: 'Drogi Użytkowniku!', z: 'Ogólne powitanie! Nadawca nie zna nawet twojego imienia — wysłał to samo do tysięcy osób.' },
+    { t: 'GRATULACJE!!! Wygrałaś PRAWDZIWEGO SMOKA!!!', z: 'Nagroda zbyt piękna, by była prawdziwa! Nie brałaś udziału w żadnym konkursie.' },
+    { t: 'Masz tylko 10 minut, potem smok przepadnie na zawsze!', z: 'Pośpiech i presja! Oszust chce, żebyś działała, zanim pomyślisz.' },
+    { t: 'Kliknij: http://smoki-za-darmo.xyz.zz/odbierz-smoka', z: 'Podejrzany link! Dziwna końcówka adresu. Nie klikaj w takie linki.' },
+    { t: 'i wpisz login oraz hasło do Zaczarowanego Pamiętnika.', z: 'Prośba o hasło! Żadna uczciwa firma nie prosi o hasło w wiadomości.' },
+    { t: 'Pozdrawiam serdecznie,', z: null },
+    { t: 'Twój Król Smoków', z: null },
+  ];
+  const zamknij = { x: 1000, y: 560, w: 160, h: 44, tekst: 'Zamknij' };
+  const m = {
+    znal: new Set(),
+    rect(i) { return { x: 200, y: 150 + i * 46, w: 880, h: 40 }; },
+    klik(x, y) {
+      if (m.znal.size === 6) { m.koniec(true); return; }
+      if (w(zamknij, x, y)) { m.koniec(false); return; }
+      for (let i = 0; i < linie.length; i++) if (w(m.rect(i), x, y)) {
+        if (linie[i].z) { if (!m.znal.has(i)) { m.znal.add(i); kom(m, linie[i].z, true); if (m.znal.size === 6) { Dzwiek.sukces(); kom(m, 'Znalazłeś wszystkie 6 znaków ostrzegawczych! Kliknij, aby kontynuować.', true); } } }
+        else kom(m, 'Hmm, to akurat samo w sobie nie jest podejrzane. Szukaj dalej!', false);
+        return;
+      }
+      if (y > 540 && y < 580 && x > 200 && x < 700) kom(m, 'Drobny druk: „P.S. Odbiór smoka: Wieża za Mostem Trolla”. Ciekawe... ale to wskazówka, a nie znak ostrzegawczy.', false);
+    },
+    rysuj(g) {
+      pergamin(g, 160, 40, 960, 590);
+      napis(g, 'Zbadaj list. Kliknij wszystkie PODEJRZANE fragmenty.', 640, 82, 24, '#5a2f98', 'center', 'Georgia, serif');
+      napis(g, `Znalezione znaki ostrzegawcze: ${m.znal.size} / 6`, 640, 116, 18, '#7a1f2a', 'center', '"Trebuchet MS", sans-serif');
+      linie.forEach((l, i) => {
+        const r = m.rect(i), hov = w(r, mysz.x, mysz.y);
+        if (hov) zaokr(g, r.x, r.y, r.w, r.h, 6, 'rgba(90,47,152,.12)', null);
+        napis(g, l.t, r.x + 14, r.y + r.h / 2, i === 2 ? 24 : 21, i === 2 ? '#b0202a' : '#2a1a10', 'left', i === 0 || i === 4 ? '"Courier New", monospace' : 'Georgia, serif', null, i === 2 ? 'bold' : 'normal');
+        if (m.znal.has(i)) {
+          g.strokeStyle = 'rgba(200,30,40,.85)'; g.lineWidth = 4; g.beginPath(); g.ellipse(r.x + r.w / 2 - 30, r.y + r.h / 2, r.w / 2 - 10, r.h / 2 + 4, 0, 0, 7); g.stroke();
+          napis(g, '!', r.x + r.w - 14, r.y + r.h / 2, 26, '#c22');
+        }
+      });
+      napis(g, 'P.S. Odbiór smoka: Wieża za Mostem Trolla', 210, 562, 13, 'rgba(60,40,20,.75)', 'left', 'Georgia, serif', null, 'italic');
+      // pieczęć
+      elip(g, 1040, 470, 34, 34, '#b0202a'); gwiazdka(g, 1040, 470, 16, '#e05050', null);
+      przycisk(g, zamknij, w(zamknij, mysz.x, mysz.y), '#7a5a3a');
+      komunikatMini(g, m);
+    },
+  };
+  return m;
+}
+
+/* --- 2. Kocioł Haseł: ugotuj smocze hasło --- */
+function miniHaslo() {
+  const sk = [
+    { t: 'Pingwin', typ: 's' }, { t: 'Kalafior', typ: 's' }, { t: 'Rakieta', typ: 's' }, { t: 'Fioletowy', typ: 's' },
+    { t: 'Tańczy', typ: 's' }, { t: 'Parasol', typ: 's' }, { t: 'Żółw', typ: 's' }, { t: 'Gwiazda', typ: 's' },
+    { t: 'Kuba', typ: 'o', z: '„Kuba” to twoje imię — zna je cała szkoła!' },
+    { t: '2014', typ: 'o', z: '„2014” to rok urodzenia — łatwo go zgadnąć!' },
+    { t: 'Burek', typ: 'o', z: '„Burek” to imię twojego psa — pewnie wrzucałeś jego zdjęcia!' },
+    { t: '123456', typ: 'o', z: '„123456” to najczęściej używane hasło świata. Złodzieje sprawdzają je jako pierwsze!' },
+    { t: '7', typ: 'z' }, { t: '!', typ: 'z' }, { t: '#', typ: 'z' }, { t: '42', typ: 'z' },
+  ];
+  const wyb = [];
+  const gotowe = { x: 880, y: 560, w: 160, h: 44, tekst: 'Gotowe!' };
+  const czysc = { x: 700, y: 560, w: 160, h: 44, tekst: 'Wyczyść' };
+  const zamknij = { x: 1060, y: 560, w: 120, h: 44, tekst: 'Zamknij' };
+  const kaf = i => ({ x: 470 + (i % 4) * 172, y: 250 + Math.floor(i / 4) * 64, w: 160, h: 52 });
+  const haslo = () => wyb.map(i => sk[i].t).join('-');
+  function sila() {
+    const h = haslo(); let s = Math.min(60, h.length * 3);
+    const slow = wyb.filter(i => sk[i].typ === 's').length;
+    s += slow * 8; if (wyb.some(i => sk[i].typ === 'z')) s += 12;
+    if (wyb.some(i => sk[i].typ === 'o')) s = Math.min(s, 20);
+    return clamp(s, 0, 100);
+  }
+  const m = {
+    ok: false,
+    klik(x, y) {
+      if (m.ok) { m.koniec(true); return; }
+      if (w(zamknij, x, y)) { m.koniec(false); return; }
+      if (w(czysc, x, y)) { wyb.length = 0; Dzwiek.klik(); return; }
+      if (w(gotowe, x, y)) {
+        const os = wyb.find(i => sk[i].typ === 'o');
+        const slow = wyb.filter(i => sk[i].typ === 's').length;
+        if (os !== undefined) kom(m, sk[os].z + ' Usuń informacje o sobie z hasła.', false);
+        else if (slow < 3) kom(m, 'Za mało słów! Smocze hasło ma co najmniej 3 losowe, niepowiązane słowa.', false);
+        else if (!wyb.some(i => sk[i].typ === 'z')) kom(m, 'Dorzuć do kotła cyfrę albo znak specjalny — hasło będzie jeszcze mocniejsze.', false);
+        else { m.ok = true; Dzwiek.magia(); kom(m, `Smocze hasło gotowe: ${haslo()} — długie, dziwne i łatwe do zapamiętania! (kliknij)`, true); }
+        return;
+      }
+      for (let i = 0; i < sk.length; i++) if (w(kaf(i), x, y)) {
+        const j = wyb.indexOf(i);
+        if (j >= 0) wyb.splice(j, 1);
+        else if (wyb.length < 6) { wyb.push(i); Dzwiek.ton(400 + wyb.length * 80, .1, 'sine', .06); if (sk[i].typ === 'o') kom(m, sk[i].z, false); }
+        else kom(m, 'Kocioł jest pełny! Usuń coś albo kliknij „Gotowe”.', false);
+        return;
+      }
+    },
+    rysuj(g) {
+      pergamin(g, 80, 30, 1120, 600);
+      napis(g, 'KOCIOŁ HASEŁ — ugotuj Kubie Smocze Hasło', 640, 70, 26, '#5a2f98', 'center', 'Georgia, serif');
+      napis(g, 'Przepis: co najmniej 3 losowe słowa + cyfra lub znak. Bez informacji o sobie!', 640, 104, 17, '#3a2a1a', 'center', '"Trebuchet MS", sans-serif', null, 'normal');
+      // kocioł
+      g.save(); g.translate(0, 120); kociol(g, 260, 380); g.restore();
+      // hasło
+      zaokr(g, 470, 140, 680, 56, 10, '#20142a', OBRYS, 3);
+      const h = haslo() || '(wrzuć składniki do kotła)';
+      napis(g, h, 810, 168, h.length > 40 ? 18 : 24, wyb.length ? '#7dff7a' : 'rgba(255,255,255,.4)', 'center', '"Courier New", monospace');
+      // siła
+      const s = sila();
+      napis(g, 'Siła:', 470, 216, 16, '#3a2a1a', 'left', '"Trebuchet MS", sans-serif');
+      zaokr(g, 520, 206, 400, 20, 8, '#d8c8a0', OBRYS, 2);
+      if (s > 0) zaokr(g, 520, 206, 400 * s / 100, 20, 8, s < 40 ? '#d6334a' : s < 75 ? '#e8a33a' : '#2fbf71', null);
+      napis(g, s < 40 ? 'Słabe jak herbata z torebki' : s < 75 ? 'Średnie' : 'SMOCZE!', 930, 216, 16, '#3a2a1a', 'left', '"Trebuchet MS", sans-serif');
+      sk.forEach((k, i) => {
+        const r = kaf(i), on = wyb.includes(i), hov = w(r, mysz.x, mysz.y);
+        const kol = k.typ === 'z' ? '#3257a8' : k.typ === 'o' ? '#8a6a3a' : '#5a2f98';
+        zaokr(g, r.x, r.y, r.w, r.h, 10, on ? '#ffd84a' : hov ? '#efe2c0' : '#fff6e0', OBRYS, on ? 4 : 2.5);
+        napis(g, k.t, r.x + r.w / 2, r.y + r.h / 2 + 1, 21, on ? '#2a1438' : kol, 'center', '"Trebuchet MS", sans-serif');
+      });
+      napis(g, 'Fioletowe = losowe słowa · Niebieskie = cyfry i znaki · Brązowe = informacje o Kubie', 810, 520, 14, '#5a4a3a', 'center', '"Trebuchet MS", sans-serif', null, 'normal');
+      przycisk(g, czysc, w(czysc, mysz.x, mysz.y), '#7a5a3a');
+      przycisk(g, gotowe, w(gotowe, mysz.x, mysz.y), '#2f8a4a');
+      przycisk(g, zamknij, w(zamknij, mysz.x, mysz.y), '#7a5a3a');
+      komunikatMini(g, m);
+    },
+  };
+  return m;
+}
+
+/* --- 3. Tablica Ogłoszeń: co nie powinno być publiczne? --- */
+function miniTablica() {
+  const linie = [
+    { t: 'Cześć, jestem Maja!', zle: false },
+    { t: 'Mieszkam przy ul. Gęsiej 7 w Mieście Bajtów.', zle: true, z: 'adres domu' },
+    { t: 'Jutro cała rodzina wyjeżdża na 2 tygodnie!', zle: true, z: 'informacja, że dom będzie pusty' },
+    { t: 'Klucz zostawiamy pod wycieraczką :)', zle: true, z: 'gdzie leży klucz' },
+    { t: 'Mój numer telefonu: 600 123 456', zle: true, z: 'numer telefonu' },
+    { t: 'Uwielbiam koty i smoki.', zle: false },
+    { t: 'Zdjęcie mojej legitymacji szkolnej: [📷]', zle: true, z: 'zdjęcie dokumentu' },
+    { t: 'Szukam drużyny do Smoczych Szachów!', zle: false },
+  ];
+  const zazn = new Set();
+  const spr = { x: 800, y: 560, w: 180, h: 44, tekst: 'Sprawdź' };
+  const zamknij = { x: 1000, y: 560, w: 140, h: 44, tekst: 'Zamknij' };
+  const rect = i => ({ x: 230, y: 160 + i * 47, w: 820, h: 42 });
+  const m = {
+    ok: false,
+    klik(x, y) {
+      if (m.ok) { m.koniec(true); return; }
+      if (w(zamknij, x, y)) { m.koniec(false); return; }
+      if (w(spr, x, y)) {
+        const brak = linie.filter((l, i) => l.zle && !zazn.has(i));
+        const zbedne = linie.map((l, i) => [l, i]).filter(([l, i]) => !l.zle && zazn.has(i));
+        if (zbedne.length) kom(m, `„${zbedne[0][0].t}” możesz zostawić — to nic groźnego. Nie trzeba ukrywać wszystkiego!`, false);
+        else if (brak.length) kom(m, `Zostało jeszcze ${brak.length} ${brak.length === 1 ? 'niebezpieczne zdanie' : 'niebezpiecznych zdań'}. Pomyśl, co mógłby wykorzystać złodziej.`, false);
+        else { m.ok = true; kom(m, 'Świetnie! Adres, plany wyjazdu, klucz, numer telefonu i zdjęcie dokumentu nie mogą być publiczne. (kliknij)', true); Dzwiek.sukces(); }
+        return;
+      }
+      for (let i = 0; i < linie.length; i++) if (w(rect(i), x, y)) { if (zazn.has(i)) zazn.delete(i); else zazn.add(i); Dzwiek.magia(); return; }
+    },
+    rysuj(g) {
+      g.fillStyle = 'rgba(8,2,16,.72)'; g.fillRect(0, 0, W, H);
+      prost(g, 180, 30, 920, 600, '#b8925a', OBRYS, 5);
+      g.save(); g.translate(640, 360); g.rotate(-.01);
+      zaokr(g, -420, -270, 840, 470, 4, '#fffbea', OBRYS, 3);
+      g.restore();
+      elip(g, 640, 96, 8, 8, '#c22', OBRYS, 2);
+      napis(g, 'Ogłoszenie Mai — skreśl różdżką to, czego NIE wolno publikować', 640, 128, 22, '#5a2f98', 'center', 'Georgia, serif');
+      linie.forEach((l, i) => {
+        const r = rect(i), hov = w(r, mysz.x, mysz.y);
+        if (hov) zaokr(g, r.x, r.y, r.w, r.h, 6, 'rgba(90,47,152,.12)', null);
+        napis(g, l.t, r.x + 16, r.y + r.h / 2, 22, '#2a1a10', 'left', '"Comic Sans MS", "Segoe Print", cursive', null, 'normal');
+        if (zazn.has(i)) {
+          g.font = 'normal 22px "Comic Sans MS", "Segoe Print", cursive'; const tw = g.measureText(l.t).width;
+          g.strokeStyle = '#7b2fbf'; g.lineWidth = 5; g.beginPath(); g.moveTo(r.x + 10, r.y + r.h / 2 + 2); g.lineTo(r.x + 22 + tw, r.y + r.h / 2 - 2); g.stroke();
+          gwiazdka(g, r.x + 30 + tw, r.y + r.h / 2, 9, '#4fe3ff');
+        }
+      });
+      przycisk(g, spr, w(spr, mysz.x, mysz.y), '#2f8a4a');
+      przycisk(g, zamknij, w(zamknij, mysz.x, mysz.y), '#7a5a3a');
+      komunikatMini(g, m);
+    },
+  };
+  return m;
+}
+
+/* --- 4. Lusterko Dwóch Kroków: wpisz kod 2FA --- */
+function miniKod() {
+  const OKRES = 30000;
+  let start = teraz, kod = nowyKod(), wpis = '';
+  function nowyKod() { return String(Math.floor(100000 + Math.random() * 900000)); }
+  const klaw = '123456789C0←'.split('');
+  const kl = i => ({ x: 720 + (i % 3) * 110, y: 190 + Math.floor(i / 3) * 84, w: 96, h: 70, tekst: klaw[i] });
+  const ok = { x: 720, y: 530, w: 316, h: 54, tekst: 'ZATWIERDŹ KOD' };
+  const zamknij = { x: 1060, y: 530, w: 120, h: 54, tekst: 'Zamknij' };
+  const m = {
+    get kod() { return kod; },
+    gotowe: false,
+    wpisz(c) {
+      if (c === 'C') wpis = '';
+      else if (c === '←') wpis = wpis.slice(0, -1);
+      else if (wpis.length < 6) wpis += c;
+      Dzwiek.ton(500 + wpis.length * 60, .06, 'square', .04);
+    },
+    zatwierdz() {
+      if (wpis === kod) { m.gotowe = true; Dzwiek.sukces(); kom(m, 'Kod się zgadza! Hasło + kod z lusterka = dwa kroki weryfikacji. (kliknij)', true); }
+      else { kom(m, wpis.length < 6 ? 'Kod ma 6 cyfr. Przepisz go z lusterka.' : 'Zły kod! Może zdążył się zmienić? Spójrz jeszcze raz w lusterko.', false); wpis = ''; }
+    },
+    klik(x, y) {
+      if (m.gotowe) { m.koniec(true); return; }
+      if (w(zamknij, x, y)) { m.koniec(false); return; }
+      if (w(ok, x, y)) { m.zatwierdz(); return; }
+      for (let i = 0; i < 12; i++) if (w(kl(i), x, y)) { m.wpisz(klaw[i]); return; }
+    },
+    klawisz(e) {
+      if (m.gotowe) { if (e.key === 'Enter' || e.key === ' ') m.koniec(true); return; }
+      if (/^[0-9]$/.test(e.key)) m.wpisz(e.key);
+      if (e.key === 'Backspace') m.wpisz('←');
+      if (e.key === 'Enter') m.zatwierdz();
+      if (e.key === 'Escape') m.koniec(false);
+    },
+    rysuj(g) {
+      if (!m.gotowe && teraz - start > OKRES) { start = teraz; kod = nowyKod(); Dzwiek.magia(); }
+      g.fillStyle = 'rgba(8,2,16,.78)'; g.fillRect(0, 0, W, H);
+      napis(g, 'Weryfikacja dwuetapowa: przepisz kod z lusterka na kamiennym zamku trolla', 640, 60, 22, '#ffd84a', 'center', 'Georgia, serif', OBRYS);
+      // lusterko
+      g.save(); g.translate(340, 340);
+      prost(g, -18, 150, 36, 130, '#7a4a22', OBRYS, 3);
+      elip(g, 0, 0, 200, 210, '#d4af37', OBRYS, 4);
+      elip(g, 0, 0, 170, 180, lg(g, -170, -180, 170, 180, [[0, '#dff6ff'], [1, '#6aa9d6']]), OBRYS, 3);
+      for (let i = 0; i < 8; i++) gwiazdka(g, Math.cos(i / 8 * 6.28) * 186, Math.sin(i / 8 * 6.28) * 196, 7, '#fff3a0', OBRYS, 1);
+      napis(g, 'Twój kod:', 0, -70, 22, '#103050', 'center', '"Trebuchet MS", sans-serif');
+      napis(g, kod.slice(0, 3) + ' ' + kod.slice(3), 0, -10, 58, '#103050', 'center', '"Courier New", monospace');
+      const ul = 1 - (teraz - start) / OKRES;
+      g.strokeStyle = 'rgba(16,48,80,.2)'; g.lineWidth = 10; g.beginPath(); g.arc(0, 80, 40, 0, 7); g.stroke();
+      g.strokeStyle = ul < .25 ? '#d6334a' : '#2f8a4a'; g.beginPath(); g.arc(0, 80, 40, -Math.PI / 2, -Math.PI / 2 + ul * Math.PI * 2); g.stroke();
+      napis(g, Math.ceil(ul * OKRES / 1000) + 's', 0, 80, 20, '#103050', 'center', '"Trebuchet MS", sans-serif');
+      g.restore();
+      napis(g, 'Kodu NIGDY nikomu nie podawaj — tylko wpisujesz go sam, logując się.', 340, 600, 15, '#fff', 'center', '"Trebuchet MS", sans-serif', OBRYS, 'normal');
+      // kamienny zamek
+      zaokr(g, 690, 90, 520, 520, 24, '#7a8478', OBRYS, 4);
+      szum(g, mulberry(8), 700, 100, 500, 500, 300, ['rgba(40,50,40,.3)', 'rgba(220,230,200,.2)'], 6);
+      zaokr(g, 720, 112, 316, 60, 10, '#1a2218', OBRYS, 3);
+      napis(g, (wpis + '______').slice(0, 6).split('').join(' '), 878, 143, 36, '#7dff7a', 'center', '"Courier New", monospace');
+      for (let i = 0; i < 12; i++) { const b = kl(i); zaokr(g, b.x, b.y, b.w, b.h, 12, w(b, mysz.x, mysz.y) ? '#a8b4a0' : '#909c88', OBRYS, 3); napis(g, b.tekst, b.x + b.w / 2, b.y + b.h / 2 + 2, 30, '#20281e', 'center', 'Georgia, serif'); }
+      przycisk(g, ok, w(ok, mysz.x, mysz.y), '#2f8a4a');
+      przycisk(g, zamknij, w(zamknij, mysz.x, mysz.y), '#7a5a3a');
+      napis(g, 'Możesz też pisać na klawiaturze.', 1100, 210, 13, '#20281e', 'center', '"Trebuchet MS", sans-serif', null, 'normal');
+      komunikatMini(g, m);
+    },
+  };
+  return m;
+}
+
+/* --- 5. Latarnia Prawdy: wykryj deepfake --- */
+function miniDeepfake() {
+  const slady = [
+    { r: { x: 588, y: 160, w: 120, h: 130 }, t: 'Pięć gwiazdek na kapeluszu! Prawdziwy kapelusz ma trzy. Podróbki często mylą szczegóły.' },
+    { r: { x: 615, y: 322, w: 72, h: 34 }, t: 'Oczy nie mrugają! Wczesne podróbki zapominają o naturalnym mruganiu.' },
+    { r: { x: 625, y: 360, w: 66, h: 34 }, t: 'Usta nie nadążają za głosem! Ruch warg nie pasuje do słów.' },
+    { r: { x: 680, y: 450, w: 130, h: 130 }, t: 'Dłoń i różdżka migoczą i się rozmywają! Krawędzie podróbek często „pływają”.' },
+    { r: { x: 540, y: 618, w: 200, h: 50 }, t: 'Brak cienia! Prawdziwa osoba w tym świetle rzucałaby cień.' },
+  ];
+  const zn = new Set();
+  const zamknij = { x: 1100, y: 640, w: 140, h: 48, tekst: 'Zamknij' };
+  const maska = nowyCanvas(W, H), mg = maska.getContext('2d');
+  const m = {
+    klik(x, y) {
+      if (zn.size === slady.length) { m.koniec(true); return; }
+      if (w(zamknij, x, y)) { m.koniec(false); return; }
+      for (let i = 0; i < slady.length; i++) if (w(slady[i].r, x, y)) {
+        if (!zn.has(i)) { zn.add(i); kom(m, slady[i].t, true); if (zn.size === slady.length) { Dzwiek.sukces(); kom(m, 'Wszystkie ślady podróbki znalezione! To deepfake! (kliknij)', true); } }
+        return;
+      }
+      kom(m, 'Tu wszystko wygląda normalnie. Szukaj dalej w świetle latarni.', false);
+    },
+    rysuj(g) {
+      g.fillStyle = '#120a1c'; g.fillRect(0, 0, W, H);
+      g.fillStyle = rg(g, 640, 400, 50, 600, [[0, '#2a1a3a'], [1, '#08040e']]); g.fillRect(0, 0, W, H);
+      rysujDamiana(g, 640, 640, 2.0, 1, { mowi: true }, true);
+      // ciemność z okręgiem światła latarni
+      mg.globalCompositeOperation = 'source-over'; mg.clearRect(0, 0, W, H);
+      mg.fillStyle = 'rgba(5,2,10,.93)'; mg.fillRect(0, 0, W, H);
+      mg.globalCompositeOperation = 'destination-out';
+      mg.fillStyle = rg(mg, mysz.x, mysz.y, 40, 170, [[0, 'rgba(0,0,0,1)'], [1, 'rgba(0,0,0,0)']]);
+      mg.beginPath(); mg.arc(mysz.x, mysz.y, 170, 0, 7); mg.fill();
+      for (const i of zn) { const r = slady[i].r; mg.fillStyle = 'rgba(0,0,0,.8)'; mg.beginPath(); mg.ellipse(r.x + r.w / 2, r.y + r.h / 2, r.w * .7, r.h * .7, 0, 0, 7); mg.fill(); }
+      g.drawImage(maska, 0, 0);
+      g.fillStyle = 'rgba(255,220,120,.08)'; g.beginPath(); g.arc(mysz.x, mysz.y, 170, 0, 7); g.fill();
+      for (const i of zn) { const r = slady[i].r; g.strokeStyle = '#ffd84a'; g.lineWidth = 3; g.setLineDash([8, 6]); g.beginPath(); g.ellipse(r.x + r.w / 2, r.y + r.h / 2, r.w * .6, r.h * .6, 0, 0, 7); g.stroke(); g.setLineDash([]); }
+      napis(g, 'Poświeć latarnią i kliknij ślady podróbki', 640, 40, 26, '#ffd84a', 'center', 'Georgia, serif', OBRYS);
+      napis(g, `Znalezione: ${zn.size} / ${slady.length}`, 640, 76, 19, '#fff', 'center', '"Trebuchet MS", sans-serif', OBRYS);
+      napis(g, '„Podajcie mi hasła, dzieci...”', 640, 112, 18, '#7affa8', 'center', 'Georgia, serif', OBRYS, 'italic');
+      przycisk(g, zamknij, w(zamknij, mysz.x, mysz.y), '#7a5a3a');
+      komunikatMini(g, m);
+    },
+  };
+  return m;
+}
+
+/* --- 6. Zaklęcie Odzyskania: co zrobić po przejęciu konta --- */
+function miniRatunek() {
+  const op = [
+    { t: 'Powiedz o wszystkim rodzicowi lub nauczycielowi', d: true },
+    { t: 'Odpisz oszustowi, że jest głupi', d: false, z: 'Nie wdawaj się w rozmowę z oszustem — to nic nie da, a może być groźne.' },
+    { t: 'Zmień hasło na nowe, smocze', d: true },
+    { t: 'Zapłać oszustowi, żeby oddał konto', d: false, z: 'Nigdy nie płać oszustowi! Zwykle i tak nie oddaje konta.' },
+    { t: 'Włącz weryfikację dwuetapową (2FA)', d: true },
+    { t: 'Użyj z powrotem starego hasła', d: false, z: 'Stare hasło zna już oszust! Potrzebne jest zupełnie nowe.' },
+    { t: 'Wyloguj konto na wszystkich innych urządzeniach', d: true },
+    { t: 'Nikomu nic nie mów i załóż nowe konto', d: false, z: 'Ukrywanie problemu pomaga tylko oszustowi. Powiedz dorosłemu!' },
+    { t: 'Ostrzeż znajomych, że to nie ty do nich pisałeś', d: true },
+    { t: 'Zgłoś przejęcie konta w serwisie (np. przycisk „Zgłoś”)', d: true },
+  ];
+  const zazn = new Set();
+  const spr = { x: 860, y: 600, w: 200, h: 48, tekst: 'Rzuć zaklęcie!' };
+  const rect = i => ({ x: 120 + (i % 2) * 530, y: 150 + Math.floor(i / 2) * 84, w: 510, h: 70 });
+  const m = {
+    ok: false,
+    klik(x, y) {
+      if (m.ok) { m.koniec(true); return; }
+      if (w(spr, x, y)) {
+        const zle = op.find((o, i) => !o.d && zazn.has(i));
+        const brak = op.filter((o, i) => o.d && !zazn.has(i)).length;
+        if (zle) kom(m, zle.z, false);
+        else if (brak) kom(m, `Brakuje jeszcze ${brak} ${brak === 1 ? 'dobrego kroku' : 'dobrych kroków'}. Zaklęcie Odzyskania musi być kompletne!`, false);
+        else { m.ok = true; Dzwiek.magia(); Dzwiek.sukces(); kom(m, 'Zaklęcie Odzyskania zadziałało! Konta dzieci są znów bezpieczne. (kliknij)', true); }
+        return;
+      }
+      for (let i = 0; i < op.length; i++) if (w(rect(i), x, y)) { zazn.has(i) ? zazn.delete(i) : zazn.add(i); Dzwiek.klik(); return; }
+    },
+    rysuj(g) {
+      pergamin(g, 80, 30, 1120, 640);
+      napis(g, 'ZAKLĘCIE ODZYSKANIA', 640, 72, 30, '#5a2f98', 'center', 'Georgia, serif');
+      napis(g, 'Ktoś przejął twoje konto. Zaznacz WSZYSTKIE dobre kroki (i żadnego złego).', 640, 110, 18, '#3a2a1a', 'center', '"Trebuchet MS", sans-serif', null, 'normal');
+      op.forEach((o, i) => {
+        const r = rect(i), on = zazn.has(i), hov = w(r, mysz.x, mysz.y);
+        zaokr(g, r.x, r.y, r.w, r.h, 12, on ? '#e9dcff' : hov ? '#fff8e6' : '#fffbef', OBRYS, on ? 4 : 2);
+        zaokr(g, r.x + 14, r.y + 20, 30, 30, 6, '#fff', OBRYS, 2);
+        if (on) gwiazdka(g, r.x + 29, r.y + 35, 13, '#ffd84a', OBRYS, 1.5);
+        g.font = 'normal 18px "Trebuchet MS", sans-serif';
+        const lin = zawin(g, o.t, r.w - 70);
+        lin.forEach((l, j) => napis(g, l, r.x + 58, r.y + r.h / 2 + (j - (lin.length - 1) / 2) * 22, 18, '#2a1a10', 'left', '"Trebuchet MS", sans-serif', null, 'normal'));
+      });
+      przycisk(g, spr, w(spr, mysz.x, mysz.y), '#2f8a4a');
+      komunikatMini(g, m);
+    },
+  };
+  return m;
+}
+</script>
+<script>
+"use strict";
+/* =====================================================================
+   RENDER, RUCH, EKRANY
+   ===================================================================== */
+let kolejkaWejscia = null;
+function wejdzNaScene(cel, wej) {
+  const sc = SCENY[cel];
+  S.scena = cel;
+  const p = (sc.wejscia && sc.wejscia[wej]) || sc.start;
+  gracz.x = p[0]; gracz.y = p[1]; gracz.kier = p[2] || 1; gracz.cel = null; gracz.trasa = null; gracz.idzie = false;
+  Dzwiek.nastroj = sc.nastroj || 'spokoj';
+  zapisz();
+  if (sc.wejscie) kolejkaWejscia = () => sc.wejscie(wej);
+}
+
+// trasa z omijaniem przepaści (węzły sceny)
+function odcinekOk(pol, a, b) {
+  for (let i = 1; i < 24; i++) { const t = i / 24; if (!wPolu(pol, lerp(a[0], b[0], t), lerp(a[1], b[1], t))) return false; }
+  return true;
+}
+function idzDo(x, y) {
+  const sc = SCENY[S.scena], pol = sc.podloga;
+  const cel = najblizszyWPolu(pol, x, y), st = [gracz.x, gracz.y];
+  let trasa = [cel];
+  if (!odcinekOk(pol, st, cel) && sc.wezly) {
+    let best = null, bd = 1e9;
+    const d = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+    for (const n of sc.wezly) if (odcinekOk(pol, st, n) && odcinekOk(pol, n, cel)) { const dd = d(st, n) + d(n, cel); if (dd < bd) { bd = dd; best = [n, cel]; } }
+    for (const n of sc.wezly) for (const m of sc.wezly) if (n !== m && odcinekOk(pol, st, n) && odcinekOk(pol, n, m) && odcinekOk(pol, m, cel)) { const dd = d(st, n) + d(n, m) + d(m, cel); if (dd < bd) { bd = dd; best = [n, m, cel]; } }
+    if (best) trasa = best;
+  }
+  return new Promise(r => { gracz.trasa = trasa; gracz.poKoncu = r; gracz.idzie = true; });
+}
+
+function aktualizuj(dt) {
+  const sc = SCENY[S.scena];
+  if (gracz.idzie && gracz.trasa && gracz.trasa.length) {
+    const [tx, ty] = gracz.trasa[0];
+    const dx = tx - gracz.x, dy = ty - gracz.y, d = Math.hypot(dx, dy);
+    const v = 230 * sc.skala(gracz.y) * dt;
+    if (Math.abs(dx) > 2) gracz.kier = dx < 0 ? -1 : 1;
+    if (d <= v) {
+      gracz.x = tx; gracz.y = ty; gracz.trasa.shift();
+      if (!gracz.trasa.length) { gracz.idzie = false; const r = gracz.poKoncu; gracz.poKoncu = null; r && r(); }
+    } else {
+      gracz.x += dx / d * v; gracz.y += dy / d * v * 0.9;
+      gracz.faza += dt * 11;
+      if (Math.floor(gracz.faza / Math.PI) !== Math.floor((gracz.faza - dt * 11) / Math.PI)) Dzwiek.ton(90 + rnd(0, 20), .05, 'triangle', .04);
+    }
+  }
+  if (mowa && teraz > mowa.do) zakonczMowe();
+  if (przejscie) {
+    const t = teraz - przejscie.t;
+    if (t > 450 && !przejscie.zmieniona) { przejscie.zmieniona = true; wejdzNaScene(przejscie.cel, przejscie.wej); }
+    if (t > 900) { const r = przejscie.r; przejscie = null; r(); }
+  }
+  if (kolejkaWejscia && !zajety && !przejscie && tryb === 'gra' && !mini) { const k = kolejkaWejscia; kolejkaWejscia = null; k(); }
+}
+
+/* ---------- dymki z tekstem w stylu klasycznych przygodówek ---------- */
+function pozycjaMowcy(kto) {
+  const sc = SCENY[S.scena];
+  if (kto === 'damian') return [gracz.x, gracz.y - 285 * sc.skala(gracz.y)];
+  if (sc.mowcy && sc.mowcy[kto]) return sc.mowcy[kto]();
+  return null;
+}
+function rysujMowe(g) {
+  if (!mowa) return;
+  const m = MOWCY[mowa.kto] || MOWCY.narrator;
+  const poz = mowa.kto === 'narrator' ? null : pozycjaMowcy(mowa.kto);
+  g.font = 'bold 23px "Trebuchet MS", Verdana, sans-serif';
+  if (!poz) {
+    const lin = zawin(g, mowa.tekst, 980);
+    const h = 30 + lin.length * 30 + (m.imie ? 26 : 0);
+    zaokr(g, 120, 14, 1040, h, 14, 'rgba(14,6,26,.86)', mowa.kto === 'narrator' ? '#e7b93b' : m.kolor, 3);
+    let y = 40;
+    if (m.imie) { napis(g, m.imie, 640, y - 4, 17, m.kolor, 'center', 'Georgia, serif'); y += 26; }
+    lin.forEach((l, i) => napis(g, l, 640, y + i * 30, 23, m.kolor, 'center', mowa.kto === 'narrator' ? 'Georgia, serif' : '"Trebuchet MS", Verdana, sans-serif', null, mowa.kto === 'narrator' ? 'italic bold' : 'bold'));
+    return;
+  }
+  const lin = zawin(g, mowa.tekst, 470);
+  const lh = 28, hh = lin.length * lh;
+  const x = clamp(poz[0], 260, W - 260);
+  const y0 = clamp(poz[1] - hh - 6, 14, SH - hh - 10);
+  lin.forEach((l, i) => napis(g, l, x, y0 + i * lh + 14, 23, m.kolor, 'center', '"Trebuchet MS", Verdana, sans-serif', '#0a0410'));
+}
+
+/* ---------- pasek dolny ---------- */
+function rysujPasek(g) {
+  g.fillStyle = lg(g, 0, SH, 0, H, [[0, '#3a2214'], [1, '#22140c']]); g.fillRect(0, SH, W, H - SH);
+  g.fillStyle = 'rgba(255,255,255,.05)'; for (let x = 0; x < W; x += 48) g.fillRect(x, SH, 2, H - SH);
+  prost(g, 0, SH, W, 6, '#e7b93b', null);
+  prost(g, 0, SH + 6, W, 2, OBRYS, null);
+  if (wybor) {
+    const n = wybor.opcje.length, h = Math.min(30, 110 / n);
+    wybor.hover = opcjaPod(mysz.x, mysz.y);
+    wybor.opcje.forEach((o, i) => {
+      const hov = i === wybor.hover;
+      napis(g, (hov ? '✦ ' : '• ') + o, 30, SH + 8 + i * h + h / 2, Math.min(22, h - 6), hov ? '#ffd84a' : '#e9dcff', 'left', '"Trebuchet MS", sans-serif', '#0a0410');
+    });
+    return;
+  }
+  // ekwipunek
+  for (let i = 0; i < 9; i++) {
+    const s = slotPrzedmiotu(i);
+    if (s.x + s.w > 980) break;
+    const p = S.przedmioty[i], hov = p && w(s, mysz.x, mysz.y);
+    zaokr(g, s.x, s.y, s.w, s.h, 10, p === wybrany && p ? '#6a3fb0' : hov ? '#4a2f24' : '#2a180e', p === wybrany && p ? '#ffd84a' : '#6a4a2a', 3);
+    if (p) ikonaPrzedmiotu(g, p, s.x + s.w / 2, s.y + s.h / 2, 1);
+  }
+  if (!S.przedmioty.length) napis(g, 'Ekwipunek jest pusty. Lewy przycisk — chodź / użyj, prawy — obejrzyj.', 30, SH + 60, 17, 'rgba(233,220,255,.55)', 'left', '"Trebuchet MS", sans-serif', null, 'normal');
+  for (const b of PRZYCISKI) {
+    const hov = w(b, mysz.x, mysz.y);
+    zaokr(g, b.x, b.y, b.w, b.h, 8, hov ? '#ffd84a' : '#5a2f98', OBRYS, 2.5);
+    napis(g, b.tekst, b.x + b.w / 2, b.y + b.h / 2 + 1, 16, hov ? '#2a1438' : '#fff', 'center', '"Trebuchet MS", "Segoe UI Emoji", sans-serif');
+  }
+  napis(g, '✦ ' + S.punkty + ' pkt', 990, SH + 14, 13, '#e7b93b', 'right', '"Trebuchet MS", sans-serif', null, 'normal');
+}
+
+function etykieta(g) {
+  if (zajety || mowa || wybor || mini || przejscie) return null;
+  let t = null, ob = null;
+  if (mysz.y < SH) { ob = obiektPod(mysz.x, mysz.y); if (ob) t = wybrany ? `Użyj: ${PRZEDMIOTY[wybrany].nazwa} → ${ob.nazwa}` : ob.nazwa; }
+  else for (let i = 0; i < S.przedmioty.length; i++) if (w(slotPrzedmiotu(i), mysz.x, mysz.y)) {
+    const p = S.przedmioty[i];
+    t = wybrany && wybrany !== p ? `Połącz: ${PRZEDMIOTY[wybrany].nazwa} + ${PRZEDMIOTY[p].nazwa}` : PRZEDMIOTY[p].nazwa + (wybrany === p && PRZEDMIOTY[p].uzyj ? ' (kliknij znów, aby zbadać)' : '');
+  }
+  if (!t && wybrany && mysz.y < SH) t = `Użyj: ${PRZEDMIOTY[wybrany].nazwa} → ...`;
+  if (t) {
+    g.font = 'bold 21px "Trebuchet MS", sans-serif';
+    const x = clamp(mysz.x, g.measureText(t).width / 2 + 10, W - g.measureText(t).width / 2 - 10);
+    const y = mysz.y < SH ? Math.max(20, mysz.y - 40) : SH - 22;
+    napis(g, t, x, y, 21, '#ffffff', 'center', '"Trebuchet MS", sans-serif', '#0a0410');
+  }
+  return ob;
+}
+
+function kursor(g, ob) {
+  const { x, y } = mysz;
+  if (wybrany && !mini) { ikonaPrzedmiotu(g, wybrany, x + 18, y + 18, .6); }
+  const r = ob ? 13 + Math.sin(teraz / 120) * 2 : 10;
+  if (ob && ob.wyjscie) {
+    wiel(g, [[x - 14, y - 6], [x + 2, y - 6], [x + 2, y - 14], [x + 16, y], [x + 2, y + 14], [x + 2, y + 6], [x - 14, y + 6]], '#ffd84a', OBRYS, 2);
+    return;
+  }
+  gwiazdka(g, x, y, r, ob ? '#ffd84a' : '#e9dcff', OBRYS, 2);
+  if (ob) { g.fillStyle = 'rgba(255,216,74,.25)'; g.beginPath(); g.arc(x, y, r + 8, 0, 7); g.fill(); }
+}
+
+function rysujGre(g) {
+  const sc = SCENY[S.scena];
+  g.drawImage(TLA[sc.tlo], 0, 0);
+  sc.anim && sc.anim(g);
+  const lista = [];
+  sc.postacie && sc.postacie(lista);
+  const s = sc.skala(gracz.y);
+  lista.push({ y: gracz.y + .1, rysuj: gg => rysujDamiana(gg, gracz.x, gracz.y, s, gracz.kier, { faza: gracz.faza, idzie: gracz.idzie, mowi: mowa && mowa.kto === 'damian' }) });
+  lista.sort((a, b) => a.y - b.y).forEach(o => o.rysuj(g));
+  sc.przod && sc.przod(g);
+  if (efektWizji) {
+    const a = clamp((teraz - efektWizji) / 800, 0, 1) * .55;
+    g.fillStyle = `rgba(60,10,120,${a})`; g.fillRect(0, 0, W, SH);
+    for (let i = 0; i < 6; i++) { g.strokeStyle = `rgba(200,150,255,${a * .5})`; g.lineWidth = 3; g.beginPath(); g.arc(640, 300, 80 + i * 60 + (teraz / 20 % 60), 0, 7); g.stroke(); }
+  }
+  // nazwa sceny przy wejściu
+  if (przejscie && przejscie.zmieniona || (teraz - ostatniaZmiana) < 2600) {
+    const a = clamp(1 - (teraz - ostatniaZmiana - 1600) / 1000, 0, 1);
+    if (a > 0) napis(g, sc.nazwa, 640, SH - 34, 30, `rgba(255,236,170,${a})`, 'center', 'Georgia, serif', `rgba(10,4,16,${a})`);
+  }
+  rysujPasek(g);
+  const ob = etykieta(g);
+  rysujMowe(g);
+  if (blysk) {
+    const a = clamp(1 - (teraz - blysk.t - 2200) / 600, 0, 1);
+    if (a <= 0) blysk = null;
+    else { g.save(); g.globalAlpha = a; g.font = 'bold 22px Georgia, serif'; const tw = g.measureText(blysk.tekst).width; zaokr(g, 640 - tw / 2 - 24, SH - 70, tw + 48, 44, 22, 'rgba(90,47,152,.95)', '#ffd84a', 3); napis(g, blysk.tekst, 640, SH - 47, 22, '#ffd84a', 'center', 'Georgia, serif'); g.restore(); }
+  }
+  return ob;
+}
+let ostatniaZmiana = 0;
+
+/* ---------- Księga Zaklęć ---------- */
+function rysujKsiege(g) {
+  g.fillStyle = 'rgba(8,2,16,.8)'; g.fillRect(0, 0, W, H);
+  zaokr(g, 40, 16, 1200, 690, 16, '#7a1f2a', OBRYS, 4);
+  zaokr(g, 56, 30, 580, 662, 8, '#f6ead0', OBRYS, 2); zaokr(g, 644, 30, 580, 662, 8, '#f6ead0', OBRYS, 2);
+  napis(g, 'Księga Zaklęć Bezpieczeństwa', 346, 62, 26, '#5a2f98', 'center', 'Georgia, serif');
+  napis(g, `Poznane zaklęcia: ${S.lekcje.length} / 9`, 934, 62, 20, '#7a1f2a', 'center', 'Georgia, serif');
+  const klucze = Object.keys(LEKCJE);
+  klucze.forEach((k, i) => {
+    const kol = i < 5 ? 0 : 1, rz = i < 5 ? i : i - 5;
+    const x = 76 + kol * 588, y = 92 + rz * 120;
+    const zna = S.lekcje.includes(k);
+    gwiazdka(g, x + 12, y + 12, 11, zna ? '#ffd84a' : '#ccc', OBRYS, 1.5);
+    napis(g, zna ? LEKCJE[k].tytul : '??? (jeszcze nieodkryte)', x + 32, y + 12, 19, zna ? '#5a2f98' : '#999', 'left', 'Georgia, serif');
+    if (zna) {
+      g.font = 'normal 14.5px "Trebuchet MS", sans-serif';
+      zawin(g, LEKCJE[k].tekst, 525).slice(0, 5).forEach((l, j) => napis(g, l, x + 32, y + 36 + j * 18, 14.5, '#2a1a10', 'left', '"Trebuchet MS", sans-serif', null, 'normal'));
+    }
+  });
+  napis(g, '(kliknij, aby zamknąć)', 934, 676, 14, '#7a5a3a', 'center', '"Trebuchet MS", sans-serif', null, 'normal');
+}
+
+/* ---------- ekran tytułowy ---------- */
+const EKRAN_TYTULOWY = {
+  pomoc: false,
+  przyciski() {
+    const z = wczytajZapis();
+    const l = [{ id: 'nowa', tekst: 'Nowa gra' }];
+    if (z && z.flagi && z.flagi.intro && !z.flagi.koniec) l.unshift({ id: 'dalej', tekst: 'Kontynuuj' });
+    l.push({ id: 'pomoc', tekst: 'Jak grać?' });
+    if (window.electronAPI) l.push({ id: 'wyjdz', tekst: 'Wyjście' });
+    return l.map((b, i) => Object.assign(b, { x: 90, y: 400 + i * 66, w: 280, h: 52 }));
+  },
+  klik(x, y) {
+    if (this.pomoc) { this.pomoc = false; Dzwiek.klik(); return; }
+    for (const b of this.przyciski()) if (w(b, x, y)) {
+      Dzwiek.klik();
+      if (b.id === 'nowa') nowaGra();
+      if (b.id === 'dalej') kontynuuj();
+      if (b.id === 'pomoc') this.pomoc = true;
+      if (b.id === 'wyjdz') window.electronAPI.zamknij();
+    }
+  },
+  rysuj(g) {
+    g.drawImage(TLA.tytul, 0, 0);
+    zolwZDyskiem(g, 820 + Math.sin(teraz / 3000) * 20, 300 + Math.sin(teraz / 2000) * 10, 1.25, mulberry(5));
+    napis(g, 'DAMIAN ŚCISEŁ', 330, 120, 64, '#ffd84a', 'center', 'Georgia, serif', '#2a0a3a');
+    napis(g, 'i Kapelusz Szyfrów', 330, 190, 42, '#d9a8ff', 'center', 'Georgia, serif', '#2a0a3a', 'italic bold');
+    napis(g, 'Przygoda w Płaskim Świecie Sieci', 330, 245, 22, '#fff3c8', 'center', 'Georgia, serif', '#2a0a3a', 'normal');
+    napis(g, 'Point & click o cyberbezpieczeństwie · Szkoła Mentis', 330, 280, 17, 'rgba(233,220,255,.8)', 'center', '"Trebuchet MS", sans-serif', null, 'normal');
+    rysujDamiana(g, 1100, 690, 1.25, -1, { mowi: false }, false);
+    for (const b of this.przyciski()) przycisk(g, b, w(b, mysz.x, mysz.y));
+    napis(g, 'Wszystkie grafiki rysowane kodem · zapis gry automatyczny', 20, 705, 13, 'rgba(255,255,255,.4)', 'left', '"Trebuchet MS", sans-serif', null, 'normal');
+    if (this.pomoc) {
+      pergamin(g, 200, 80, 880, 560);
+      napis(g, 'Jak grać?', 640, 130, 32, '#5a2f98', 'center', 'Georgia, serif');
+      const l = [
+        '🖱 Lewy przycisk myszy — chodzisz, rozmawiasz i używasz rzeczy.',
+        '🖱 Prawy przycisk myszy — oglądasz rzecz i słuchasz komentarza Damiana.',
+        '🎒 Przedmioty są na dole. Kliknij przedmiot, a potem obiekt, by go na nim użyć.',
+        '🔍 Prawy klik na przedmiocie — opis. Podwójny klik — zbadanie (np. list).',
+        '💬 Kliknięcie lub spacja przyspiesza tekst. W rozmowie wybierasz kwestię z listy.',
+        '📖 Księga — zebrane zaklęcia bezpieczeństwa (czyli to, czego się nauczysz).',
+        '🦉 Podpowiedź — Sowa Administratorka powie, co robić dalej.',
+        '💾 Gra zapisuje się sama. Klawisz F11 — pełny ekran.',
+      ];
+      l.forEach((t, i) => napis(g, t, 250, 190 + i * 50, 19, '#2a1a10', 'left', '"Trebuchet MS", "Segoe UI Emoji", sans-serif', null, 'normal'));
+      napis(g, '(kliknij, aby wrócić)', 640, 610, 15, '#7a5a3a', 'center', '"Trebuchet MS", sans-serif', null, 'normal');
+    }
+  },
+};
+
+/* ---------- ekran końcowy — dyplom ---------- */
+const EKRAN_KONCOWY = {
+  btn: { x: 520, y: 640, w: 240, h: 50, tekst: 'Zagraj ponownie' },
+  klik(x, y) { if (w(this.btn, x, y)) { Dzwiek.klik(); tryb = 'tytul'; } },
+  rysuj(g) {
+    g.drawImage(TLA.tytul, 0, 0);
+    for (let i = 0; i < 30; i++) { const t = (teraz / 3000 + i / 30) % 1; gwiazdka(g, (i * 137) % W, t * H, 5 + (i % 4), `hsla(${i * 40},90%,70%,.8)`, null); }
+    zaokr(g, 160, 30, 960, 590, 20, lg(g, 0, 30, 0, 620, [[0, '#fbf3dc'], [1, '#ecdcae']]), '#e7b93b', 8);
+    zaokr(g, 176, 46, 928, 558, 14, null, '#5a2f98', 3);
+    napis(g, 'DYPLOM', 640, 96, 52, '#5a2f98', 'center', 'Georgia, serif');
+    napis(g, 'Strażnika Płaskiego Świata Sieci', 640, 146, 28, '#7a1f2a', 'center', 'Georgia, serif', null, 'italic bold');
+    napis(g, 'za uratowanie Miasta Bajtów przed Gołębiem Grzegorzem i jego Podrabiarką 3000', 640, 184, 17, '#3a2a1a', 'center', '"Trebuchet MS", sans-serif', null, 'normal');
+    const kl = Object.keys(LEKCJE);
+    kl.forEach((k, i) => {
+      const x = 230 + (i % 2) * 430, y = 230 + Math.floor(i / 2) * 50;
+      gwiazdka(g, x, y, 12, S.lekcje.includes(k) ? '#ffd84a' : '#ccc', OBRYS, 1.5);
+      napis(g, LEKCJE[k].tytul, x + 22, y, 19, '#2a1a10', 'left', 'Georgia, serif');
+    });
+    napis(g, `Wynik: ${S.punkty} punktów · Zaklęcia: ${S.lekcje.length}/9`, 640, 500, 22, '#5a2f98', 'center', 'Georgia, serif');
+    napis(g, 'Podpisano: Damian Ściseł, haker-czarodziej, Szkoła Magii Mentis', 640, 548, 17, '#3a2a1a', 'center', 'Georgia, serif', null, 'italic');
+    gwiazdka(g, 1010, 540, 40, '#e7b93b', OBRYS, 2); napis(g, 'OK', 1010, 542, 16, '#7a1f2a');
+    przycisk(g, this.btn, w(this.btn, mysz.x, mysz.y));
+  },
+};
+
+function resetZmiennych() {
+  nieznajomyX = 30; nieznajomyIdzie = false; falszX = 860; golabX = 1080; rozpad = 0; efektWizji = 0;
+  if (!flaga('nieznajomy_uciekl')) nieznajomyX = 400;
+  mowa = null; wybor = null; mini = null; zajety = false; wybrany = null; przejscie = null; kolejkaWejscia = null;
+}
+function nowaGra() {
+  S = NOWY_STAN(); resetZmiennych();
+  tryb = 'gra'; ostatniaZmiana = teraz; wejdzNaScene('wieza');
+}
+function kontynuuj() {
+  const z = wczytajZapis(); if (!z) return nowaGra();
+  S = Object.assign(NOWY_STAN(), z); resetZmiennych();
+  tryb = 'gra'; ostatniaZmiana = teraz; wejdzNaScene(S.scena);
+}
+
+/* ---------- pętla ---------- */
+function przygotujTla() {
+  TLA.wieza = tloWieza(); TLA.rynek = tloRynek(); TLA.szkola = tloSzkola();
+  TLA.karczma = tloKarczma(); TLA.most = tloMost(); TLA.wiezacienia = tloWiezaCienia(); TLA.tytul = tloTytul();
+}
+let poprz = performance.now(), poprzScena = null;
+function petla(t) {
+  const dt = Math.min(.05, (t - poprz) / 1000); poprz = t; teraz = t;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+  let ob = null;
+  if (tryb === 'tytul') { EKRAN_TYTULOWY.rysuj(ctx); }
+  else if (tryb === 'koniec') { EKRAN_KONCOWY.rysuj(ctx); }
+  else {
+    aktualizuj(dt);
+    if (S.scena !== poprzScena) { poprzScena = S.scena; ostatniaZmiana = teraz; }
+    ob = rysujGre(ctx);
+    if (mini) mini.rysuj(ctx);
+    if (przejscie) {
+      const tt = teraz - przejscie.t, a = tt < 450 ? tt / 450 : 1 - (tt - 450) / 450;
+      ctx.fillStyle = `rgba(0,0,0,${clamp(a, 0, 1)})`; ctx.fillRect(0, 0, W, H);
+    }
+    if (tryb === 'ksiega') rysujKsiege(ctx);
+  }
+  kursor(ctx, ob);
+  requestAnimationFrame(petla);
+}
+przygotujTla();
+requestAnimationFrame(petla);
+// do testów automatycznych
+window.__gra = { get S() { return S; }, SCENY, nowaGra, wejdzNaScene, ustaw, dodaj, lekcja, get tryb() { return tryb; }, set tryb(v) { tryb = v; }, get mowa() { return mowa; }, get mini() { return mini; }, get zajety() { return zajety; }, get wybor() { return wybor; } };
+</script>
+</body>
+</html>

@@ -1,0 +1,29 @@
+{
+  "name": "damian-kapelusz-szyfrow",
+  "productName": "Damian Ściseł i Kapelusz Szyfrów",
+  "version": "1.0.0",
+  "description": "Przygodowa gra point & click o cyberbezpieczeństwie — Szkoła Mentis",
+  "author": "Damian Ściseł",
+  "license": "UNLICENSED",
+  "main": "main.js",
+  "scripts": {
+    "przygotuj": "node przygotuj.js",
+    "start": "npm run przygotuj && electron .",
+    "exe": "npm run przygotuj && electron-builder --win portable --x64"
+  },
+  "devDependencies": {
+    "electron": "33.4.11",
+    "electron-builder": "25.1.8"
+  },
+  "build": {
+    "appId": "pl.szkolamentis.damian-kapelusz-szyfrow",
+    "productName": "Damian Ściseł i Kapelusz Szyfrów",
+    "artifactName": "Damian-Kapelusz-Szyfrow.exe",
+    "directories": { "output": "dist", "buildResources": "build" },
+    "files": ["main.js", "preload.js", "gra/**"],
+    "win": {
+      "target": [{ "target": "portable", "arch": ["x64"] }],
+      "icon": "build/icon.png"
+    }
+  }
+}

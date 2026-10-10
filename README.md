@@ -12,6 +12,12 @@ https://adscisel-alt.github.io/gry-historyczne/
 - `cyberdetektyw.html` — „Damian Teacher: Cyberdetektyw”, klockowa gra RPG 3D o zasadach bezpieczeństwa
   w internecie dla klas VI–VIII (Szkoła Mentis): 9 spraw z quizami i słowniczkiem PL–EN (m.in. AI, deepfake,
   uzależnienie od ekranu), 12 złotych kłódek z poradami, finał z Phisherem i certyfikat do druku
+- `damian-kapelusz-szyfrow.html` — „Damian Ściseł i Kapelusz Szyfrów”, przygodówka point & click w stylu klasycznych
+  gier z Płaskiego Świata: haker-czarodziej w fioletowym kapeluszu tropi oszusta, który podszywa się pod niego
+  (deepfake). 6 lokacji, 6 zagadek (phishing, smocze hasło, prywatność, 2FA, wykrywanie deepfake'a, odzyskiwanie
+  konta), 9 zaklęć bezpieczeństwa, podpowiedzi Sowy i dyplom na koniec. Grafika i dźwięk generowane kodem.
+  - **Windows (.exe):** katalog `windows/` to paczka Electron; workflow `windows-exe.yml` buduje przenośny plik
+    `Damian-Kapelusz-Szyfrow.exe` (artefakt przebiegu + wydanie `gra-windows`). Lokalnie: `cd windows && npm install && npm run exe`.
 
 Wszystkie strony są samowystarczalne (działają offline, bez zależności sieciowych).
 Deploy: `.github/workflows/pages.yml` publikuje główną gałąź przy każdym pushu.
