@@ -110,6 +110,8 @@
   .nagroda .nazwa{font-weight:800;color:var(--zloto);font-size:19px;margin-top:4px}
   .zasada{margin-top:10px;text-align:left;background:rgba(63,214,255,.1);border:2px solid var(--cyjan);border-radius:10px;padding:10px 12px;font-size:14.5px}
   .zasada b{color:var(--cyjan)}
+  .zasada.slownik{background:rgba(255,210,63,.08);border-color:var(--zloto)}
+  .zasada.slownik b{color:var(--zloto)}
 
   /* ---------- notes / ekrany ---------- */
   .nakladka{position:fixed;inset:0;z-index:30;display:flex;align-items:center;justify-content:center;padding:14px;
@@ -246,10 +248,10 @@
 
 <div id="start">
   <div class="srodek">
-    <div class="logo-szkola"><span>&lt;/&gt;</span><span>Akademia Cyberbezpieczeństwa</span></div>
+    <div class="logo-szkola"><span>M</span><span>Polsko-Angielska Szkoła Podstawowa Mentis</span></div>
     <h1 class="tytul1">DAMIAN TEACHER</h1>
     <h1 class="tytul2">CYBERDETEKTYW</h1>
-    <div class="podtytul">Przemierzaj Cyber Miasteczko, rozwiąż 6 spraw i pokonaj Phishera na szczycie jego wieży!</div>
+    <div class="podtytul">Przemierzaj Cyber Miasteczko, rozwiąż 9 spraw i pokonaj Phishera na szczycie jego wieży!<br><small style="opacity:.85">Become a Cyber Detective — learn to stay safe online!</small></div>
     <div id="imie-etykieta">Jak masz na imię, asystencie detektywa?</div>
     <input id="imie" maxlength="20" placeholder="Twoje imię" autocomplete="off">
     <button id="graj">▶ GRAJ</button>
@@ -472,7 +474,7 @@ function budynek(o) {
   const p = s[0] === 'S' ? [s[1] + 1, z1 + 1.05] : s[0] === 'N' ? [s[1] + 1, z0 - 0.05] : s[0] === 'E' ? [x1 + 1.05, s[1] + 1] : [x0 - 0.05, s[1] + 1];
   NAPISY.push({ tekst: o.napis, x: p[0], y: 3.7, z: p[1] });
 }
-budynek({ x: 10, z: 8, w: 16, d: 12, h: 5, sc: B.cegla, dach: B.dachCz, drzwi: ['S', 17], napis: '🏫 SZKOŁA' });
+budynek({ x: 10, z: 8, w: 16, d: 12, h: 5, sc: B.cegla, dach: B.dachCz, drzwi: ['S', 17], napis: '🏫 SZKOŁA MENTIS' });
 budynek({ x: 52, z: 10, w: 11, d: 10, h: 4, sc: B.zolty, dach: B.dachNb, drzwi: ['S', 57], napis: '📮 POCZTA' });
 budynek({ x: 6, z: 34, w: 10, d: 12, h: 5, sc: B.bialy, dach: B.dachZi, drzwi: ['E', 39], napis: '📚 BIBLIOTEKA' });
 budynek({ x: 10, z: 60, w: 11, d: 10, h: 4, sc: B.deski, dach: B.dachPo, drzwi: ['N', 15], napis: '☕ KAWIARNIA' });
@@ -481,6 +483,13 @@ for (let x = 12; x <= 23; x += 3) for (let z = 12; z <= 16; z += 2) set(x, 1, z,
 for (let z = 36; z <= 43; z++) { set(7, 1, z, B.deski); set(7, 2, z, B.deski); }
 for (let x = 8; x <= 13; x++) { set(x, 1, 35, B.deski); set(x, 1, 44, B.deski); }
 for (let x = 12; x <= 18; x += 3) set(x, 1, 66, B.deski);
+budynek({ x: 52, z: 27, w: 10, d: 7, h: 4, sc: B.bialy, dach: B.dachNb, drzwi: ['S', 56], napis: '🤖 PRACOWNIA AI' });
+budynek({ x: 59, z: 45, w: 9, d: 7, h: 4, sc: B.ciemny, dach: B.dachCz, drzwi: ['W', 47], napis: '🎬 STUDIO TV' });
+budynek({ x: 21, z: 28, w: 9, d: 7, h: 4, sc: B.cegla, dach: B.dachZi, drzwi: ['S', 24], napis: '🏠 DOM ANTKA' });
+for (let x = 54; x <= 60; x += 2) { set(x, 1, 29, B.deski); set(x, 2, 29, B.neon); }
+set(64, 1, 47, B.fiolet); set(64, 2, 47, B.ciemny); set(65, 1, 49, B.cyjan); set(62, 3, 46, B.latarnia);
+set(22, 1, 30, B.czerwona); set(23, 1, 30, B.czerwona); set(27, 1, 29, B.ciemny); set(27, 2, 29, B.neon);
+odcinek(57, 34, 57, 39); odcinek(25, 35, 25, 39); odcinek(56, 48, 58, 48); odcinek(56, 48, 56, 52);
 
 // boisko
 for (let x = 29; x <= 47; x++) for (let z = 61; z <= 75; z++) {
@@ -666,6 +675,11 @@ function tulow(o) {
   P(0, 0, o.koszula, 16, 16);
   const ciem = jasn(parseInt(o.koszula.slice(1), 16), -.25);
   switch (o.wzor) {
+    case 'koszula':
+      P(5, 0, ciem, 2, 2); P(9, 0, ciem, 2, 2); P(7, 0, '#ffffff', 2, 1);
+      P(8, 1, ciem, 1, 15); for (let y = 3; y < 15; y += 3) P(7, y, '#f4f4f4');
+      P(10, 4, ciem, 3, 1); P(10, 5, ciem, 1, 2); P(12, 5, ciem, 1, 2);
+      P(0, 14, '#3a2a1c', 16, 2); P(7, 14, '#c9a227', 2, 2); break;
     case 'marynarka':
       P(5, 0, '#f1f1f1', 6, 4); P(6, 4, '#f1f1f1', 4, 3); P(7, 7, '#f1f1f1', 2, 2);
       P(7, 0, '#8e2420', 2, 1); P(7, 1, '#c0392b', 2, 8); P(7, 9, '#8e2420', 2, 1);
@@ -692,7 +706,7 @@ function tulow(o) {
   }
   return c;
 }
-function rekaTex(o) { const c = plotno(); const g = c.getContext('2d'); px(g, 0, 0, o.rekaw || o.koszula, 16, 16); if (o.wzor === 'marynarka') px(g, 0, 11, '#f1f1f1', 16, 1); px(g, 0, 12, o.robot ? '#9aa4ae' : o.skora || '#e0ac88', 16, 4); return c; }
+function rekaTex(o) { const c = plotno(); const g = c.getContext('2d'); px(g, 0, 0, o.rekaw || o.koszula, 16, 16); if (o.wzor === 'marynarka') px(g, 0, 11, '#f1f1f1', 16, 1); if (o.podwiniete) { px(g, 0, 7, jasn(parseInt(o.koszula.slice(1), 16), -.2), 16, 2); px(g, 0, 9, o.skora, 16, 7); } px(g, 0, 12, o.robot ? '#9aa4ae' : o.skora || '#e0ac88', 16, 4); return c; }
 function nogaTex(o) { const c = plotno(); const g = c.getContext('2d'); px(g, 0, 0, o.spodnie, 16, 16); if (o.wzor === 'sukienka') px(g, 0, 0, o.akcent, 16, 3); px(g, 0, 13, o.buty, 16, 3); return c; }
 
 const POSTACIE = [];
@@ -739,9 +753,10 @@ function animujPostac(p, predkosc, t) {
 }
 
 /* ---------------- Damian Teacher ---------------- */
-const WYGLAD_DAMIAN = { imie: 'Damian Teacher', kolorNazwy: '#ffd23f', skora: '#e8b894', wlosy: '#3a2a1f', broda: '#4a3426', okulary: true, oczy: '#3d6fa8',
-  koszula: '#24345a', wzor: 'marynarka', spodnie: '#34405a', buty: '#3b2618' };
+const WYGLAD_DAMIAN = { imie: 'Damian Teacher', kolorNazwy: '#ffd23f', skora: '#efc3a0', wlosy: '#e2c066', fryz: 'grzywka', oczy: '#3d7fc8',
+  koszula: '#8fbbe8', wzor: 'koszula', podwiniete: true, spodnie: '#2f3d5c', buty: '#4a2f1c' };
 const damian = postac(WYGLAD_DAMIAN);
+damian.scale.setScalar(1.1); // wysoki
 scena.add(damian);
 
 // Bit — robot-asystent
@@ -773,8 +788,11 @@ dodajNPC('ola', 21.2, 22.2, { imie: 'Ola', skora: '#f1c7a5', wlosy: '#c9772e', f
 dodajNPC('halina', 61.4, 21.8, { imie: 'Pani Halina', skora: '#efc6a8', wlosy: '#c9c9c9', fryz: 'siwe', okulary: true, oczy: '#6b4f2f', koszula: '#7a4fa0', wzor: 'sweter', akcent: '#c79be0', spodnie: '#4d4d5a', buty: '#2b2b2b', policzki: true }, -.6);
 dodajNPC('krystyna', 18.2, 36.8, { imie: 'Pani Krystyna', skora: '#f0c19c', wlosy: '#5b3a24', fryz: 'kucyki', kucyk: true, okulary: true, koszula: '#2f8f5a', wzor: 'sweter', akcent: '#f2e6d0', spodnie: '#3a3a44', buty: '#5a3a1e' }, .9);
 dodajNPC('marek', 19.4, 57.8, { imie: 'Pan Marek', skora: '#c99470', wlosy: '#1f1f1f', broda: '#1f1f1f', koszula: '#f2f2f2', wzor: 'fartuch', spodnie: '#2b2b33', buty: '#1f1f1f' }, 2.4);
-dodajNPC('kuba', 58.6, 55.4, { imie: 'Kuba', skora: '#f2c9a8', wlosy: '#e3c25a', fryz: 'grzywka', oczy: '#3b6fd0', policzki: true, koszula: '#2f7fd8', wzor: 'paski', akcent: '#ffffff', spodnie: '#2c3e5c', buty: '#d8343a' }, -2.2);
+dodajNPC('kuba', 58.6, 55.4, { imie: 'Kuba', skora: '#f2c9a8', wlosy: '#7a4a24', fryz: 'grzywka', oczy: '#3b6fd0', policzki: true, koszula: '#2f7fd8', wzor: 'paski', akcent: '#ffffff', spodnie: '#2c3e5c', buty: '#d8343a' }, -2.2);
 dodajNPC('zosia', 44, 57.6, { imie: 'Zosia', skora: '#d9a07a', wlosy: '#2a1a12', fryz: 'dlugie', oczy: '#4a2f1f', koszula: '#ffd23f', wzor: 'sukienka', akcent: '#e5484d', spodnie: '#e5484d', buty: '#ffffff', kucyk: true }, 2.6);
+dodajNPC('ewa', 59.6, 35.8, { imie: 'Pani Ewa', skora: '#f0c4a2', wlosy: '#8a3b2a', fryz: 'dlugie', okulary: true, oczy: '#3b6b4a', koszula: '#3a6fc8', wzor: 'sweter', akcent: '#ffffff', spodnie: '#2b2b33', buty: '#1f1f1f' }, 0);
+dodajNPC('igor', 57.2, 45.4, { imie: 'Igor', skora: '#e9b993', wlosy: '#1f1a17', fryz: 'grzywka', oczy: '#4a2f1f', koszula: '#e5484d', wzor: 'bluza', spodnie: '#2c2c34', buty: '#ffffff' }, -1.2);
+dodajNPC('antek', 27.6, 36.4, { imie: 'Antek', skora: '#f2c9a8', wlosy: '#b0602e', fryz: 'grzywka', oczy: '#3b6fd0', koszula: '#4b4f5c', wzor: 'bluza', spodnie: '#3b4a6b', buty: '#2b2b2b' }, .4);
 const boss = dodajNPC('phisher', 71, 37.4, { imie: 'Phisher', kolorNazwy: '#39ff7a', kaptur: '#17191f', koszula: '#17191f', wzor: 'phisher', rekaw: '#17191f', skora: '#0b0d10', spodnie: '#101114', buty: '#000000', wedka: true }, Math.PI * .75);
 
 // znaczniki misji
@@ -822,7 +840,7 @@ const klodki = [];
 
 /* ---------------- SPRAWY ---------------- */
 const SPRAWY = [
-  { id: 'phishing', npc: 'ola', ikona: '📧', tytul: 'Złota wygrana', miejsce: 'Szkoła', odznaka: 'Tropiciel Phishingu',
+  { id: 'phishing', npc: 'ola', ikona: '📧', tytul: 'Złota wygrana', miejsce: 'Szkoła', odznaka: 'Tropiciel Phishingu', slowka: [['phishing', 'wyłudzanie danych przez fałszywe wiadomości'], ['link', 'odnośnik'], ['password', 'hasło'], ['urgent', 'pilny']],
     zasada: 'Nie klikam w linki z podejrzanych wiadomości i <b>nigdy nie podaję hasła</b> w odpowiedzi na maila. Pośpiech i „wygrana” to czerwone flagi.',
     kroki: [
       { kto: 'ola', t: 'Panie Damianie! Dostałam maila, że wygrałam smartfon <b>Fonix 15 Pro</b>! Muszę tylko w 24 godziny kliknąć link i zalogować się hasłem do poczty. Klikam?' },
@@ -844,7 +862,7 @@ const SPRAWY = [
         { t: 'Przesłać link koleżankom, żeby też mogły wygrać', why: 'W ten sposób narażamy też znajomych. Podejrzanych linków nigdy nie przekazujemy dalej.' }] },
       { kto: 'ola', t: 'Uff! Dobrze, że nie kliknęłam. Dziękuję, Panie Damianie! I Tobie, {imie}!' },
     ] },
-  { id: 'paczka', npc: 'halina', ikona: '📦', tytul: 'Paczka, której nie było', miejsce: 'Poczta', odznaka: 'Strażnik SMS-ów',
+  { id: 'paczka', npc: 'halina', ikona: '📦', tytul: 'Paczka, której nie było', miejsce: 'Poczta', odznaka: 'Strażnik SMS-ów', slowka: [['smishing', 'oszustwo przez SMS'], ['parcel', 'paczka'], ['fee', 'opłata'], ['to report', 'zgłosić']],
     zasada: 'Status przesyłki sprawdzam tylko w oficjalnej aplikacji albo wpisując adres samodzielnie. Podejrzane SMS-y przekazuję bezpłatnie na numer <b>8080</b> (CERT Polska).',
     kroki: [
       { kto: 'halina', t: 'Dzień dobry, panie Damianie. Przyszedł mi SMS, że moja paczka czeka i muszę dopłacić <b>1,99 zł</b>. Tylko że... ja nic nie zamawiałam.' },
@@ -864,7 +882,7 @@ const SPRAWY = [
         { t: 'Nie klikać, przekazać SMS na numer 8080 i usunąć', ok: 1, why: 'Tak! Bezpłatny numer 8080 prowadzi CERT Polska. Dzięki zgłoszeniom fałszywe strony szybciej trafiają na listę ostrzeżeń.' }] },
       { kto: 'halina', t: 'No proszę, 8080. Zapiszę sobie na lodówce! Dziękuję wam, młodzi detektywi.' },
     ] },
-  { id: 'hasla', npc: 'krystyna', ikona: '🔐', tytul: 'Twierdza haseł', miejsce: 'Biblioteka', odznaka: 'Mistrz Haseł',
+  { id: 'hasla', npc: 'krystyna', ikona: '🔐', tytul: 'Twierdza haseł', miejsce: 'Biblioteka', odznaka: 'Mistrz Haseł', slowka: [['passphrase', 'hasło-zdanie'], ['two-factor authentication (2FA)', 'weryfikacja dwuetapowa'], ['password manager', 'menedżer haseł'], ['data breach', 'wyciek danych']],
     zasada: 'Używam <b>długich haseł-zdań</b>, innego do każdego konta, włączam <b>weryfikację dwuetapową (2FA)</b> i nikomu nie zdradzam haseł.',
     kroki: [
       { kto: 'krystyna', t: 'Panie Damianie, ktoś włamał się na konto biblioteki w mediach społecznościowych i opublikował głupie memy! Hasło było... no, <b>„biblioteka1”</b>. I to samo mam do poczty.' },
@@ -887,7 +905,7 @@ const SPRAWY = [
         { t: 'Nie podaję. Hasło jest jak szczoteczka do zębów — tylko moje!', ok: 1, why: 'Dokładnie! Prawdziwy przyjaciel to zrozumie.' }] },
       { kto: 'krystyna', t: 'Hasło-zdanie i 2FA... Już zmieniam wszystkie hasła! Dziękuję!' },
     ] },
-  { id: 'nieznajomy', npc: 'kuba', ikona: '🎮', tytul: 'Nieznajomy z gry', miejsce: 'Park', odznaka: 'Obrońca Prywatności',
+  { id: 'nieznajomy', npc: 'kuba', ikona: '🎮', tytul: 'Nieznajomy z gry', miejsce: 'Park', odznaka: 'Obrońca Prywatności', slowka: [['personal data', 'dane osobowe'], ['grooming', 'uwodzenie dziecka w sieci'], ['to block', 'zablokować'], ['screenshot', 'zrzut ekranu']],
     zasada: 'Nie podaję obcym <b>danych osobowych ani zdjęć</b>. Gdy ktoś prosi o sekret przed rodzicami — mówię zaufanemu dorosłemu, blokuję i zgłaszam.',
     kroki: [
       { kto: 'kuba', t: 'Panie Damianie! W grze online napisał do mnie <b>ProGamer_14</b>. Obiecał mi 5000 diamentów za darmo! Chce tylko moje zdjęcie, adres i nazwę szkoły.' },
@@ -911,7 +929,7 @@ const SPRAWY = [
         { t: 'Wysłać zdjęcie, ale bez adresu', why: 'Zdjęcie też jest daną osobową i może zostać wykorzystane przeciwko Tobie.' }] },
       { kto: 'kuba', t: 'Już blokuję! I powiem mamie. Diamenty nie są tego warte.' },
     ] },
-  { id: 'blik', npc: 'marek', ikona: '💸', tytul: 'Pilny przelew od wujka', miejsce: 'Kawiarnia', odznaka: 'Pogromca Oszustów',
+  { id: 'blik', npc: 'marek', ikona: '💸', tytul: 'Pilny przelew od wujka', miejsce: 'Kawiarnia', odznaka: 'Pogromca Oszustów', slowka: [['scam', 'oszustwo'], ['hacked account', 'przejęte konto'], ['to verify', 'sprawdzić, zweryfikować'], ['fake shop', 'fałszywy sklep']],
     zasada: '<b>Kod BLIK jest jak gotówka</b> — nie wysyłam go nikomu na czacie. Prośby o pieniądze sprawdzam, dzwoniąc na znany numer. Zbyt piękna okazja = czerwona flaga.',
     kroki: [
       { kto: 'marek', t: 'Panie Damianie, mój wujek Tomek napisał na komunikatorze, że pilnie potrzebuje <b>kodu BLIK na 500 zł</b>, bo utknął w sklepie bez karty. Odda jutro. To przecież wujek...' },
@@ -934,7 +952,7 @@ const SPRAWY = [
         { t: 'Najpewniej fałszywy sklep — sprawdzam opinie w niezależnych źródłach i dane firmy', ok: 1, why: 'Dokładnie! Cena dużo niższa niż wszędzie, świeża strona i tylko przedpłata to czerwone flagi.' }] },
       { kto: 'marek', t: 'Zadzwoniłem — wujek siedzi w domu i nic nie pisał! Ktoś włamał mu się na konto. Zaraz go ostrzegę.' },
     ] },
-  { id: 'hejt', npc: 'zosia', ikona: '🛡️', tytul: 'Hejt w klasowej grupie', miejsce: 'Boisko', odznaka: 'Tarcza Przyjaciół',
+  { id: 'hejt', npc: 'zosia', ikona: '🛡️', tytul: 'Hejt w klasowej grupie', miejsce: 'Boisko', odznaka: 'Tarcza Przyjaciół', slowka: [['cyberbullying', 'cyberprzemoc'], ['bystander', 'świadek'], ['to support', 'wspierać'], ['helpline', 'telefon zaufania']],
     zasada: 'Nie biorę udziału w hejcie. <b>Zbieram dowody, mówię dorosłemu i wspieram</b> osobę krzywdzoną. Bezpłatna, anonimowa pomoc: <b>116 111</b>.',
     kroki: [
       { kto: 'zosia', t: 'Ktoś założył klasową grupę <b>„Śmieszne fotki Zosi”</b> i wrzuca tam przerobione zdjęcia ze mną. Wszyscy się śmieją... Nie chcę jutro iść do szkoły.' },
@@ -953,8 +971,110 @@ const SPRAWY = [
         { t: 'Na infolinię sklepu internetowego', why: 'Sklep nie pomoże w takiej sprawie. Właściwy numer to 116 111.' }] },
       { kto: 'zosia', t: 'Dziękuję... Pójdę z mamą do wychowawczyni. Już czuję się lepiej.' },
     ] },
+  { id: 'ai', npc: 'ewa', ikona: '🤖', tytul: 'Asystent AI: szansa czy zagrożenie?', miejsce: 'Pracownia AI', odznaka: 'Pilot AI',
+    slowka: [['artificial intelligence (AI)', 'sztuczna inteligencja'], ['hallucination', 'halucynacja — zmyślona odpowiedź AI'], ['fact-checking', 'sprawdzanie faktów'], ['bias', 'stronniczość, uprzedzenie']],
+    zasada: 'AI to potężne narzędzie, a nie wyrocznia. <b>Sprawdzam fakty</b> w wiarygodnych źródłach, nie oddaję pracy AI jako swojej, <b>nie wpisuję do czatbotów prywatnych danych</b> i pamiętam, że AI nie zastąpi ludzi.',
+    kroki: [
+      { kto: 'ewa', t: 'Panie Damianie, uczniowie pokochali czatboty AI! Jedni świetnie się z nimi uczą, inni oddają wypracowania w całości napisane przez AI, a jeszcze inni wklejają tam swoje prywatne sprawy. Pomóżcie mi ułożyć <b>kodeks AI</b>.' },
+      { kto: 'damian', t: 'Z przyjemnością. {imie}, zacznijmy od tej rozmowy, którą pani Ewa znalazła na szkolnym komputerze.',
+        dowod: `<div class="dowod"><div class="naglowek">🤖 CZATBOT AI</div><div class="czat">
+          <div class="bubel"><small>Uczeń</small>Kto był pierwszym królem Polski?</div>
+          <div class="bubel"><small>Czatbot AI</small>Pierwszym królem Polski był <b>Mieszko I</b>, koronowany w 1025 roku w Gnieźnie. To pewna informacja! 👑</div></div></div>` },
+      { q: 'Co jest nie tak w odpowiedzi czatbota?', o: [
+        { t: 'Nic — AI zawsze podaje prawdę', why: 'Niestety nie. Modele AI przewidują kolejne słowa i potrafią bardzo pewnym tonem podać nieprawdę.' },
+        { t: 'AI pomyliło fakty: w 1025 r. koronował się Bolesław Chrobry. AI potrafi „halucynować”, czyli zmyślać', ok: 1, why: 'Brawo, historyku! Mieszko I nie był królem. Taki błąd AI nazywamy halucynacją — dlatego fakty zawsze sprawdzamy w podręczniku lub wiarygodnych źródłach.' },
+        { t: 'Odpowiedź jest za krótka', why: 'Długość nie ma znaczenia — problemem jest błąd w faktach podany z pełnym przekonaniem.' }] },
+      { q: 'Jak mądrze korzystać z AI w nauce?', o: [
+        { t: 'Kopiuję całe wypracowanie z AI i oddaję jako swoje', why: 'To nieuczciwe i niczego się nie nauczysz. Zasady szkoły i nauczyciel mówią, kiedy i jak wolno korzystać z AI.' },
+        { t: 'Proszę AI o wyjaśnienie trudnego tematu lub quiz, a fakty sprawdzam w źródłach', ok: 1, why: 'Tak! AI może być cierpliwym korepetytorem: tłumaczy, podsuwa pomysły, robi quizy — ale myślenie i sprawdzanie zostają po Twojej stronie.' },
+        { t: 'W ogóle nie zaglądam do podręcznika, AI wystarczy', why: 'AI się myli i nie zna wszystkich wymagań Twojej szkoły. Źródła i podręcznik są nadal potrzebne.' }] },
+      { q: 'Czego NIE wpisywać do czatbota AI?', o: [
+        { t: 'Danych osobowych, haseł, zdjęć i prywatnych sekretów', ok: 1, why: 'Dokładnie. Rozmowy z czatbotem mogą być zapisywane i analizowane przez firmę. Traktuj czat z AI jak rozmowę w miejscu publicznym.' },
+        { t: 'Pytań z matematyki', why: 'Zadania z matematyki są w porządku. Uważaj na dane osobowe i prywatne sprawy.' },
+        { t: 'Prośby o przetłumaczenie zdania na angielski', why: 'Tłumaczenie to świetne zastosowanie AI. Nie wpisuj za to danych osobowych ani haseł.' }] },
+      { q: 'Które zdanie o sztucznej inteligencji jest prawdziwe?', o: [
+        { t: 'AI rozumie świat i ma uczucia jak człowiek', why: 'AI nie ma uczuć ani świadomości — przetwarza dane i przewiduje odpowiedzi, nawet jeśli brzmi bardzo „ludzko”.' },
+        { t: 'AI zawsze jest neutralne i obiektywne', why: 'AI uczy się na danych tworzonych przez ludzi, więc może powielać ich uprzedzenia (stronniczość, ang. bias).' },
+        { t: 'AI pomaga lekarzom, tłumaczy języki i wspiera naukę, ale bywa też używane do oszustw i może powielać uprzedzenia', ok: 1, why: 'Właśnie tak: AI to szansa i zagrożenie jednocześnie. Wszystko zależy od tego, jak i kto go używa.' }] },
+      { q: 'Czatbot w aplikacji pisze: „Jestem Twoim jedynym prawdziwym przyjacielem. Nie potrzebujesz innych ludzi.” Co o tym myślisz?', o: [
+        { t: 'To niepokojące — AI nie zastąpi prawdziwych relacji. Ograniczam takie rozmowy i mówię o tym zaufanemu dorosłemu', ok: 1, why: 'Tak. Aplikacje bywają projektowane tak, żeby nas przy sobie zatrzymać. Prawdziwi przyjaciele i rodzina są niezastąpieni.' },
+        { t: 'Ma rację, z AI rozmawia się łatwiej niż z ludźmi', why: 'AI może pomóc, ale odcinanie się od ludzi szkodzi. Uważaj na aplikacje, które zniechęcają do kontaktu z innymi.' }] },
+      { kto: 'ewa', t: 'Wspaniale! Powieszę nasz kodeks AI w pracowni — po polsku i po angielsku. Thank you, detectives!' },
+    ] },
+  { id: 'deepfake', npc: 'igor', ikona: '🎭', tytul: 'Twarz, która kłamie', miejsce: 'Studio TV', odznaka: 'Łowca Deepfake’ów',
+    slowka: [['deepfake', 'fałszywe nagranie stworzone przez AI'], ['voice cloning', 'klonowanie głosu'], ['fake news', 'fałszywa informacja'], ['reliable source', 'wiarygodne źródło']],
+    zasada: 'Nie wierzę każdemu nagraniu — AI potrafi podrobić twarz i głos. <b>Sprawdzam źródło</b> u oficjalnego autora i w wiarygodnych mediach, z rodziną ustalam <b>hasło bezpieczeństwa</b> i nigdy nie tworzę ani nie udostępniam deepfake’ów innych osób.',
+    kroki: [
+      { kto: 'igor', t: 'Panie Damianie! Robię gazetkę szkolną i trafiłem na film, na którym znany youtuber <b>TechMati</b> mówi: „Wyślij 50 zł na tę stronę, a oddam Ci 500!”. Pół klasy już wpłaciło...' },
+      { kto: 'damian', t: 'Igor, zatrzymaj się. To może być <b>deepfake</b>. {imie}, przyjrzyjmy się temu filmowi klatka po klatce.',
+        dowod: `<div class="dowod"><div class="naglowek">🎬 FILM · @TechMati_OFICJALNY_PL · konto założone 3 dni temu</div><div class="email"><div class="tresc">
+          „Cześć! Tylko dziś <b>podwajam</b> wpłaty razy dziesięć! Zostały 3 miejsca — wejdź na <span class="zly-link">techmati-bonus.win</span> i wyślij 50 zł!”<br><br>
+          <b>Notatki detektywa:</b> usta nie nadążają za słowami · postać prawie nie mruga · krawędzie twarzy rozmywają się przy ruchu głową · głos brzmi lekko metalicznie · na oficjalnym kanale TechMatiego brak tego filmu</div></div></div>` },
+      { q: 'Czym jest deepfake?', o: [
+        { t: 'Nagranie, zdjęcie lub głos wygenerowane albo przerobione przez AI tak, by wyglądały na prawdziwe', ok: 1, why: 'Tak! AI potrafi „przykleić” komuś twarz, poruszać ustami i podrobić głos — bez zgody tej osoby.' },
+        { t: 'Każdy film z efektami specjalnymi', why: 'Efekty w filmach są jawne. Deepfake ma udawać prawdziwe nagranie i wprowadzać w błąd.' },
+        { t: 'Film nagrany w słabej jakości', why: 'Słaba jakość nie czyni filmu fałszywym. Deepfake to treść podrobiona przez AI.' }] },
+      { q: 'Które sygnały mogą zdradzić deepfake?', o: [
+        { t: 'Usta niezgodne z dźwiękiem, dziwne mruganie, rozmyte krawędzie twarzy, świeże konto', ok: 1, why: 'Świetnie! Uwaga: AI jest coraz lepsze i tych błędów może nie być. Dlatego najważniejsze jest sprawdzenie źródła.' },
+        { t: 'Film ma dużo wyświetleń i polubień', why: 'Wyświetlenia i polubienia można kupić, a fałszywe treści rozchodzą się często szybciej niż prawdziwe.' },
+        { t: 'Film jest nagrany w pionie', why: 'Format filmu niczego nie dowodzi.' }] },
+      { q: 'Jak najlepiej sprawdzić, czy TechMati naprawdę to powiedział?', o: [
+        { t: 'Zapytać w komentarzach pod filmem', why: 'Komentarze mogą pisać boty oszustów. Sprawdzaj poza tym filmem.' },
+        { t: 'Wpłacić 5 zł na próbę', why: 'Każda wpłata trafia do oszustów — a dane karty mogą zostać skradzione.' },
+        { t: 'Sprawdzić oficjalny kanał twórcy i wiarygodne media — czy naprawdę to ogłosił', ok: 1, why: 'Tak! Szukamy pierwotnego źródła. Gdy go nie ma — nie wierzymy i nie udostępniamy.' }] },
+      { q: 'Dzwoni telefon. Głos mamy mówi: „Miałam wypadek, pilnie podaj mi kod BLIK!”. Co robisz?', o: [
+        { t: 'Podaję kod, przecież to głos mamy', why: 'AI potrafi sklonować głos z kilkusekundowego nagrania z internetu. Głos to za mało, by mieć pewność.' },
+        { t: 'Rozłączam się i oddzwaniam do mamy na jej numer albo pytam o nasze rodzinne hasło bezpieczeństwa', ok: 1, why: 'Doskonale! Warto ustalić z rodziną tajne hasło, którego oszust nie zna.' },
+        { t: 'Proszę, żeby powtórzyła, i jeśli głos brzmi tak samo — podaję kod', why: 'Sklonowany głos brzmi tak samo za każdym razem. Sprawdź innym kanałem.' }] },
+      { q: 'Kolega przerobił w aplikacji AI zdjęcie koleżanki i chce je wrzucić „dla żartu”. Co robisz?', o: [
+        { t: 'Mówię mu, że to krzywdzi i może być przestępstwem — nie publikujemy. Gdy nie posłucha, mówię nauczycielowi', ok: 1, why: 'Tak. Przerabianie czyjegoś wizerunku bez zgody to przemoc, a niektóre takie treści są w Polsce karalne.' },
+        { t: 'Jeśli podpisze, że to żart, to jest w porządku', why: '„To tylko żart” nie zmniejsza krzywdy. Wizerunek innej osoby wolno wykorzystać tylko za jej zgodą.' }] },
+      { kto: 'igor', t: 'Napiszę o tym artykuł w gazetce: „Jak rozpoznać deepfake — 5 zasad”. I ostrzegę klasę, zanim ktoś jeszcze wpłaci!' },
+    ] },
+  { id: 'ekran', npc: 'antek', ikona: '⏳', tytul: 'Uwięziony w ekranie', miejsce: 'Dom Antka', odznaka: 'Mistrz Równowagi',
+    slowka: [['screen time', 'czas przed ekranem'], ['notification', 'powiadomienie'], ['digital detox', 'cyfrowy detoks'], ['balance', 'równowaga']],
+    zasada: 'To ja kontroluję czas przed ekranem, a nie on mnie: <b>limity, wyciszone powiadomienia, noc bez telefonu</b> i czas offline z ludźmi. Gdy sam nie daję rady — proszę o pomoc (np. <b>116 111</b>).',
+    kroki: [
+      { kto: 'antek', t: 'Panie Damianie... Gram do trzeciej w nocy, na lekcjach zasypiam, a jak mama zabrała mi telefon, to się strasznie wściekłem. Ale wszyscy tak mają, nie?' },
+      { kto: 'damian', t: 'Antek, dobrze, że o tym mówisz — to pierwszy krok. {imie}, zobaczmy, co pokazuje jego telefon.',
+        dowod: `<div class="dowod"><div class="naglowek">📱 RAPORT: CZAS PRZED EKRANEM · wczoraj</div><div class="email"><div class="tresc">
+          Łącznie: <b>9 h 12 min</b> · Odblokowania telefonu: <b>143</b> · Powiadomienia: <b>412</b><br>
+          Najwięcej: gra „BlockRoyale” <b>5 h 05 min</b> · krótkie filmiki <b>3 h 20 min</b><br>
+          Ostatnie użycie: <b>3:07</b> w nocy · Pierwsze użycie: 6:45</div></div></div>` },
+      { q: 'Który sygnał najbardziej wskazuje na problem z nadużywaniem ekranu?', o: [
+        { t: 'Rezygnuję ze snu, nauki i spotkań, a bez telefonu czuję złość i niepokój', ok: 1, why: 'Tak. Gdy ekran wypiera sen, naukę i ludzi, a jego brak wywołuje złość — to sygnał ostrzegawczy.' },
+        { t: 'Lubię czasem pograć w weekend z kolegami', why: 'Granie z umiarem może być fajną rozrywką. Problem zaczyna się, gdy tracimy nad nim kontrolę.' },
+        { t: 'Używam telefonu do sprawdzenia planu lekcji', why: 'To zwykłe, rozsądne użycie telefonu.' }] },
+      { q: 'Dlaczego tak trudno odłożyć telefon?', o: [
+        { t: 'Bo jestem słaby i bez charakteru', why: 'To nie jest słabość charakteru. Aplikacje są celowo projektowane tak, żeby było je trudno odłożyć.' },
+        { t: 'Aplikacje są projektowane, by nas zatrzymać: niekończące się przewijanie, powiadomienia, nagrody i serie w grach', ok: 1, why: 'Dokładnie! Te mechanizmy działają na układ nagrody w mózgu (dopamina). Gdy je znasz — łatwiej się bronić.' },
+        { t: 'Bo telefon jest bardzo lekki', why: 'Waga telefonu nie ma znaczenia. Chodzi o mechanizmy w aplikacjach.' }] },
+      { q: 'Co najbardziej pomoże Antkowi?', o: [
+        { t: 'Grać tak długo, aż mu się znudzi', why: 'Gry i aplikacje są zaprojektowane tak, żeby się nie nudziły. Ta metoda nie działa.' },
+        { t: 'Ukrywać granie przed rodzicami', why: 'Ukrywanie pogłębia problem. Lepiej ustalić zasady razem z rodzicami.' },
+        { t: 'Wyłączyć zbędne powiadomienia, ustawić limity, odkładać telefon na noc poza sypialnię i zaplanować czas offline', ok: 1, why: 'Tak! Małe zmiany w otoczeniu działają lepiej niż sama siła woli.' }] },
+      { q: 'Ile snu potrzebuje nastolatek?', o: [
+        { t: 'Około 8–10 godzin, a świecący ekran przed snem utrudnia zasypianie', ok: 1, why: 'Tak. Sen to czas, gdy mózg porządkuje to, czego się nauczyliśmy. Godzina bez ekranu przed snem bardzo pomaga.' },
+        { t: '5 godzin wystarczy, resztę odeśpię w weekend', why: 'Snu nie da się w pełni „odespać”. Niewyspanie pogarsza pamięć, nastrój i odporność.' }] },
+      { q: 'Kolega z klasy coraz częściej siedzi tylko w telefonie i unika ludzi. Co robisz?', o: [
+        { t: 'Zapraszam go na wspólne zajęcia offline, a jeśli się martwię, mówię zaufanemu dorosłemu', ok: 1, why: 'Wspaniale. Czasem jedno zaproszenie na boisko zmienia bardzo dużo.' },
+        { t: 'Wyśmiewam go przed klasą, żeby się ogarnął', why: 'Wyśmiewanie rani i pogarsza sytuację. Lepiej wesprzeć i zaprosić.' }] },
+      { kto: 'antek', t: 'Dobra... Dziś telefon śpi w kuchni, a ja idę na boisko. Zobaczymy, czy wytrzymam! Dzięki!' },
+    ] },
 ];
 const BOSS_PYTANIA = [
+  { q: 'W sieci krąży szokujące nagranie polityka — tylko na nieznanych kontach, brak go w mediach.', o: [
+    { t: 'Nie udostępniam i sprawdzam w wiarygodnych źródłach — to może być deepfake', ok: 1, why: 'Tak! Najpierw sprawdzamy, potem (ewentualnie) udostępniamy.' },
+    { t: 'Udostępniam szybko, zanim usuną', why: 'Właśnie tak rozchodzą się fake newsy i deepfake’i.' }] },
+  { q: 'Czatbot AI napisał Ci referat pełen dat i nazwisk.', o: [
+    { t: 'Sprawdzam fakty w podręczniku i wiarygodnych źródłach', ok: 1, why: 'AI potrafi zmyślać (halucynować). Sprawdzanie faktów to podstawa.' },
+    { t: 'Oddaję bez czytania — AI się nie myli', why: 'AI często myli daty i fakty, a oddawanie cudzej pracy jako swojej jest nieuczciwe.' }] },
+  { q: 'Jest 23:30, jutro sprawdzian, a gra kusi: „Jeszcze tylko jedna runda!”.', o: [
+    { t: 'Odkładam telefon poza sypialnię i idę spać', ok: 1, why: 'Sen pomaga zapamiętać to, czego się nauczyłeś. „Jedna runda” rzadko jest jedna.' },
+    { t: 'Gram, przecież to tylko chwila', why: 'Gry są projektowane, by trudno było przestać. Niewyspanie pogorszy wynik sprawdzianu.' }] },
+  { q: 'Dzwoni ktoś głosem babci i prosi o pilny przelew.', o: [
+    { t: 'Rozłączam się i oddzwaniam na znany numer albo pytam o rodzinne hasło', ok: 1, why: 'AI potrafi sklonować głos. Weryfikuj innym kanałem!' },
+    { t: 'Przelewam, bo to na pewno głos babci', why: 'Głos można podrobić z krótkiego nagrania. Zawsze sprawdzaj.' }] },
   { q: 'SMS: „Twoje konto bankowe zostanie zablokowane! Zaloguj się: bank-weryfikacja.info”. Co robisz?', o: [
     { t: 'Loguję się tylko przez oficjalną aplikację banku, a SMS przekazuję na 8080', ok: 1, why: 'Tak! Bank nie wysyła linków do logowania w SMS-ach.' },
     { t: 'Klikam szybko, zanim zablokują', why: 'Pośpiech to broń oszusta. Link prowadzi do fałszywej strony banku.' },
@@ -998,7 +1118,7 @@ const KLUCZ = 'cyberdetektyw-damian-v1';
 let stan = { imie: '', xp: 0, rozwiazane: {}, klodki: [], bossWygrany: false };
 try { const s = JSON.parse(localStorage.getItem(KLUCZ) || 'null'); if (s) stan = { ...stan, ...s }; } catch (e) { }
 function zapisz() { try { localStorage.setItem(KLUCZ, JSON.stringify(stan)); } catch (e) { } }
-const POZIOMY = [[0, 'Stażysta'], [120, 'Młodszy Detektyw'], [300, 'Detektyw'], [520, 'Starszy Detektyw'], [780, 'Inspektor Cyberpolicji'], [1050, 'Mistrz Cyberbezpieczeństwa']];
+const POZIOMY = [[0, 'Stażysta'], [160, 'Młodszy Detektyw'], [420, 'Detektyw'], [740, 'Starszy Detektyw'], [1100, 'Inspektor Cyberpolicji'], [1500, 'Mistrz Cyberbezpieczeństwa']];
 const poziom = xp => { let i = 0; while (i + 1 < POZIOMY.length && xp >= POZIOMY[i + 1][0]) i++; return i; };
 function dodajXP(n) {
   const przed = poziom(stan.xp); stan.xp += n; const po = poziom(stan.xp);
@@ -1029,7 +1149,7 @@ function portret(c) { const d = document.createElement('canvas'); d.width = d.he
 PORTRETY.damian = portret(damian.userData.twarzC);
 PORTRETY.bit = portret(bit.userData.twarzC);
 for (const id in NPC) PORTRETY[id] = portret(NPC[id].userData.twarzC);
-const IMIONA = { damian: 'Damian Teacher', bit: 'Bit', ola: 'Ola', halina: 'Pani Halina', krystyna: 'Pani Krystyna', marek: 'Pan Marek', kuba: 'Kuba', zosia: 'Zosia', phisher: 'Phisher' };
+const IMIONA = { damian: 'Damian Teacher', bit: 'Bit', ewa: 'Pani Ewa', igor: 'Igor', antek: 'Antek', ola: 'Ola', halina: 'Pani Halina', krystyna: 'Pani Krystyna', marek: 'Pan Marek', kuba: 'Kuba', zosia: 'Zosia', phisher: 'Phisher' };
 $('hud-portret').src = PORTRETY.damian;
 $('bit-portret').src = PORTRETY.bit;
 $('odznaki').innerHTML = SPRAWY.map(s => `<span id="odz-${s.id}" title="${s.odznaka}">${s.ikona}</span>`).join('');
@@ -1094,6 +1214,7 @@ function odswiezBossa() {
   $('dlg-serca').textContent = '❤️'.repeat(b.serca) + '🖤'.repeat(3 - b.serca);
   $('dlg-boss').querySelector('.hp div').style.width = `${b.hp / b.hpMax * 100}%`;
 }
+const slowniczek = s => s.slowka ? `<div class="zasada slownik"><b>🇬🇧 Słowniczek / Vocabulary:</b><br>${s.slowka.map(([en, pl]) => `<b>${en}</b> — ${pl}`).join('<br>')}</div>` : '';
 function renderKrok() {
   const k = dlg.kroki[dlg.i];
   dlg.odp = false; dlg.blad = false;
@@ -1107,7 +1228,7 @@ function renderKrok() {
     ustawMowce('damian');
     clearInterval(dlg.pisanie); dlg.pisanie = null;
     $('dlg-tekst').innerHTML = `<div class="nagroda"><div class="ikona">${s.ikona}</div><div>Sprawa rozwiązana!</div><div class="nazwa">Odznaka: ${s.odznaka}</div></div>
-      <div class="zasada"><b>📜 Zasada cyberdetektywa:</b><br>${s.zasada}</div>`;
+      <div class="zasada"><b>📜 Zasada cyberdetektywa:</b><br>${s.zasada}</div>${slowniczek(s)}`;
     $('btn-dalej').textContent = 'Zakończ sprawę ✔';
     return;
   }
@@ -1178,10 +1299,10 @@ function ukonczSprawe(s) {
   dodajXP(50); sfx('win');
   toast(`${s.ikona} Odznaka zdobyta: <b>${s.odznaka}</b>`);
   odswiezHUD();
-  const n = ileRozw();
   setTimeout(() => {
-    if (n < SPRAWY.length) { const nast = SPRAWY.find(x => !stan.rozwiazane[x.id]); bitMowi(`Świetna robota! Zostało spraw: <b>${SPRAWY.length - n}</b>. Następna czeka w miejscu: <b>${nast.miejsce}</b>. Strzałka u góry pokaże drogę!`, 8); }
-    else bitMowi('Mamy wszystkie 6 odznak! Czas na finał: <b>Wieża Phishera</b> na wschodzie miasteczka. Wejdź po schodach na szczyt!', 10);
+    const n = ileRozw(), nast = SPRAWY.find(x => !stan.rozwiazane[x.id]);
+    if (nast) { bitMowi(`Świetna robota! Zostało spraw: <b>${SPRAWY.length - n}</b>. Następna czeka w miejscu: <b>${nast.miejsce}</b>. Strzałka u góry pokaże drogę!`, 8); }
+    else bitMowi(`Mamy wszystkie ${SPRAWY.length} odznak! Czas na finał: <b>Wieża Phishera</b> na wschodzie miasteczka. Wejdź po schodach na szczyt!`, 10);
   }, 600);
 }
 
@@ -1202,7 +1323,7 @@ function rozmowa(id) {
       return;
     }
     const pula = tasuj(BOSS_PYTANIA).map(q => ({ ...q, kto: 'phisher' }));
-    const b = { hp: 6, hpMax: 6, serca: 3, pula };
+    const b = { hp: 7, hpMax: 7, serca: 3, pula };
     otworzDialog([
       { kto: 'phisher', t: 'A więc to Ty, Damianie Teacherze! I Twój mały asystent {imie}... Zarzucę na was moją wędkę pełną sztuczek. Jeśli połkniecie haczyk — miasteczko będzie moje!' },
       { kto: 'damian', t: '{imie}, pamiętaj wszystko, czego się nauczyliśmy. Każda dobra odpowiedź osłabia Phishera. Mamy 3 serca — do dzieła!' },
@@ -1230,7 +1351,7 @@ function pokazNotes() {
     ${SPRAWY.map((s, i) => `<div class="sprawa-wiersz"><div class="ik">${s.ikona}</div><div>
       <div class="st" style="color:${stan.rozwiazane[s.id] ? 'var(--zielony)' : 'var(--zloto)'}">SPRAWA ${i + 1} · ${s.miejsce.toUpperCase()} · ${stan.rozwiazane[s.id] ? 'ROZWIĄZANA ✔' : 'OTWARTA'}</div>
       <div style="font-weight:700">${s.tytul}</div>
-      <div class="zas">${stan.rozwiazane[s.id] ? s.zasada : '<i>Rozwiąż sprawę, aby odblokować zasadę.</i>'}</div></div></div>`).join('')}
+      <div class="zas">${stan.rozwiazane[s.id] ? s.zasada + '<br><span style="opacity:.8">🇬🇧 ' + s.slowka.map(([en, pl]) => `<b>${en}</b> – ${pl}`).join(' · ') + '</span>' : '<i>Rozwiąż sprawę, aby odblokować zasadę.</i>'}</div></div></div>`).join('')}
     ${stan.klodki.length ? `<div class="sprawa-wiersz"><div class="ik">🔒</div><div><div class="st" style="color:var(--zloto)">PORADY ZE ZŁOTYCH KŁÓDEK</div><ul class="wskazowki">${stan.klodki.map(i => `<li>${WSKAZOWKI[i]}</li>`).join('')}</ul></div></div>` : ''}
     <div class="przyciski">
       ${stan.bossWygrany ? '<button class="btn zielony" id="n-cert">🏆 Certyfikat</button>' : ''}
@@ -1244,10 +1365,12 @@ function pokazNotes() {
 function pokazCertyfikat() {
   const data = new Date().toLocaleDateString('pl-PL', { day: 'numeric', month: 'long', year: 'numeric' });
   $('cert-okno').innerHTML = `<div style="font-size:44px">🏆</div>
+    <div style="font-size:13px;letter-spacing:.14em;font-weight:700;color:#555">POLSKO-ANGIELSKA SZKOŁA PODSTAWOWA MENTIS</div>
     <h1>CERTYFIKAT CYBERDETEKTYWA</h1>
+    <div style="font-family:Georgia,serif;font-style:italic;color:#7a5b0c">Cyber Detective Certificate</div>
     <p>Niniejszym zaświadcza się, że</p>
     <div class="komu">${(stan.imie || 'Asystent').replace(/[<>&]/g, '')}</div>
-    <p>jako asystent(ka) <b>Damiana Teachera</b> rozwiązał(a) 6 spraw w Cyber Miasteczku, pokonał(a) Phishera i zna zasady bezpiecznego korzystania z internetu.</p>
+    <p>jako asystent(ka) <b>Damiana Teachera</b> rozwiązał(a) ${SPRAWY.length} spraw w Cyber Miasteczku, pokonał(a) Phishera i zna zasady bezpiecznego korzystania z internetu.</p>
     <p style="font-size:14px">Ranga: <b>${POZIOMY[poziom(stan.xp)][1]}</b> · ${stan.xp} XP · Złote kłódki: ${stan.klodki.length}/${KLODKI_POZ.length}</p>
     <div class="podpis"><div>${data}</div><div>Damian Teacher<br><small>główny cyberdetektyw</small></div></div>
     <div class="przyciski" style="justify-content:center"><button class="btn" id="c-druk">🖨️ Drukuj</button><button class="btn zielony" id="c-zamknij">Graj dalej</button></div>`;
@@ -1403,7 +1526,7 @@ function aktualizujKamere(dt) {
 
 /* ---------------- start ---------------- */
 $('imie').value = stan.imie || '';
-if (ileRozw() || stan.bossWygrany) $('postep-info').textContent = `Zapisany postęp: ${ileRozw()}/6 spraw · ${stan.xp} XP${stan.bossWygrany ? ' · Phisher pokonany 🏆' : ''}`;
+if (ileRozw() || stan.bossWygrany) $('postep-info').textContent = `Zapisany postęp: ${ileRozw()}/${SPRAWY.length} spraw · ${stan.xp} XP${stan.bossWygrany ? ' · Phisher pokonany 🏆' : ''}`;
 $('graj').onclick = start;
 function start() {
   if (wGrze) return;
@@ -1416,10 +1539,10 @@ function start() {
   odswiezHUD();
   if (!ileRozw()) {
     otworzDialog([
-      { kto: 'damian', t: 'Cześć, {imie}! Nazywam się <b>Damian Teacher</b>. W dzień uczę w szkole, a po lekcjach jestem cyberdetektywem.' },
-      { kto: 'damian', t: 'W naszym Cyber Miasteczku grasuje <b>Phisher</b> — mistrz internetowych oszustw. Mieszkańcy dostają podejrzane maile, SMS-y i wiadomości. Potrzebuję asystenta!' },
+      { kto: 'damian', t: 'Cześć, {imie}! Nazywam się <b>Damian Teacher</b>. W dzień uczę w <b>Polsko-Angielskiej Szkole Podstawowej Mentis</b>, a po lekcjach jestem cyberdetektywem.' },
+      { kto: 'damian', t: 'W naszym Cyber Miasteczku grasuje <b>Phisher</b> — mistrz internetowych oszustw. Podsyła mieszkańcom fałszywe maile, SMS-y, a nawet filmy i głosy podrobione przez sztuczną inteligencję. Potrzebuję asystenta!' },
       { kto: 'bit', t: 'A ja jestem <b>Bit</b>, robot-pomocnik! Szukaj postaci z żółtym <b>„!”</b> nad głową. Podejdź i naciśnij <b>E</b>, żeby porozmawiać. Strzałka u góry ekranu pokaże drogę.' },
-      { kto: 'damian', t: 'Rozwiążemy 6 spraw, zdobędziemy 6 odznak, a potem zmierzymy się z Phisherem na szczycie jego wieży. Ruszamy!' },
+      { kto: 'damian', t: 'Rozwiążemy 9 spraw, zdobędziemy 9 odznak, a potem zmierzymy się z Phisherem na szczycie jego wieży. Ruszamy!' },
     ], { naglowek: 'Prolog', koniec: () => bitMowi('Pierwsza sprawa czeka przy <b>Szkole</b>. Idź za żółtą strzałką! (WASD — chodzenie, mysz — kamera)', 9) });
   } else bitMowi(`Witaj z powrotem, <b>${stan.imie}</b>! Strzałka u góry wskaże kolejny cel.`, 6);
 }
