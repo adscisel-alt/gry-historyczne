@@ -1,0 +1,1691 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Obrońca Korony</title>
+<style>
+  html,body{margin:0;height:100%;background:#000;overflow:hidden}
+  body{display:flex;flex-direction:column;align-items:center;justify-content:center;
+    touch-action:none;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+  canvas{display:block;image-rendering:pixelated;image-rendering:crisp-edges;cursor:pointer;touch-action:none}
+  #pad{display:none;gap:8px;margin-top:8px}
+  #pad button{font:bold 15px monospace;background:#4a4a4a;color:#fff;border:2px solid #b2b2b2;border-radius:6px;
+    min-width:66px;height:54px;touch-action:none;-webkit-user-select:none;user-select:none}
+  #pad button:active{background:#2e2c9b}
+  #back{position:fixed;top:4px;left:8px;color:#7b7b7b;font:12px monospace;text-decoration:none;z-index:2}
+  #back:hover{color:#b2b2b2}
+</style>
+</head>
+<body>
+<a id="back" href="./index.html">&larr; spis gier</a>
+<canvas id="c" width="320" height="200" aria-label="Obrońca Korony — gra"></canvas>
+<div id="pad">
+  <button data-k="ArrowLeft">&#9664;</button><button data-k="ArrowRight">&#9654;</button>
+  <button data-k="ArrowUp">TARCZA</button><button data-k=" ">MIECZ</button>
+</div>
+<script>
+'use strict';
+/* =====================================================================
+   OBROŃCA KORONY — remake w hołdzie dla „Defender of the Crown”
+   (Cinemaware 1986, wersja Commodore 64 — Mirrorsoft/Mindscape 1987).
+   Cała grafika rysowana jest kodem w palecie C64, muzyka jest autorska.
+   ===================================================================== */
+const W = 320, H = 200;
+const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+ctx.imageSmoothingEnabled = false;
+const pad = document.getElementById('pad');
+
+// Paleta Commodore 64 (wariant „Pepto”)
+const PAL = ['#000000','#ffffff','#813338','#75cec8','#8e3c97','#56ac4d','#2e2c9b','#edf171',
+             '#8e5029','#553800','#c46c71','#4a4a4a','#7b7b7b','#a9ff9f','#706deb','#b2b2b2'];
+
+const rnd = (a, b) => a + Math.random() * (b - a);
+const ri = (a, b) => Math.floor(rnd(a, b + 1));
+const pick = a => a[Math.floor(Math.random() * a.length)];
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+function R(x, y, w, h, c) {
+  const x0 = Math.round(x), y0 = Math.round(y);
+  const w0 = Math.round(x + w) - x0, h0 = Math.round(y + h) - y0;
+  if (w0 <= 0 || h0 <= 0) return;
+  ctx.fillStyle = PAL[c]; ctx.fillRect(x0, y0, w0, h0);
+}
+function line(x0, y0, x1, y1, c, th = 1) {
+  x0 = Math.round(x0); y0 = Math.round(y0); x1 = Math.round(x1); y1 = Math.round(y1);
+  const dx = Math.abs(x1 - x0), dy = -Math.abs(y1 - y0), sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1;
+  let err = dx + dy, n = 0;
+  ctx.fillStyle = PAL[c];
+  while (n++ < 2000) {
+    ctx.fillRect(x0 - (th >> 1), y0 - (th >> 1), th, th);
+    if (x0 === x1 && y0 === y1) break;
+    const e2 = 2 * err;
+    if (e2 >= dy) { err += dy; x0 += sx; }
+    if (e2 <= dx) { err += dx; y0 += sy; }
+  }
+}
+function disc(cx, cy, r, c) {
+  for (let y = -r; y <= r; y++) {
+    const w = Math.round(Math.sqrt(Math.max(0, r * r - y * y)));
+    R(cx - w, cy + y, w * 2 + 1, 1, c);
+  }
+}
+function SP(rows, x, y, map, flip) {
+  for (let j = 0; j < rows.length; j++) {
+    const r = rows[j];
+    for (let i = 0; i < r.length; i++) {
+      const c = map[r[i]];
+      if (c === undefined) continue;
+      R(x + (flip ? r.length - 1 - i : i), y + j, 1, 1, c);
+    }
+  }
+}
+
+/* ---------------- czcionka 5x7 z polskimi znakami ---------------- */
+const FONT_SRC = {
+A:'.###.|#...#|#...#|#####|#...#|#...#|#...#', B:'####.|#...#|#...#|####.|#...#|#...#|####.',
+C:'.###.|#...#|#....|#....|#....|#...#|.###.', D:'####.|#...#|#...#|#...#|#...#|#...#|####.',
+E:'#####|#....|#....|####.|#....|#....|#####', F:'#####|#....|#....|####.|#....|#....|#....',
+G:'.###.|#...#|#....|#.###|#...#|#...#|.####', H:'#...#|#...#|#...#|#####|#...#|#...#|#...#',
+I:'.###.|..#..|..#..|..#..|..#..|..#..|.###.', J:'..###|...#.|...#.|...#.|...#.|#..#.|.##..',
+K:'#...#|#..#.|#.#..|##...|#.#..|#..#.|#...#', L:'#....|#....|#....|#....|#....|#....|#####',
+M:'#...#|##.##|#.#.#|#.#.#|#...#|#...#|#...#', N:'#...#|#...#|##..#|#.#.#|#..##|#...#|#...#',
+O:'.###.|#...#|#...#|#...#|#...#|#...#|.###.', P:'####.|#...#|#...#|####.|#....|#....|#....',
+Q:'.###.|#...#|#...#|#...#|#.#.#|#..#.|.##.#', R:'####.|#...#|#...#|####.|#.#..|#..#.|#...#',
+S:'.####|#....|#....|.###.|....#|....#|####.', T:'#####|..#..|..#..|..#..|..#..|..#..|..#..',
+U:'#...#|#...#|#...#|#...#|#...#|#...#|.###.', V:'#...#|#...#|#...#|#...#|#...#|.#.#.|..#..',
+W:'#...#|#...#|#...#|#.#.#|#.#.#|##.##|#...#', X:'#...#|#...#|.#.#.|..#..|.#.#.|#...#|#...#',
+Y:'#...#|#...#|.#.#.|..#..|..#..|..#..|..#..', Z:'#####|....#|...#.|..#..|.#...|#....|#####',
+'Ł':'#....|#....|#.#..|##...|#....|#....|#####',
+0:'.###.|#...#|#..##|#.#.#|##..#|#...#|.###.', 1:'..#..|.##..|..#..|..#..|..#..|..#..|.###.',
+2:'.###.|#...#|....#|...#.|..#..|.#...|#####', 3:'#####|...#.|..#..|...#.|....#|#...#|.###.',
+4:'...#.|..##.|.#.#.|#..#.|#####|...#.|...#.', 5:'#####|#....|####.|....#|....#|#...#|.###.',
+6:'..##.|.#...|#....|####.|#...#|#...#|.###.', 7:'#####|....#|...#.|..#..|.#...|.#...|.#...',
+8:'.###.|#...#|#...#|.###.|#...#|#...#|.###.', 9:'.###.|#...#|#...#|.####|....#|...#.|.##..',
+'.':'.....|.....|.....|.....|.....|.##..|.##..', ',':'.....|.....|.....|.....|.##..|..#..|.#...',
+'!':'..#..|..#..|..#..|..#..|..#..|.....|..#..', '?':'.###.|#...#|....#|...#.|..#..|.....|..#..',
+':':'.....|.##..|.##..|.....|.##..|.##..|.....', ';':'.....|.##..|.##..|.....|.##..|..#..|.#...',
+'-':'.....|.....|.....|.###.|.....|.....|.....', '+':'.....|..#..|..#..|#####|..#..|..#..|.....',
+'/':'....#|....#|...#.|..#..|.#...|#....|#....', "'":'..#..|..#..|.#...|.....|.....|.....|.....',
+'"':'.#.#.|.#.#.|.....|.....|.....|.....|.....', '(':'...#.|..#..|.#...|.#...|.#...|..#..|...#.',
+')':'.#...|..#..|...#.|...#.|...#.|..#..|.#...', '%':'##..#|##..#|...#.|..#..|.#...|#..##|#..##',
+'=':'.....|.....|#####|.....|#####|.....|.....', '>':'.#...|..#..|...#.|....#|...#.|..#..|.#...',
+'<':'...#.|..#..|.#...|#....|.#...|..#..|...#.', '*':'.....|#.#.#|.###.|#####|.###.|#.#.#|.....',
+'#':'.#.#.|#####|.#.#.|.#.#.|.#.#.|#####|.#.#.', '♥':'.....|.#.#.|#####|#####|.###.|..#..|.....',
+'·':'.....|.....|.....|..#..|.....|.....|.....', '×':'.....|#...#|.#.#.|..#..|.#.#.|#...#|.....',
+' ':'.....|.....|.....|.....|.....|.....|.....'
+};
+const FONT = {};
+for (const k in FONT_SRC) FONT[k] = FONT_SRC[k].split('|');
+const ACCENT = {'Ą':['A','o'],'Ć':['C','a'],'Ę':['E','o'],'Ń':['N','a'],'Ó':['O','a'],'Ś':['S','a'],'Ź':['Z','a'],'Ż':['Z','d']};
+const gcache = {};
+function glyph(ch, col) {
+  const key = ch + col;
+  if (gcache[key]) return gcache[key];
+  const c = document.createElement('canvas'); c.width = 6; c.height = 11;
+  const g = c.getContext('2d'); g.fillStyle = PAL[col];
+  let base = ch, acc = null;
+  if (ACCENT[ch]) { base = ACCENT[ch][0]; acc = ACCENT[ch][1]; }
+  const rows = FONT[base] || FONT['?'];
+  for (let y = 0; y < 7; y++) for (let x = 0; x < 5; x++) if (rows[y][x] === '#') g.fillRect(x, y + 2, 1, 1);
+  if (acc === 'a') { g.fillRect(3, 0, 1, 1); g.fillRect(2, 1, 1, 1); }
+  if (acc === 'd') { g.fillRect(2, 0, 1, 2); }
+  if (acc === 'o') { g.fillRect(3, 9, 1, 1); g.fillRect(4, 10, 1, 1); }
+  return (gcache[key] = c);
+}
+function norm(s) {
+  return String(s).toUpperCase().replace(/[„”“]/g, '"').replace(/[‘’]/g, "'")
+    .replace(/[—–]/g, '-').replace(/…/g, '...');
+}
+function T(str, x, y, col = 0, sc = 1) {
+  str = norm(str);
+  for (let i = 0; i < str.length; i++) {
+    if (str[i] === ' ') continue;
+    ctx.drawImage(glyph(str[i], col), Math.round(x + i * 6 * sc), Math.round(y - 2 * sc), 6 * sc, 11 * sc);
+  }
+}
+const TW = (s, sc = 1) => norm(s).length * 6 * sc - sc;
+function TC(str, y, col = 0, sc = 1, cx = W / 2) { T(str, cx - TW(str, sc) / 2, y, col, sc); }
+function TS(str, x, y, col, sc = 1, sh = 0) { const o = Math.max(1, Math.round(sc / 2)); T(str, x + o, y + o, sh, sc); T(str, x, y, col, sc); }
+function TSC(str, y, col, sc = 1, sh = 0, cx = W / 2) { TS(str, cx - TW(str, sc) / 2, y, col, sc, sh); }
+function TR(str, xr, y, col = 0, sc = 1) { T(str, xr - TW(str, sc), y, col, sc); }
+function wrap(text, max) {
+  const out = [];
+  String(text).split('\n').forEach(par => {
+    let cur = '';
+    par.split(' ').forEach(w => {
+      if (!cur.length) cur = w;
+      else if ((cur + ' ' + w).length <= max) cur += ' ' + w;
+      else { out.push(cur); cur = w; }
+    });
+    out.push(cur);
+  });
+  return out;
+}
+
+/* ---------------- interfejs (tryb natychmiastowy) ---------------- */
+let hits = [];
+const mouse = { x: -99, y: -99, down: false, moved: false };
+const inR = (p, x, y, w, h) => p.x >= x && p.x < x + w && p.y >= y && p.y < y + h;
+function box(x, y, w, h, fill = 15) {
+  R(x + 2, y + 2, w, h, 0);
+  R(x, y, w, h, 0); R(x + 1, y + 1, w - 2, h - 2, 12); R(x + 2, y + 2, w - 4, h - 4, fill);
+}
+function button(x, y, w, h, label, cb, opt = {}) {
+  const hov = !opt.off && inR(mouse, x, y, w, h);
+  R(x, y, w, h, 0);
+  R(x + 1, y + 1, w - 2, h - 2, opt.off ? 12 : hov ? 7 : (opt.bg ?? 15));
+  R(x + 1, y + h - 2, w - 2, 1, opt.off ? 11 : 12);
+  TC(label, y + Math.round((h - 7) / 2), opt.off ? 11 : 0, 1, x + w / 2);
+  if (!opt.off) hits.push({ x, y, w, h, cb });
+}
+function menuItem(x, y, w, label, cb, off) {
+  const hov = !off && inR(mouse, x, y - 2, w, 11);
+  if (hov) R(x, y - 2, w, 11, 0);
+  T(label, x + 3, y, off ? 12 : hov ? 7 : 0);
+  if (!off) hits.push({ x, y: y - 2, w, h: 11, cb });
+}
+function handleHits(p) {
+  for (let i = hits.length - 1; i >= 0; i--) {
+    const h = hits[i];
+    if (inR(p, h.x, h.y, h.w, h.h)) { SFX.click(); h.cb(); return true; }
+  }
+  return false;
+}
+
+/* okna komunikatów (kolejka) */
+let modals = [];
+function msg(title, text, buttons, opt = {}) {
+  modals.push({ title, text, buttons: buttons || [{ l: 'DALEJ' }], art: opt.art, col: opt.col ?? 6 });
+}
+function modalPress(i) {
+  const m = modals[0]; if (!m) return;
+  const b = m.buttons[i]; if (!b) return;
+  modals.shift(); b.f && b.f();
+}
+function drawModal() {
+  const m = modals[0];
+  const lines = wrap(m.text, 38);
+  const artH = m.art ? 52 : 0;
+  const w = 244, h = 34 + artH + lines.length * 10 + 16;
+  const x = Math.round((W - w) / 2), y = Math.round((H - h) / 2);
+  box(x, y, w, h);
+  R(x + 2, y + 2, w - 4, 11, m.col);
+  TC(m.title, y + 4, 1, 1, W / 2);
+  if (m.art) { ctx.save(); ctx.beginPath(); ctx.rect(x + 4, y + 15, w - 8, artH - 4); ctx.clip();
+    m.art(x + 4, y + 15, w - 8, artH - 4); ctx.restore(); R(x + 3, y + 14, w - 6, 1, 0); R(x + 3, y + 10 + artH, w - 6, 1, 0); }
+  lines.forEach((l, i) => T(l, x + 8, y + 18 + artH + i * 10, 0));
+  let bw = m.buttons.map(b => TW(b.l) + 14), tot = bw.reduce((a, b) => a + b, 0) + (bw.length - 1) * 6;
+  let bx = W / 2 - tot / 2;
+  m.buttons.forEach((b, i) => {
+    button(bx, y + h - 19, bw[i], 14, b.l, () => modalPress(i));
+    bx += bw[i] + 6;
+  });
+}
+let toasts = [];
+function toast(t) { toasts.push({ t, life: 3.5 }); }
+
+/* ---------------- dźwięk w stylu SID ---------------- */
+let AC = null, SOUND = true, master = null, musGain = null;
+try { SOUND = localStorage.getItem('obronca-dzwiek') !== '0'; } catch (e) {}
+function ac() {
+  if (!AC) {
+    try {
+      AC = new (window.AudioContext || window.webkitAudioContext)();
+      master = AC.createGain(); master.gain.value = 0.55; master.connect(AC.destination);
+      musGain = AC.createGain(); musGain.gain.value = 0.8; musGain.connect(master);
+    } catch (e) { AC = null; }
+  }
+  if (AC && AC.state === 'suspended') AC.resume();
+  return AC;
+}
+function toneAt(f, d, type, v, t, slide, dest) {
+  if (!SOUND || !AC) return;
+  const o = AC.createOscillator(), g = AC.createGain();
+  o.type = type; o.frequency.setValueAtTime(f, t);
+  if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(20, f * slide), t + d);
+  g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.0005, t + d);
+  o.connect(g); g.connect(dest || master); o.start(t); o.stop(t + d + 0.03);
+}
+function tone(f, d, type = 'square', v = 0.05, w = 0, slide = 0) { if (AC) toneAt(f, d, type, v, AC.currentTime + w, slide); }
+let NB = null;
+function noiseAt(d, v, t, ff, ft, dest) {
+  if (!SOUND || !AC) return;
+  if (!NB) { NB = AC.createBuffer(1, AC.sampleRate, AC.sampleRate); const a = NB.getChannelData(0); for (let i = 0; i < a.length; i++) a[i] = Math.random() * 2 - 1; }
+  const s = AC.createBufferSource(); s.buffer = NB;
+  const f = AC.createBiquadFilter(); f.type = ft || 'lowpass'; f.frequency.value = ff || 2000;
+  const g = AC.createGain(); g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.0005, t + d);
+  s.connect(f); f.connect(g); g.connect(dest || master); s.start(t, Math.random() * 0.4); s.stop(t + d + 0.03);
+}
+function noise(d, v = 0.15, w = 0, ff = 2000, ft = 'lowpass') { if (AC) noiseAt(d, v, AC.currentTime + w, ff, ft); }
+const SFX = {
+  click() { tone(1200, 0.035, 'square', 0.03); },
+  coin() { tone(988, 0.07, 'square', 0.05); tone(1319, 0.16, 'square', 0.05, 0.07); },
+  clash() { noise(0.09, 0.12, 0, 4000, 'highpass'); tone(rnd(1500, 2200), 0.07, 'square', 0.02); },
+  hit() { noise(0.18, 0.25, 0, 900); tone(140, 0.15, 'square', 0.05, 0, 0.5); },
+  parry() { tone(2400, 0.07, 'square', 0.05); tone(1700, 0.1, 'square', 0.04, 0.03); },
+  swish() { noise(0.12, 0.1, 0, 2500, 'bandpass'); },
+  boom() { noise(0.7, 0.35, 0, 350); tone(80, 0.5, 'triangle', 0.15, 0, 0.4); },
+  launch() { noise(0.3, 0.1, 0, 1200, 'bandpass'); tone(220, 0.3, 'triangle', 0.08, 0, 0.5); },
+  fire() { noise(0.7, 0.18, 0, 1400, 'bandpass'); },
+  thud() { noise(0.25, 0.25, 0, 500); },
+  fanfare() { [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.22, 'square', 0.05, i * 0.14)); tone(1047, 0.7, 'square', 0.05, 0.56); tone(523, 0.9, 'triangle', 0.1, 0.56); },
+  sad() { [392, 370, 349, 294].forEach((f, i) => tone(f, 0.38, 'triangle', 0.1, i * 0.3)); },
+  gallop() { tone(120, 0.05, 'triangle', 0.12); tone(95, 0.05, 'triangle', 0.12, 0.08); },
+  crash() { noise(0.5, 0.3, 0, 2500); tone(300, 0.3, 'square', 0.05, 0, 0.3); }
+};
+// Muzyka — oryginalna kompozycja w modusie doryckim (nie jest to ścieżka z gry Jima Cuomo)
+const NOTE = n => {
+  const m = /^([A-G])(#?)(\d)$/.exec(n); if (!m) return 0;
+  const idx = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 }[m[1]] + (m[2] ? 1 : 0);
+  return 440 * Math.pow(2, (12 * (+m[3] + 1) + idx - 69) / 12);
+};
+const parseSeq = s => s.trim().split(/\s+/).map(t => { const [n, d] = t.split(':'); return [n === 'R' ? 0 : (n.length === 1 ? n : NOTE(n)), +d]; });
+const SONGS = {
+  theme: { tempo: 0.21, v: [
+    { type: 'square', vol: 0.032, n: parseSeq(`A4:2 D5:2 E5:1 F5:1 G5:2 A5:2 G5:1 F5:1 E5:2 D5:2 C5:1 D5:1 E5:4 R:2
+      A4:2 D5:2 E5:1 F5:1 G5:2 A5:2 C6:2 A5:1 G5:1 F5:1 E5:1 D5:6 R:2
+      F5:2 A5:2 B5:1 C6:1 D6:2 C6:2 A5:1 G5:1 F5:2 G5:2 A5:1 G5:1 E5:4 R:2
+      D5:2 F5:2 E5:1 D5:1 C5:2 E5:2 F5:2 E5:2 D5:8 R:2`) },
+    { type: 'triangle', vol: 0.09, n: parseSeq(`D3:2 A2:2 D3:2 A2:2 C3:2 G2:2 C3:2 G2:2 A2:2 E3:2 A2:2 E3:2
+      D3:2 A2:2 D3:2 A2:2 C3:2 G2:2 C3:2 G2:2 D3:2 A2:2 D3:2 A2:2
+      F2:2 C3:2 F2:2 C3:2 C3:2 G2:2 C3:2 G2:2 A2:2 E3:2 A2:2 E3:2
+      D3:2 A2:2 D3:2 A2:2 A2:2 E3:2 A2:2 C3:2 D3:2 A2:2 D3:4`) },
+    { drum: true, n: parseSeq(`K:2 H:2 S:2 H:2`) } ] },
+  battle: { tempo: 0.13, v: [
+    { type: 'square', vol: 0.028, n: parseSeq(`D5:1 D5:1 D5:1 F5:1 E5:2 D5:2 C5:1 C5:1 C5:1 E5:1 D5:4
+      D5:1 D5:1 D5:1 F5:1 G5:2 A5:2 G5:1 F5:1 E5:1 C5:1 D5:4`) },
+    { type: 'triangle', vol: 0.1, n: parseSeq(`D3:1 D3:1 A2:1 D3:1 D3:1 D3:1 A2:1 D3:1 C3:1 C3:1 G2:1 C3:1 D3:1 D3:1 A2:1 D3:1`) },
+    { drum: true, n: parseSeq(`K:1 H:1 S:1 H:1 K:1 K:1 S:1 H:1`) } ] }
+};
+let mus = null;
+function music(name) {
+  if (mus && mus.name === name) return;
+  mus = name ? { name, song: SONGS[name], vs: null } : null;
+}
+setInterval(() => {
+  if (!mus || !AC || !SOUND || AC.state !== 'running') return;
+  if (!mus.vs) mus.vs = mus.song.v.map(() => ({ i: 0, t: AC.currentTime + 0.1 }));
+  const ahead = AC.currentTime + 0.35;
+  mus.song.v.forEach((voice, vi) => {
+    const st = mus.vs[vi];
+    if (st.t < AC.currentTime - 0.5) st.t = AC.currentTime + 0.05;
+    while (st.t < ahead) {
+      const [f, d] = voice.n[st.i], dur = d * mus.song.tempo;
+      if (voice.drum) {
+        if (f === 'K') toneAt(110, 0.12, 'triangle', 0.16, st.t, 0.4, musGain);
+        else if (f === 'S') noiseAt(0.1, 0.07, st.t, 1800, 'bandpass', musGain);
+        else if (f === 'H') noiseAt(0.03, 0.025, st.t, 6000, 'highpass', musGain);
+      } else if (f > 0) toneAt(f, dur * 0.92, voice.type, voice.vol, st.t, 0, musGain);
+      st.t += dur; st.i = (st.i + 1) % voice.n.length;
+    }
+  });
+}, 60);
+function toggleSound() {
+  SOUND = !SOUND;
+  try { localStorage.setItem('obronca-dzwiek', SOUND ? '1' : '0'); } catch (e) {}
+  if (mus) mus.vs = null;
+  if (SOUND) { ac(); SFX.coin(); }
+}
+function soundButton(x, y) {
+  const hov = inR(mouse, x, y, 14, 11);
+  R(x, y, 14, 11, 0); R(x + 1, y + 1, 12, 9, hov ? 7 : 12);
+  R(x + 3, y + 4, 2, 3, 0); R(x + 5, y + 3, 1, 5, 0); R(x + 6, y + 2, 1, 7, 0);
+  if (SOUND) { R(x + 8, y + 4, 1, 3, 0); R(x + 10, y + 3, 1, 5, 0); }
+  else { line(x + 8, y + 3, x + 11, y + 7, 2); line(x + 11, y + 3, x + 8, y + 7, 2); }
+  hits.push({ x, y, w: 14, h: 11, cb: toggleSound });
+}
+
+/* =====================================================================
+   MAPA ANGLII — kontur wybrzeża (dł., szer. geogr.) i hrabstwa
+   ===================================================================== */
+const COAST = [[-2.6,56.5],[-2.6,56.05],[-2.0,55.8],[-1.6,55.6],[-1.5,55.2],[-1.4,54.9],[-1.2,54.6],[-0.6,54.5],
+  [-0.2,54.1],[-0.1,53.7],[0.12,53.58],[0.3,53.3],[0.35,53.0],[0.2,52.85],[0.5,52.95],[1.0,52.97],[1.75,52.65],
+  [1.75,52.3],[1.6,52.0],[1.0,51.8],[0.9,51.55],[0.5,51.5],[1.0,51.42],[1.45,51.35],[1.4,51.15],[1.0,50.95],
+  [0.3,50.75],[-0.8,50.75],[-1.3,50.8],[-2.0,50.6],[-2.5,50.6],[-3.4,50.6],[-3.6,50.25],[-4.2,50.35],[-5.1,50.0],
+  [-5.7,50.05],[-5.5,50.2],[-5.0,50.45],[-4.5,50.8],[-4.2,51.05],[-4.2,51.2],[-3.5,51.2],[-3.0,51.3],[-2.7,51.5],
+  [-3.2,51.45],[-3.8,51.55],[-4.3,51.55],[-5.0,51.65],[-5.3,51.85],[-4.6,52.1],[-4.1,52.5],[-4.15,52.85],[-4.7,52.8],
+  [-4.4,53.0],[-4.6,53.3],[-4.1,53.3],[-3.4,53.35],[-3.0,53.4],[-3.0,53.75],[-2.9,54.0],[-3.4,54.2],[-3.6,54.5],
+  [-3.4,54.9],[-3.6,55.0],[-4.4,54.8],[-5.1,54.7],[-5.0,55.0],[-4.9,55.6],[-4.8,56.05],[-4.8,56.5]];
+const TERR_DEFS = [ // nazwa, dł., szer., dochód
+  ['NORTHUMBRIA',-1.95,55.2,4], ['CUMBRIA',-2.95,54.55,2], ['LANCASTER',-2.65,53.85,3], ['YORK',-1.2,54.0,5],
+  ['CHESTER',-2.65,53.1,3], ['DERBY',-1.6,53.1,3], ['LINCOLN',-0.35,53.2,4], ['HEREFORD',-2.7,52.25,3],
+  ['LEICESTER',-1.3,52.55,4], ['NORFOLK',1.0,52.7,4], ['CAMBRIDGE',0.05,52.3,3], ['ESSEX',0.75,51.85,4],
+  ['GLOUCESTER',-2.2,51.75,4], ['OXFORD',-1.2,51.85,4], ['LONDYN',-0.15,51.45,7], ['KENT',0.85,51.2,4],
+  ['SUSSEX',-0.3,50.95,3], ['WESSEX',-1.75,51.05,4], ['DEVON',-3.75,50.75,3], ['KORNWALIA',-4.85,50.35,2]];
+const TI = name => TERR_DEFS.findIndex(d => d[0] === name);
+const MX0 = 108, MXW = 204, MY0 = 4, MYH = 192;
+const proj = (lo, la) => [MX0 + (lo + 5.8) / 7.7 * MXW, MY0 + (56.05 - la) / 6.15 * MYH];
+const unproj = (x, y) => [(x - MX0) / MXW * 7.7 - 5.8, 56.05 - (y - MY0) / MYH * 6.15];
+function isScot(lo, la) {
+  if (la < 54.3) return false;
+  if (lo < -3.75) return true;
+  if (lo < -3.05) return la > 54.93;
+  return la > 54.98 + (lo + 3.05) * 0.784;
+}
+function isWales(lo, la) {
+  if (la < 51.35 || la > 53.45) return false;
+  const pts = [[51.35,-2.7],[51.6,-2.7],[52.0,-3.0],[52.5,-3.1],[53.0,-3.1],[53.45,-3.05]];
+  for (let i = 0; i < pts.length - 1; i++) {
+    const [a, la0] = [pts[i][0], pts[i][1]], [b, lb] = [pts[i + 1][0], pts[i + 1][1]];
+    if (la >= a && la <= b) return lo < la0 + (lb - la0) * (la - a) / (b - a);
+  }
+  return false;
+}
+function hash2(x, y, s) {
+  let h = (Math.imul(x, 374761393) + Math.imul(y, 668265263) + Math.imul(s, 982451653)) | 0;
+  h = Math.imul(h ^ (h >>> 13), 1274126177); h ^= h >>> 16;
+  return (h >>> 0) / 4294967296;
+}
+function vnoise(x, y, s) {
+  const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi;
+  const u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf);
+  const a = hash2(xi, yi, s), b = hash2(xi + 1, yi, s), c = hash2(xi, yi + 1, s), d = hash2(xi + 1, yi + 1, s);
+  return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
+}
+function inPoly(x, y, p) {
+  let ins = false;
+  for (let i = 0, j = p.length - 1; i < p.length; j = i++) {
+    const [xi, yi] = p[i], [xj, yj] = p[j];
+    if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) ins = !ins;
+  }
+  return ins;
+}
+const GW = 160, GH = 200, NT = TERR_DEFS.length;
+let GRID, INNER, ANCH, ADJ, mapCanvas;
+function buildMap() {
+  const poly = COAST.map(([lo, la]) => proj(lo, la));
+  const seeds = TERR_DEFS.map(d => proj(d[1], d[2]));
+  GRID = new Int8Array(GW * GH).fill(-1);
+  for (let j = 0; j < GH; j++) for (let i = 0; i < GW; i++) {
+    const x = i * 2 + 1, y = j + 0.5;
+    if (!inPoly(x, y, poly)) continue;
+    const [lo, la] = unproj(x, y);
+    if (isScot(lo, la) || isWales(lo, la)) { GRID[j * GW + i] = -2; continue; }
+    const wx = x + (vnoise(x / 14, y / 14, 1) - 0.5) * 18 + (vnoise(x / 5, y / 5, 3) - 0.5) * 6;
+    const wy = y + (vnoise(x / 14, y / 14, 2) - 0.5) * 18 + (vnoise(x / 5, y / 5, 4) - 0.5) * 6;
+    let best = 0, bd = 1e9;
+    seeds.forEach(([sx, sy], k) => { const d = (wx - sx) ** 2 + (wy - sy) ** 2; if (d < bd) { bd = d; best = k; } });
+    GRID[j * GW + i] = best;
+  }
+  const N4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+  const at = (i, j) => (i < 0 || j < 0 || i >= GW || j >= GH) ? -1 : GRID[j * GW + i];
+  // tylko największy spójny fragment każdego hrabstwa
+  const seen = new Uint8Array(GW * GH);
+  for (let t = 0; t < NT; t++) {
+    const comps = [];
+    for (let k = 0; k < GW * GH; k++) {
+      if (GRID[k] !== t || seen[k]) continue;
+      const comp = [k], q = [k]; seen[k] = 1;
+      while (q.length) {
+        const c = q.pop(), ci = c % GW, cj = (c / GW) | 0;
+        for (const [dx, dy] of N4) {
+          const ni = ci + dx, nj = cj + dy;
+          if (at(ni, nj) === t && !seen[nj * GW + ni]) { seen[nj * GW + ni] = 1; comp.push(nj * GW + ni); q.push(nj * GW + ni); }
+        }
+      }
+      comps.push(comp);
+    }
+    comps.sort((a, b) => b.length - a.length);
+    for (let c = 1; c < comps.length; c++) comps[c].forEach(k => GRID[k] = -3);
+  }
+  for (let pass = 0; pass < 60; pass++) {
+    let left = 0;
+    for (let k = 0; k < GW * GH; k++) {
+      if (GRID[k] !== -3) continue;
+      const i = k % GW, j = (k / GW) | 0, cnt = {};
+      let bt = -1, bc = 0;
+      for (const [dx, dy] of N4) { const v = at(i + dx, j + dy); if (v >= 0) { cnt[v] = (cnt[v] || 0) + 1; if (cnt[v] > bc) { bc = cnt[v]; bt = v; } } }
+      if (bt >= 0) GRID[k] = bt; else left++;
+    }
+    if (!left) break;
+  }
+  for (let k = 0; k < GW * GH; k++) if (GRID[k] === -3) GRID[k] = -2;
+  // sąsiedztwo, wnętrza i punkty kotwiczenia ikon
+  ADJ = Array.from({ length: NT }, () => new Set());
+  INNER = Array.from({ length: NT }, () => []);
+  const dist = new Int16Array(GW * GH).fill(-1), q = [];
+  for (let j = 0; j < GH; j++) for (let i = 0; i < GW; i++) {
+    const v = at(i, j); if (v < 0) continue;
+    let edge = false;
+    for (const [dx, dy] of N4) {
+      const u = at(i + dx, j + dy);
+      if (u !== v) edge = true;
+      if (u >= 0 && u !== v) { ADJ[v].add(u); ADJ[u].add(v); }
+    }
+    const r = at(i + 1, j), d = at(i, j + 1);
+    const border = (r !== v && r !== -1) || (d !== v && d !== -1) || N4.some(([dx, dy]) => at(i + dx, j + dy) === -1);
+    if (!border) INNER[v].push(j * GW + i);
+    if (edge) { dist[j * GW + i] = 0; q.push(j * GW + i); }
+  }
+  for (let h = 0; h < q.length; h++) {
+    const c = q[h], ci = c % GW, cj = (c / GW) | 0;
+    for (const [dx, dy] of N4) {
+      const ni = ci + dx, nj = cj + dy;
+      if (at(ni, nj) === GRID[c] && dist[nj * GW + ni] < 0) { dist[nj * GW + ni] = dist[c] + 1; q.push(nj * GW + ni); }
+    }
+  }
+  ANCH = seeds.map(([sx, sy], t) => {
+    let best = null, bs = -1e9;
+    for (let k = 0; k < GW * GH; k++) {
+      if (GRID[k] !== t) continue;
+      const x = (k % GW) * 2 + 1, y = (k / GW) | 0;
+      const s = Math.min(dist[k], 7) * 10 - Math.hypot(x - sx, y - sy) * 0.6;
+      if (s > bs) { bs = s; best = [x, y]; }
+    }
+    return best;
+  });
+  // podkład mapy: pergamin, morze, ląd, granice
+  mapCanvas = document.createElement('canvas'); mapCanvas.width = W; mapCanvas.height = H;
+  const g = mapCanvas.getContext('2d');
+  const P = (x, y, w, h, c) => { g.fillStyle = PAL[c]; g.fillRect(x, y, w, h); };
+  P(0, 0, W, H, 9);
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const n = vnoise(x / 6, y / 6, 9) * 0.7 + hash2(x, y, 5) * 0.3;
+    if (n > 0.66) P(x, y, 1, 1, 8);
+    const inset = 4 + vnoise(x / 7 + y / 7, (x - y) / 9, 11) * 7;
+    if (Math.min(x, W - 1 - x, y * 1.4, (H - 1 - y) * 1.4) > inset) {
+      P(x, y, 1, 1, 6);
+      if (hash2(x >> 2, y, 7) < 0.02 && x % 4 === 0) P(x, y, 3, 1, 14);
+    }
+  }
+  for (let j = 0; j < GH; j++) for (let i = 0; i < GW; i++) {
+    const v = at(i, j); if (v === -1) continue;
+    let c = v >= 0 ? 15 : 12;
+    if (v === -2 && hash2(i, j, 21) < 0.08) c = 11;
+    const r = at(i + 1, j), d = at(i, j + 1);
+    if (N4.some(([dx, dy]) => at(i + dx, j + dy) === -1)) c = 0;
+    else if ((r !== v && (v >= 0 || r >= 0)) || (d !== v && (v >= 0 || d >= 0))) c = 0;
+    P(i * 2, j, 2, 1, c);
+  }
+  // róża wiatrów i podpisy krain
+  g.fillStyle = PAL[0];
+  const cx = 290, cy = 30;
+  for (let k = -9; k <= 9; k++) { g.fillRect(cx + k, cy, 1, 1); g.fillRect(cx, cy + k, 1, 1); }
+  for (let k = -4; k <= 4; k++) { g.fillRect(cx + k, cy + k, 1, 1); g.fillRect(cx + k, cy - k, 1, 1); }
+  g.fillStyle = PAL[1]; g.fillRect(cx - 1, cy - 1, 3, 3);
+}
+const terrAt = (x, y) => {
+  const i = Math.floor(x / 2), j = Math.floor(y);
+  if (i < 0 || j < 0 || i >= GW || j >= GH) return -1;
+  const v = GRID[j * GW + i]; return v >= 0 ? v : -1;
+};
+function fillTerr(t, c) {
+  ctx.fillStyle = PAL[c];
+  for (const k of INNER[t]) ctx.fillRect((k % GW) * 2, (k / GW) | 0, 2, 1);
+}
+
+/* =====================================================================
+   STAN GRY
+   ===================================================================== */
+const LORD_DEFS = [
+  { n: 'Wilfred z Ivanhoe', s: 'WILFRED', side: 'S', col: 7, lead: 3, joust: 4, sword: 3, home: 'LEICESTER',
+    desc: 'Rycerz bez skazy, mistrz kopii. Najlepszy wybór na początek.' },
+  { n: 'Cedric z Rotherwood', s: 'CEDRIC', side: 'S', col: 5, lead: 4, joust: 2, sword: 2, home: 'YORK',
+    desc: 'Urodzony wódz — jego wojska walczą najlepiej. W siodle i z mieczem przeciętny.' },
+  { n: 'Geoffrey Długi Miecz', s: 'GEOFFREY', side: 'S', col: 3, lead: 2, joust: 3, sword: 4, home: 'WESSEX',
+    desc: 'Najlepszy szermierz Anglii. Najazdy na zamki to jego żywioł.' },
+  { n: 'Wolfric Dziki', s: 'WOLFRIC', side: 'S', col: 14, lead: 2, joust: 1, sword: 2, home: 'LANCASTER',
+    desc: 'Odważny, ale niedoświadczony. Najtrudniejsze wyzwanie.' },
+  { n: 'Reginald Front-de-Boeuf', s: 'FRONT-DE-BOEUF', side: 'N', col: 2, lead: 3, joust: 3, sword: 3, home: 'NORTHUMBRIA' },
+  { n: 'Maurice de Bracy', s: 'DE BRACY', side: 'N', col: 4, lead: 2, joust: 4, sword: 3, home: 'GLOUCESTER' },
+  { n: 'Waldemar Fitzurse', s: 'FITZURSE', side: 'N', col: 8, lead: 4, joust: 2, sword: 2, home: 'LONDYN' }
+];
+const STAT_WORD = ['', 'SŁABY', 'PRZECIĘTNY', 'DOBRY', 'SILNY'];
+const COST = { s: 1, k: 5, c: 15, castle: 25 };
+let G = null;
+const P = () => G.lords[G.player];
+function newGame(pi) {
+  G = { turn: 1, player: pi, robin: 3, fame: 0, over: false,
+    maiden: { st: 'none', at: -1 },
+    lords: LORD_DEFS.map((d, i) => ({ n: d.n, s: d.s, side: d.side, col: d.col, lead: d.lead, joust: d.joust, sword: d.sword,
+      id: i, alive: true, gold: 0, homeT: TI(d.home), army: { loc: TI(d.home), s: 0, k: 0, c: 0 } })),
+    terr: TERR_DEFS.map(d => ({ name: d[0], inc: d[3], owner: -1, castle: false, home: -1, gar: 0, levy: d[3] * 2 + 2, lmax: d[3] * 2 + 3 })) };
+  G.lords.forEach(L => {
+    const t = G.terr[L.homeT]; t.owner = L.id; t.castle = true; t.home = L.id;
+    if (L.side === 'N') { L.gold = 30; L.army.s = 20; L.army.k = 2; t.gar = 10; }
+    else { L.gold = 15; L.army.s = 12; L.army.k = 1; t.gar = 4; }
+  });
+  const give = (lord, name) => { G.terr[TI(name)].owner = lord; };
+  give(4, 'CUMBRIA'); give(5, 'HEREFORD'); give(6, 'KENT'); give(6, 'ESSEX');
+  G.lords[6].army.s = 26; G.lords[6].army.k = 3;
+  const p = P(); p.gold = 20; p.army.s = 10; p.army.k = 0; G.terr[p.homeT].gar = 0;
+}
+function save() { try { localStorage.setItem('obronca-korony-save', JSON.stringify(G)); } catch (e) {} }
+function loadSave() { try { const s = localStorage.getItem('obronca-korony-save'); return s ? JSON.parse(s) : null; } catch (e) { return null; } }
+function clearSave() { try { localStorage.removeItem('obronca-korony-save'); } catch (e) {} }
+
+const LM = [0, 0.8, 0.95, 1.1, 1.25];
+const TAC = { stand: { atk: 1, recv: 1 }, wild: { atk: 1.45, recv: 1.35 } };
+const raw = u => u.s + 4 * u.k;
+const pow = (u, lead, mult = 1) => raw(u) * LM[lead] * mult;
+function dealDamage(u, dmg) {
+  const r0 = raw(u); if (r0 <= 0) return;
+  const r = Math.min(1, dmg / r0);
+  if (r >= 1) { u.s = 0; u.k = 0; return; }
+  u.s = Math.max(0, u.s - Math.min(u.s, Math.floor(u.s * r + Math.random())));
+  u.k = Math.max(0, u.k - Math.min(u.k, Math.floor(u.k * r * 0.6 + Math.random() * 0.8)));
+}
+function battleRound(A, D, ta, td) {
+  const pa = pow(A.u, A.lead) * ta.atk * rnd(0.8, 1.2), pd = pow(D.u, D.lead) * td.atk * rnd(0.8, 1.2);
+  dealDamage(D.u, pa * 0.2 * td.recv / D.mult);
+  dealDamage(A.u, pd * 0.2 * ta.recv / A.mult);
+}
+function outcome(A, D) {
+  const ra = A.u.s + A.u.k, rd = D.u.s + D.u.k;
+  if (rd <= 0) return 'A';
+  if (ra <= 0) return 'D';
+  const pa = pow(A.u, A.lead, A.mult), pd = pow(D.u, D.lead, D.mult);
+  if (pa < pd * 0.3) return 'D';
+  if (pd < pa * 0.3) return 'A';
+  return null;
+}
+function autoBattle(A, D) {
+  for (let r = 0; r < 12; r++) { battleRound(A, D, TAC.stand, TAC.stand); const o = outcome(A, D); if (o) return o === 'A'; }
+  return false;
+}
+function defenseOf(ti) {
+  const t = G.terr[ti];
+  if (t.owner < 0) return { s: t.levy, k: 0 };
+  const L = G.lords[t.owner];
+  let s = t.inc * 2 + (t.castle ? t.gar + 4 : 0) + (t.home >= 0 ? 4 : 0), k = 0;
+  if (L.army.loc === ti) { s += L.army.s; k += L.army.k; }
+  return { s, k };
+}
+const defLead = ti => G.terr[ti].owner < 0 ? 2 : G.lords[G.terr[ti].owner].lead;
+function applyDefLosses(ti, b, a) {
+  const t = G.terr[ti];
+  if (t.owner < 0) { t.levy = a.s; return; }
+  const L = G.lords[t.owner];
+  const fs = b.s > 0 ? a.s / b.s : 1, fk = b.k > 0 ? a.k / b.k : 1;
+  if (t.castle) t.gar = Math.round(t.gar * fs);
+  if (L.army.loc === ti) { L.army.s = Math.round(L.army.s * fs); L.army.k = Math.round(L.army.k * fk); }
+}
+function eliminate(id, by) {
+  const L = G.lords[id]; L.alive = false;
+  G.terr.forEach(t => { if (t.owner === id) t.owner = by; });
+  L.army = { loc: -1, s: 0, k: 0, c: 0 };
+  if (G.maiden.st === 'captive' && G.maiden.at === id) G.maiden.st = 'free';
+  if (id === G.player) return;
+  const B = G.lords[by];
+  msg(L.side === 'N' ? 'NORMAN POKONANY!' : 'SAS POKONANY',
+    `Zamek rodu ${L.s} padł. ${by === G.player ? 'Wszystkie jego ziemie przechodzą w twoje ręce!' : 'Jego ziemie przejmuje ' + B.n + '.'}`,
+    null, { col: by === G.player ? 5 : 2 });
+}
+function conquer(lid, ti) {
+  const t = G.terr[ti], prev = t.owner;
+  t.owner = lid; t.gar = 0; t.levy = 0;
+  if (prev >= 0) {
+    const D = G.lords[prev];
+    if (D.army.loc === ti) D.army.loc = D.homeT;
+    if (t.home === prev && t.castle) { t.home = -1; eliminate(prev, lid); }
+  }
+  G.lords[lid].army.loc = ti;
+}
+function ownedBy(id) { return G.terr.map((t, i) => t.owner === id ? i : -1).filter(i => i >= 0); }
+function incomeOf(L) {
+  let s = 2;
+  G.terr.forEach(t => { if (t.owner === L.id) s += t.inc + (t.castle ? 1 : 0); });
+  if (L.id === G.player) s += G.fame;
+  return s;
+}
+function hostile(a, b) { // a atakuje właściciela b
+  if (b < 0) return true;
+  if (a === b) return false;
+  if (a === G.player) return true;
+  if (b === G.player) return G.lords[a].side === 'N'; // sascy panowie nie napadają na ciebie
+  return G.lords[a].side !== G.lords[b].side;
+}
+function castleMult(ti) { // mury bez oblężenia prowadzonego przez gracza
+  const t = G.terr[ti];
+  if (!t.castle) return 1;
+  return t.owner === G.player && t.home === G.player ? 2.3 : 1.6;
+}
+function aiAct(L) {
+  // zakupy
+  if (L.army.c === 0 && L.gold >= 24 && G.turn >= (L.side === 'N' ? 6 : 9) && Math.random() < (L.side === 'N' ? 0.5 : 0.3)) { L.gold -= COST.c; L.army.c = 1; }
+  const nk = Math.max(0, Math.floor((L.gold - 4) * 0.25 / COST.k)); L.army.k += nk; L.gold -= nk * COST.k;
+  const ns = Math.max(0, Math.floor((L.gold - 4) * 0.7));
+  const g = Math.floor(ns * 0.25); G.terr[L.homeT].gar += g; L.army.s += ns - g; L.gold -= ns;
+  if (G.terr[L.army.loc]?.owner !== L.id) L.army.loc = L.homeT;
+  // wybór celu
+  const own = ownedBy(L.id);
+  let best = null, bs = 0;
+  for (let ti = 0; ti < NT; ti++) {
+    const t = G.terr[ti];
+    if (t.owner === L.id || !hostile(L.id, t.owner)) continue;
+    const from = own.find(o => ADJ[o].has(ti));
+    if (from === undefined) continue;
+    if (t.castle && L.army.c < 1) continue;
+    if (t.home === G.player && t.owner === G.player && G.turn < 10) continue;
+    const cm = castleMult(ti), d = defenseOf(ti), dp = pow(d, defLead(ti), cm) + 0.01;
+    const ratio = pow(L.army, L.lead) / dp;
+    if (ratio < (t.castle ? 1.6 : 1.5)) continue;
+    let sc = ratio * 0.5 + t.inc * 0.3 + (t.home >= 0 && t.home === t.owner ? 3 : 0);
+    if (t.owner === G.player) sc += L.side === 'N' ? 0.8 : -0.5;
+    if (sc > bs) { bs = sc; best = { ti, from }; }
+  }
+  if (!best || Math.random() > Math.min(0.75, 0.35 + G.turn * 0.02)) return;
+  const ti = best.ti, t = G.terr[ti], prev = t.owner;
+  L.army.loc = best.from;
+  const d = defenseOf(ti), before = { ...d };
+  const a0 = L.army.s + L.army.k;
+  const A = { u: { s: L.army.s, k: L.army.k }, lead: L.lead, mult: 1 };
+  const D = { u: d, lead: defLead(ti), mult: castleMult(ti) * rnd(0.9, 1.1) };
+  const win = autoBattle(A, D);
+  L.army.s = A.u.s; L.army.k = A.u.k;
+  applyDefLosses(ti, before, D.u);
+  if (prev === G.player) {
+    const lost = win && t.home === G.player;
+    msg(lost ? 'ZAMEK OBLĘŻONY!' : 'NAJAZD!',
+      `${L.n} napada na ${t.name} (${before.s + before.k} twoich obrońców przeciw ${a0} napastnikom). ` +
+      (win ? (lost ? 'Mury twojego zamku padły...' : `Obrońcy ulegli — tracisz ${t.name}.`) : 'Twoi ludzie odparli atak!'),
+      null, { col: win ? 2 : 5 });
+  }
+  if (win) conquer(L.id, ti);
+  if (L.army.s + L.army.k <= 0) L.army.loc = L.homeT;
+}
+
+/* =====================================================================
+   PRZEBIEG TURY
+   ===================================================================== */
+let scene = null, TIME = 0;
+function go(s, arg) { scene = s; s.enter && s.enter(arg); updatePad(); }
+function endTurn() {
+  if (checkEnd()) return;
+  G.lords.forEach(L => { if (L.alive && L.id !== G.player && !G.over) aiAct(L); });
+  if (checkEnd()) return;
+  newTurn();
+  go(MapS);
+}
+function newTurn() {
+  G.turn++;
+  let my = 0;
+  G.lords.forEach(L => { if (!L.alive) return; const inc = incomeOf(L); L.gold += inc; if (L.id === G.player) my = inc; });
+  G.terr.forEach(t => { if (t.owner < 0) t.levy = Math.min(t.lmax, t.levy + 1); });
+  const p = P();
+  if (G.terr[p.army.loc]?.owner !== G.player) p.army.loc = p.homeT;
+  toast(`TURA ${G.turn} · PODATKI +${my} ZŁOTA`);
+  const normans = G.lords.filter(L => L.alive && L.side === 'N');
+  if (G.turn === 2) msg('ROBIN Z LOCKSLEY', 'W lesie Sherwood spotykasz Robin Hooda. „Normanowie to i moi wrogowie. Trzy razy przyjdę ci z pomocą w bitwie — wezwij mnie, gdy będzie trzeba!”', null, { col: 5, art: artSherwood });
+  if (G.maiden.st === 'none' && G.turn >= 4 && normans.length && Math.random() < 0.22) {
+    const N = pick(normans); G.maiden = { st: 'captive', at: N.id };
+    msg('PORWANIE!', `${N.n} porwał saską księżniczkę, lady Rowenę, i więzi ją w swoim zamku (${G.terr[N.homeT].name}). Tylko śmiały najazd może ją uwolnić.`, null, { col: 2, art: artMaidenTower });
+  }
+  if (normans.length && p.gold > 12 && Math.random() < 0.07) {
+    const N = pick(normans), st = Math.floor(p.gold * 0.3);
+    p.gold -= st; N.gold += st;
+    msg('ZŁODZIEJE W ZAMKU!', `Ludzie ${N.s} wdarli się nocą do twojego skarbca i ukradli ${st} sztuk złota.`, null, { col: 2 });
+  }
+  const threat = normans.find(N => N.army.c > 0 && ADJ[N.army.loc]?.has(p.homeT) && pow(N.army, N.lead) > pow(defenseOf(p.homeT), p.lead, castleMult(p.homeT)) * 0.8);
+  if (threat && G.terr[p.homeT].owner === G.player) msg('ZWIADOWCY DONOSZĄ', `Armia ${threat.s} z katapultą stoi u granic twojego zamku (${threat.army.s + threat.army.k} ludzi)! Wzmocnij garnizon albo sprowadź armię.`, null, { col: 2 });
+  const others = G.lords.filter(L => L.alive && L.id !== G.player);
+  if (G.turn >= 3 && others.length && Math.random() < 0.1) {
+    const O = pick(others);
+    msg('ZAPROSZENIE NA TURNIEJ', `${O.n} wyprawia turniej i wyzywa cię do potykania się na kopie. Zwycięzca zdobędzie sławę i nagrodę.`,
+      [{ l: 'STAJĘ DO WALKI', f: () => startJoust(O, 'fame', true) }, { l: 'ODMAWIAM' }], { col: 6, art: artTournament });
+  }
+  save();
+}
+function checkEnd() {
+  if (G.over) return true;
+  const p = P(); let type = null;
+  if (!p.alive) type = 'defeat';
+  else if (!G.lords.some(L => L.side === 'N' && L.alive)) {
+    const mine = ownedBy(G.player).length;
+    const rival = Math.max(0, ...G.lords.filter(L => L.alive && L.id !== G.player).map(L => ownedBy(L.id).length));
+    type = mine >= rival ? 'win' : 'rival';
+  }
+  if (!type) return false;
+  G.over = true; clearSave();
+  const txt = { defeat: 'Normanowie zdobyli twój zamek. Saska sprawa upada...',
+    win: 'Ostatni normański baron padł! Anglia jest wolna, a saska szlachta składa ci hołd.',
+    rival: 'Normanowie zostali pokonani, ale inny saski pan ma więcej ziemi niż ty...' }[type];
+  msg(type === 'defeat' ? 'KLĘSKA' : 'KONIEC WOJNY', txt, [{ l: 'DALEJ', f: () => go(EndS, type) }], { col: type === 'win' ? 5 : 2 });
+  go(MapS);
+  return true;
+}
+
+/* ---------- akcje gracza ---------- */
+function estimate(n) { return n <= 10 ? n : Math.round(n / 5) * 5; }
+function doConquest(ti) {
+  const p = P(), t = G.terr[ti];
+  if (t.owner === G.player) { p.army.loc = ti; SFX.gallop(); return; }
+  if (raw(p.army) <= 0) { msg('BRAK ARMII', 'Twoja armia polowa jest pusta. Kup żołnierzy albo przenieś ich z garnizonu zamku.'); return; }
+  if (t.castle && p.army.c < 1) { msg('POTRZEBNA KATAPULTA', 'To hrabstwo broni zamek. Aby go zaatakować, musisz kupić katapultę dla armii polowej.'); return; }
+  const d = defenseOf(ti), who = t.owner < 0 ? 'miejscowi wasale' : G.lords[t.owner].n;
+  msg('PODBÓJ: ' + t.name, `Obrońcy: około ${estimate(d.s + d.k)} ludzi (${who}).${t.castle ? ' Zamek trzeba najpierw oblegać.' : ''} Ruszasz do ataku?`,
+    [{ l: 'DO BOJU!', f: () => startConquest(ti) }, { l: 'WRÓĆ' }]);
+}
+function startConquest(ti) {
+  const t = G.terr[ti], p = P(), d = defenseOf(ti), before = { ...d };
+  const enemyName = t.owner < 0 ? 'WASALE' : G.lords[t.owner].s, enemyCol = t.owner < 0 ? 12 : G.lords[t.owner].col;
+  const fight = (mult, defU) => go(BattleS, {
+    title: 'BITWA O ' + t.name,
+    att: { u: p.army, lead: p.lead, name: p.s, col: p.col, c: p.army.c },
+    def: { u: defU, lead: defLead(ti), name: enemyName, col: enemyCol, mult },
+    onEnd: (win, A, D) => {
+      p.army.s = A.s; p.army.k = A.k;
+      applyDefLosses(ti, before, D);
+      if (win) { msg('ZWYCIĘSTWO!', `${t.name} należy teraz do ciebie. Wasale składają ci przysięgę wierności.`, null, { col: 5 }); conquer(G.player, ti); }
+      else {
+        msg('PORAŻKA', `Twoje wojska cofają się spod ${t.name}.`, null, { col: 2 });
+        if (raw(p.army) <= 0) { p.army.c = 0; p.army.loc = p.homeT; }
+      }
+      endTurn();
+    } });
+  if (t.castle) {
+    go(SiegeS, { ti, def: { ...d }, onEnd: (res, defU, wall) => {
+      if (res === 'retreat') { applyDefLosses(ti, before, defU); msg('ODWRÓT', 'Zwijasz obóz i odchodzisz spod murów.'); endTurn(); return; }
+      fight(1.1 + wall / 100 * 0.8, defU);
+    } });
+  } else fight(1, d);
+}
+function doRaid(ti) {
+  const t = G.terr[ti], L = G.lords[t.owner], p = P();
+  msg('NAJAZD', `Zakradasz się nocą do zamku w ${t.name} (${L.n}). Strażników: ${clamp(2 + Math.floor(t.gar / 15), 2, 4)}. Strzałka w lewo przy ścianie — ucieczka.`,
+    [{ l: 'DO ZAMKU!', f: () => go(RaidS, { lord: L, ti, guards: clamp(2 + Math.floor(t.gar / 15), 2, 4), diff: L.sword, onEnd: res => {
+      if (res === 'win') {
+        const st = Math.max(5, Math.floor(L.gold * 0.5));
+        L.gold = Math.max(0, L.gold - st); p.gold += st; t.gar = Math.floor(t.gar * 0.8);
+        SFX.coin();
+        msg('ŁUP!', `Wynosisz ze skarbca ${st} sztuk złota!`, null, { col: 5 });
+        if (G.maiden.st === 'captive' && G.maiden.at === L.id && ti === L.homeT) rescueMaiden();
+      } else if (res === 'lose') {
+        const ran = Math.floor(p.gold / 2); p.gold -= ran;
+        msg('POJMANY!', `Straż cię obezwładniła. Za uwolnienie płacisz okup: ${ran} sztuk złota.`, null, { col: 2 });
+      } else msg('UCIECZKA', 'Wymykasz się z zamku z pustymi rękami.');
+      endTurn();
+    } }) }, { l: 'WRÓĆ' }]);
+}
+function rescueMaiden() {
+  const p = P();
+  G.maiden.st = 'married';
+  const neutral = G.terr.map((t, i) => i).filter(i => G.terr[i].owner < 0);
+  let gift = '';
+  if (neutral.length) { const i = pick(neutral); G.terr[i].owner = G.player; gift = ` W posagu otrzymujesz hrabstwo ${G.terr[i].name}`; }
+  p.gold += 25;
+  msg('LADY ROWENA OCALONA', `W wieży odnajdujesz lady Rowenę i wyprowadzasz ją tajnym przejściem. Wkrótce bierzecie ślub!${gift} oraz 25 sztuk złota.`, null, { col: 4, art: artRomance });
+}
+function holdTournament() {
+  const p = P();
+  if (p.gold < 5) { msg('BRAK ZŁOTA', 'Na zorganizowanie turnieju potrzebujesz co najmniej 5 sztuk złota.'); return; }
+  const others = G.lords.filter(L => L.alive && L.id !== G.player), normans = others.filter(L => L.side === 'N');
+  const O = pick(normans.length ? normans : others);
+  const canLand = ownedBy(O.id).some(i => !G.terr[i].castle);
+  const bt = [{ l: 'O SŁAWĘ', f: () => { p.gold -= 5; startJoust(O, 'fame', false); } }];
+  if (canLand) bt.push({ l: 'O ZIEMIĘ', f: () => { p.gold -= 5; startJoust(O, 'land', false); } });
+  bt.push({ l: 'ANULUJ' });
+  msg('TURNIEJ (5 ZŁOTA)', `Herold ogłasza turniej. W szranki stanie przeciw tobie ${O.n}. O co chcesz walczyć?`, bt, { art: artTournament });
+}
+function startJoust(O, prize, invited) {
+  go(JoustS, { opp: O, onEnd: win => {
+    const p = P();
+    if (prize === 'fame') {
+      if (win) { p.gold += 15; p.army.s += 6; G.fame++; msg('SŁAWA!', 'Tłum wiwatuje! Otrzymujesz 15 sztuk złota, 6 ochotników dołącza do armii, a twoja sława podnosi dochód o 1.', null, { col: 5 }); }
+      else msg('PRZEGRANA', 'Lądujesz w błocie przy śmiechu normańskich dam. Może następnym razem...', null, { col: 2 });
+    } else {
+      if (win) {
+        const land = ownedBy(O.id).filter(i => !G.terr[i].castle);
+        if (land.length) { const i = pick(land); G.terr[i].owner = G.player; if (O.army.loc === i) O.army.loc = O.homeT;
+          msg('ZIEMIA!', `Zgodnie z prawem turnieju ${O.s} oddaje ci hrabstwo ${G.terr[i].name}!`, null, { col: 5 }); }
+      } else {
+        const mine = ownedBy(G.player).filter(i => !G.terr[i].castle);
+        if (mine.length) { const i = pick(mine); G.terr[i].owner = O.id; if (p.army.loc === i) p.army.loc = p.homeT;
+          msg('ZIEMIA STRACONA', `Przegrałeś. ${O.s} zabiera ci hrabstwo ${G.terr[i].name}.`, null, { col: 2 }); }
+        else { p.gold = Math.max(0, p.gold - 10); msg('PRZEGRANA', 'Nie masz ziemi do oddania, więc płacisz 10 sztuk złota.', null, { col: 2 }); }
+      }
+    }
+    if (invited) { save(); go(MapS); } else endTurn();
+  } });
+}
+
+/* =====================================================================
+   GRAFIKA POMOCNICZA
+   ===================================================================== */
+const CASTLE_SP = ['k.k.k.k.k', 'kkkkkkkkk', 'kgggggggk', 'kgkgggkgk', 'kgggggggk', 'kggkkkggk', 'kggk.kggk', 'kkkk.kkkk'];
+const FLAG_SP = ['kkkkk', 'kccck', 'kccck', 'kkkkk', 'k....', 'k....', 'k....'];
+const SHIELD_SP = ['kkkkkkk', 'kccwcck', 'kwwwwwk', 'kccwcck', 'kccwcck', '.kcwck.', '..kwk..', '...k...'];
+function drawShield(x, y, w, h, col, em) {
+  const ch = (col === 7 || col === 1 || col === 13 || col === 15) ? 0 : 1;
+  const rowW = yy => yy < h * 0.55 ? w : Math.max(1, Math.round(w * (1 - (yy - h * 0.55) / (h * 0.45))));
+  for (let yy = -1; yy <= h; yy++) { const rw = rowW(clamp(yy, 0, h - 1)) + 2; R(x + (w - rw) / 2, y + yy, rw, 1, 0); }
+  for (let yy = 0; yy < h; yy++) {
+    const rw = rowW(yy), x0 = x + (w - rw) / 2;
+    for (let xx = 0; xx < rw; xx++) {
+      const u = (x0 + xx - x) / w, v = yy / h;
+      let on = false;
+      if (em === 0) on = Math.abs(u - 0.5) < 0.1 || Math.abs(v - 0.38) < 0.08;
+      if (em === 1) on = Math.abs(v - (0.75 - Math.abs(u - 0.5) * 1.1)) < 0.09;
+      if (em === 2) on = Math.abs(u - 0.5) < 0.16;
+      if (em === 3) on = Math.abs(u - v) < 0.1 || Math.abs(1 - u - v) < 0.1;
+      if (em === 4) on = Math.hypot(u - 0.5, v - 0.42) < 0.2;
+      if (em === 5) on = Math.abs(u - v) < 0.12;
+      if (em === 6) on = v < 0.28;
+      R(x0 + xx, y + yy, 1, 1, on ? ch : col);
+    }
+  }
+}
+function parchment(x, y, w, h) {
+  R(x + 3, y + 3, w, h, 0);
+  R(x, y, w, h, 8); R(x + 2, y + 2, w - 4, h - 4, 7);
+  for (let i = 0; i < w; i += 2) { if (hash2(i, y, 3) < 0.5) R(x + i, y + 1, 2, 1, 7); if (hash2(i, y, 4) < 0.5) R(x + i, y + h - 2, 2, 1, 7); }
+  for (let k = 0; k < (w * h) / 90; k++) R(x + 3 + hash2(k, 1, 8) * (w - 6), y + 3 + hash2(k, 2, 8) * (h - 6), 1, 1, 15);
+}
+function nightSky(top = 0, bottom = 140) {
+  R(0, top, W, bottom - top, 6);
+  R(0, top, W, 30, 0);
+  for (let y = top + 30; y < top + 46; y += 2) for (let x = (y >> 1) & 1; x < W; x += 2) R(x, y, 1, 1, 0);
+  for (let k = 0; k < 60; k++) {
+    const x = hash2(k, 0, 31) * W, y = top + hash2(k, 1, 31) * (bottom - top - 30);
+    R(x, y, 1, 1, (Math.sin(TIME * 2 + k) > 0.6) ? 15 : 1);
+  }
+}
+function castleSil(x, y, s, c, lit) {
+  const RR = (a, b, w, h) => R(x + a * s, y + b * s, w * s, h * s, c);
+  RR(0, 20, 60, 30); RR(-6, 6, 14, 44); RR(52, 6, 14, 44); RR(22, -6, 18, 56);
+  for (let k = 0; k < 7; k++) RR(1 + k * 8, 16, 4, 4);
+  for (let k = 0; k < 3; k++) { RR(-6 + k * 5, 2, 3, 4); RR(52 + k * 5, 2, 3, 4); RR(22 + k * 6, -10, 4, 4); }
+  RR(29, -20, 1, 10); R(x + 30 * s, y - 20 * s, 7 * s, 4 * s, 2);
+  if (lit) { R(x - 2 * s, y + 18 * s, 3 * s, 4 * s, 7); R(x + 57 * s, y + 22 * s, 3 * s, 4 * s, 7); R(x + 29 * s, y + 4 * s, 4 * s, 6 * s, 7); }
+}
+function artSherwood(x, y, w, h) {
+  R(x, y, w, h, 13); R(x, y + h - 10, w, 10, 5);
+  for (let k = 0; k < 9; k++) { const tx = x + 6 + k * 27; R(tx + 6, y + 14, 4, h, 9); disc(tx + 8, y + 12, 11, k % 2 ? 5 : 11); }
+  const rx = x + w / 2 - 6, ry = y + h - 34;
+  R(rx + 3, ry, 7, 3, 5); R(rx + 9, ry - 2, 2, 3, 2);
+  R(rx + 4, ry + 3, 5, 5, 10); R(rx + 2, ry + 8, 9, 10, 5); R(rx + 3, ry + 18, 3, 8, 9); R(rx + 7, ry + 18, 3, 8, 9);
+  line(rx + 14, ry + 2, rx + 14, ry + 24, 9); line(rx + 14, ry + 2, rx + 18, ry + 13, 15); line(rx + 18, ry + 13, rx + 14, ry + 24, 15);
+}
+function artMaidenTower(x, y, w, h) {
+  R(x, y, w, h, 6); for (let k = 0; k < 30; k++) R(x + hash2(k, 3, 4) * w, y + hash2(k, 4, 4) * h, 1, 1, 1);
+  disc(x + 40, y + 14, 8, 15);
+  const tx = x + w / 2 - 20; R(tx, y + 6, 40, h, 11); for (let k = 0; k < 5; k++) R(tx + k * 9, y + 2, 5, 5, 11);
+  R(tx + 14, y + 16, 12, 16, 7); R(tx + 17, y + 19, 6, 4, 10); R(tx + 16, y + 23, 8, 9, 4); R(tx + 15, y + 17, 10, 2, 7);
+}
+function artRomance(x, y, w, h) {
+  R(x, y, w, h, 6); disc(x + w - 40, y + 18, 10, 1);
+  for (let k = 0; k < 30; k++) R(x + hash2(k, 5, 4) * w, y + hash2(k, 6, 4) * h, 1, 1, 15);
+  const cx = x + w / 2;
+  R(cx - 30, y + h - 6, 60, 6, 9);
+  R(cx - 14, y + 12, 8, 7, 10); R(cx - 16, y + 10, 12, 4, 12); R(cx - 18, y + 19, 14, 22, P().col); R(cx - 17, y + 41, 4, 4, 9); R(cx - 9, y + 41, 4, 4, 9);
+  R(cx + 6, y + 13, 7, 7, 10); R(cx + 4, y + 10, 11, 5, 7); R(cx + 3, y + 20, 13, 6, 4); R(cx + 1, y + 26, 17, 19, 4);
+  R(cx - 6, y + 24, 9, 3, 10);
+  T('♥', cx - 3, y + 2, 2);
+}
+function artTournament(x, y, w, h) {
+  R(x, y, w, h, 14); R(x, y + h - 14, w, 14, 5);
+  for (let k = 0; k < 8; k++) { const c = [2, 7, 4, 1, 5, 8, 3, 2][k]; R(x + k * 30, y + 12, 28, 18, c); R(x + k * 30, y + 8, 28, 4, 0); R(x + k * 30 + 13, y, 2, 8, 9); R(x + k * 30 + 15, y + 1, 6, 4, c); }
+  R(x, y + 30, w, 3, 9); for (let k = 0; k < w; k += 6) R(x + k, y + 33, 2, 6, 15);
+}
+
+/* =====================================================================
+   SCENY
+   ===================================================================== */
+const TitleS = {
+  enter() { music('theme'); this.save = loadSave(); },
+  draw() {
+    nightSky(0, 200);
+    disc(262, 34, 13, 15); disc(266, 31, 11, 1);
+    for (let x = 0; x < W; x++) { const y = 150 + vnoise(x / 30, 0, 3) * 18; R(x, y, 1, H - y, 0); }
+    castleSil(238, 112, 1, 0, true);
+    castleSil(36, 128, 0.5, 0, true);
+    parchment(34, 16, 252, 66);
+    for (const [ex, d] of [[28, -1], [286, 1]]) { R(ex - 6, 12, 12, 74, 9); R(ex - 4, 14, 8, 70, 8); R(ex - 2, 10, 4, 78, 9); }
+    TSC('OBROŃCA', 22, 2, 3, 9);
+    TSC('KORONY', 50, 2, 3, 9);
+    TC('W HOŁDZIE DLA "DEFENDER OF THE CROWN" (C64, 1987)', 90, 15);
+    const bx = 110, bw = 100;
+    let y = 106;
+    button(bx, y, bw, 15, 'NOWA GRA', () => go(StoryS)); y += 19;
+    if (this.save && !this.save.over) { button(bx, y, bw, 15, 'KONTYNUUJ', () => { G = this.save; go(MapS); toast('WITAJ Z POWROTEM, PANIE!'); }); y += 19; }
+    button(bx, y, bw, 15, 'JAK GRAĆ', () => go(HelpS)); y += 19;
+    button(bx, y, bw, 15, 'O GRZE', () => go(AboutS, 0));
+    soundButton(300, 186);
+    T('M - DŹWIĘK', 6, 190, 12);
+  }
+};
+function pagesScene(title, pages, onDone) {
+  return {
+    enter(i) { this.i = typeof i === 'number' ? i : 0; },
+    draw() {
+      R(0, 0, W, H, 0); parchment(10, 8, 300, 184);
+      TSC(title, 16, 2, 2, 9);
+      const lines = wrap(pages[this.i], 46);
+      lines.forEach((l, k) => T(l, 22, 42 + k * 10, 9));
+      T(`${this.i + 1}/${pages.length}`, 24, 174, 8);
+      if (this.i > 0) button(150, 170, 64, 14, 'WSTECZ', () => this.i--);
+      button(220, 170, 76, 14, this.i < pages.length - 1 ? 'DALEJ' : 'GOTOWE', () => { if (this.i < pages.length - 1) this.i++; else onDone(); });
+    },
+    key(k) { if (k === 'Enter' || k === ' ' || k === 'ArrowRight') { if (this.i < pages.length - 1) this.i++; else onDone(); } if (k === 'Escape') go(TitleS); }
+  };
+}
+const StoryS = pagesScene('ANGLIA, XII WIEK', [
+  'Król Ryszard nie żyje — zginął zdradziecko z ręki normańskiego spiskowca. Korona Anglii zniknęła, a kraj pogrąża się w wojnie domowej.\n\nOd bitwy pod Hastings (1066) Anglią rządzą Normanowie. Sascy panowie od pokoleń znoszą ich władzę, lecz teraz nadszedł czas, by upomnieć się o swoje.',
+  'Trzej normańscy baronowie — Front-de-Boeuf, de Bracy i Fitzurse — chcą podzielić królestwo między siebie. Czterej sascy rycerze stają do walki, ale tylko jeden z nich może zjednoczyć Anglię.\n\nZaczynasz z jednym zamkiem i dziesięcioma żołnierzami. Zdobywaj hrabstwa, zbieraj podatki, werbuj wojsko, oblegaj normańskie zamki. Bierz udział w turniejach i nocnych najazdach — a może ocalisz porwaną księżniczkę.',
+  'Wybierz teraz swojego rycerza. Każdy ma trzy cechy:\n\nWÓDZ — jak dobrze walczą jego wojska w bitwach,\nKOPIA — umiejętność walki na turnieju,\nMIECZ — sprawność w pojedynkach podczas najazdów.\n\nNiech Bóg ma Anglię w swojej opiece!'
+], () => go(SelectS));
+const HelpS = pagesScene('JAK GRAĆ', [
+  'Na mapie Anglii wybierasz jedną akcję na turę (zasada z wersji C64):\n\nPODBÓJ — prowadź armię polową do sąsiedniego hrabstwa. Ruch po własnych ziemiach nic nie kosztuje; atak kończy turę.\nTURNIEJ — walka na kopie o sławę albo o ziemię (5 złota).\nNAJAZD — nocny wypad na wrogi zamek po złoto.\nKUP WOJSKO — żołnierze, rycerze, katapulty, zamki.\nCZYTAJ MAPĘ — informacje o hrabstwach.\nPASUJ — koniec tury.',
+  'BITWA: w każdej rundzie wybierasz taktykę. STÓJ I WALCZ jest bezpieczne, DZIKI ATAK zadaje i przyjmuje więcej ciosów, BOMBARDUJ działa tylko z katapultą, a ROBIN HOOD pomaga 3 razy w ciągu całej gry.\n\nOBLĘŻENIE: przytrzymaj przycisk myszy (lub spację) — wskaźnik siły rośnie i maleje. Puść we właściwej chwili. Kamienie kruszą mur, grecki ogień i zaraza trafiają obrońców za murem. Gdy mur jest słaby — SZTURM!',
+  'NAJAZD: ← → ruch, ↑ zasłona tarczą, SPACJA cios mieczem. Pokonaj wszystkich strażników. Ucieczka: wyjdź lewą krawędzią ekranu.\n\nTURNIEJ: celuj grotem kopii (myszą, palcem lub strzałkami) w środek tarczy przeciwnika w chwili zderzenia. Środek tarczy zrzuca rywala z konia, brzeg łamie kopię.\n\nWYGRANA: zdobądź zamki wszystkich trzech normańskich baronów, mając więcej ziem niż pozostali Sasi.'
+], () => go(TitleS));
+const AboutS = pagesScene('O ORYGINALE', [
+  '„Defender of the Crown” to pierwsza gra studia Cinemaware (Master Designer Software). Ukazała się w 1986 r. na Amigę i zachwyciła grafiką Jima Sachsa. W 1987 r. powstała wersja na Commodore 64, wydana w Europie przez Mirrorsoft, a dystrybuowana przez Mindscape.\n\nTwórcy według okładki: reżyseria Kellyn Beeck, programowanie R.J. Mical, grafika James Sachs, muzyka Jim Cuomo.',
+  'Gra łączyła strategię w stylu planszówki „Ryzyko” z sekwencjami zręcznościowymi: turniejem rycerskim, walką na miecze w zamku i oblężeniem z katapultą. Imiona bohaterów zaczerpnięto z powieści „Ivanhoe” Waltera Scotta (1819).\n\nTen remake odtwarza zasady i wygląd wersji C64 (paleta 16 kolorów, rozdzielczość 320×200), ale cała grafika i muzyka zostały wykonane od nowa.',
+  'TŁO HISTORYCZNE\n\n1066 — Wilhelm Zdobywca pokonuje Sasów pod Hastings. Normanowie przejmują ziemie i urzędy, budują setki zamków.\n\n1189-1199 — panuje Ryszard Lwie Serce, w czasie jego wyprawy krzyżowej władzę próbuje przejąć brat, Jan bez Ziemi. To właśnie w tych latach dzieje się akcja „Ivanhoe” i legend o Robin Hoodzie.\n\nW grze to fikcja historyczna — prawdziwa Anglia nie miała saskiego króla po 1066 r.'
+], () => go(TitleS));
+
+const SelectS = {
+  enter() { music('theme'); },
+  draw() {
+    nightSky(0, 200);
+    for (let x = 0; x < W; x++) { const y = 176 + vnoise(x / 25, 1, 3) * 10; R(x, y, 1, H - y, 0); }
+    TSC('WYBIERZ RYCERZA', 6, 7, 2, 0);
+    for (let i = 0; i < 4; i++) {
+      const L = LORD_DEFS[i], x = 6 + i * 78, y = 28, w = 74, h = 150;
+      const hov = inR(mouse, x, y, w, h);
+      R(x - 1, y - 1, w + 2, h + 2, hov ? 7 : 0); parchment(x, y, w, h);
+      drawShield(x + 23, y + 6, 28, 32, L.col, i);
+      const nm = wrap(L.n, 11);
+      nm.forEach((l, k) => TC(l, y + 44 + k * 10, 9, 1, x + w / 2));
+      [['WÓDZ', L.lead], ['KOPIA', L.joust], ['MIECZ', L.sword]].forEach(([lab, v], k) => {
+        T(lab, x + 5, y + 82 + k * 13, 9);
+        for (let q = 0; q < 4; q++) R(x + 42 + q * 7, y + 82 + k * 13, 5, 6, q < v ? 2 : 12);
+      });
+      T(L.home, x + w / 2 - TW(L.home) / 2, y + 126, 8);
+      hits.push({ x, y, w, h, cb: () => msg(L.n.toUpperCase(), L.desc + ` Twój zamek: ${L.home}.`,
+        [{ l: 'WYBIERAM', f: () => { newGame(i); save(); go(MapS); msg('DO BOJU!', `${L.n} wyrusza, by ocalić Anglię. Masz jeden zamek i 10 żołnierzy. Ucisk normański trwa — czas to zmienić!`, null, { col: L.col === 7 ? 9 : 6 }); } },
+         { l: 'INNY' }]) });
+    }
+    T('KLIKNIJ RYCERZA', 6, 188, 12);
+    soundButton(300, 186);
+  },
+  key(k) { if (k === 'Escape') go(TitleS); }
+};
+
+/* ---------- mapa strategiczna ---------- */
+const MapS = {
+  mode: 'menu',
+  enter() { this.mode = 'menu'; music('theme'); },
+  key(k) {
+    if (k === 'Escape') { if (this.mode !== 'menu') this.mode = 'menu'; }
+    const n = parseInt(k);
+    if (this.mode === 'menu' && n >= 1 && n <= 7) this.items()[n - 1]?.[1]();
+  },
+  valid() {
+    const p = P();
+    if (this.mode === 'conquest') return [...ADJ[p.army.loc]];
+    if (this.mode === 'raid') return G.terr.map((t, i) => i).filter(i => G.terr[i].castle && G.terr[i].owner >= 0 && G.terr[i].owner !== G.player);
+    return null;
+  },
+  items() {
+    return [
+      ['PODBÓJ', () => { const p = P(); if (G.terr[p.army.loc]?.owner !== G.player) p.army.loc = p.homeT; this.mode = 'conquest'; }],
+      ['TURNIEJ', () => holdTournament()],
+      ['NAJAZD', () => { this.mode = 'raid'; }],
+      ['KUP WOJSKO', () => go(BuyS)],
+      ['CZYTAJ MAPĘ', () => { this.mode = 'read'; }],
+      ['PASUJ', () => msg('PASUJESZ', 'Czekasz na rozwój wypadków. Tura się kończy.', [{ l: 'TAK', f: () => endTurn() }, { l: 'NIE' }])],
+      ['MENU GŁÓWNE', () => { save(); go(TitleS); }]
+    ];
+  },
+  down(x, y) {
+    const ti = terrAt(x, y); if (ti < 0) return;
+    const v = this.valid();
+    if (this.mode === 'conquest' && v.includes(ti)) doConquest(ti);
+    else if (this.mode === 'raid' && v.includes(ti)) { this.mode = 'menu'; doRaid(ti); }
+    else if (this.mode === 'read') this.info(ti);
+  },
+  info(ti) {
+    const t = G.terr[ti], d = defenseOf(ti);
+    const own = t.owner < 0 ? 'niezależni wasale' : G.lords[t.owner].n + (t.owner === G.player ? ' (ty)' : '');
+    msg(t.name, `Władca: ${own}.\nDochód: ${t.inc} złota na turę.\nZamek: ${t.castle ? 'TAK' + (t.home >= 0 ? ' (siedziba rodu)' : '') : 'nie'}.\nObrońcy: około ${estimate(d.s + d.k)}.\nSąsiedzi: ${[...ADJ[ti]].map(i => G.terr[i].name).join(', ')}.`,
+      null, { col: t.owner < 0 ? 11 : (G.lords[t.owner].col === 7 ? 9 : G.lords[t.owner].col) });
+  },
+  update(dt) { toasts.forEach(t => t.life -= dt); toasts = toasts.filter(t => t.life > 0); },
+  draw() {
+    ctx.drawImage(mapCanvas, 0, 0);
+    const p = P(), hov = modals.length ? -1 : terrAt(mouse.x, mouse.y), blink = Math.floor(TIME * 4) % 2;
+    const v = this.valid();
+    if (v) v.forEach(ti => { if (ti === hov) fillTerr(ti, 1); else if (blink) fillTerr(ti, this.mode === 'raid' ? 10 : 3); });
+    else if (this.mode === 'read' && hov >= 0) fillTerr(hov, 1);
+    if (this.mode === 'conquest') fillTerr(p.army.loc, blink ? 7 : 15);
+    // ikony
+    G.terr.forEach((t, i) => {
+      const [ax, ay] = ANCH[i], col = t.owner >= 0 ? G.lords[t.owner].col : -1;
+      if (t.castle) {
+        SP(CASTLE_SP, ax - 4, ay - 3, { k: 0, g: 11 });
+        if (col >= 0) { R(ax, ay - 10, 1, 7, 0); R(ax + 1, ay - 10, 5, 4, 0); R(ax + 1, ay - 9, 4, 2, col); }
+      } else if (col >= 0) SP(FLAG_SP, ax - 2, ay - 4, { k: 0, c: col });
+    });
+    G.lords.forEach(L => {
+      if (!L.alive || L.army.loc < 0 || raw(L.army) <= 0) return;
+      const [ax, ay] = ANCH[L.army.loc];
+      if (L.id === G.player && this.mode === 'conquest' && blink) return;
+      const same = G.lords.filter(M => M.id < L.id && M.alive && M.army.loc === L.army.loc && raw(M.army) > 0).length;
+      SP(SHIELD_SP, ax + 5 + same * 8, ay - 4, { k: 0, c: L.col, w: L.side === 'N' ? 0 : 1 });
+    });
+    // panel akcji
+    box(4, 4, 100, 104);
+    if (this.mode === 'menu') {
+      TC(`TURA ${G.turn}`, 10, 2, 1, 54);
+      R(10, 19, 88, 1, 12);
+      this.items().forEach(([l, f], i) => menuItem(8, 24 + i * 11, 92, l, f));
+    } else {
+      const big = { conquest: ['WYBIERZ', 'CEL'], raid: ['WYBIERZ', 'ZAMEK'], read: ['WSKAŻ', 'HRABSTWO'] }[this.mode];
+      TC(big[0], 12, 11, 2, 54); TC(big[1], 32, 11, big[1].length > 7 ? 1 : 2, 54);
+      const hint = { conquest: 'Ruch po swoich ziemiach jest darmowy.', raid: 'Najazd kończy turę.', read: 'Kliknij hrabstwo.' }[this.mode];
+      wrap(hint, 15).forEach((l, i) => T(l, 9, 56 + i * 9, 12));
+      menuItem(8, 94, 92, this.mode === 'conquest' ? 'GOTOWE' : 'ANULUJ', () => { this.mode = 'menu'; });
+    }
+    // panel stanu
+    box(4, 112, 100, 84);
+    SP(SHIELD_SP, 9, 118, { k: 0, c: p.col, w: 1 }); T(p.s, 20, 119, 0);
+    const rows = [['ZŁOTO', p.gold], ['ŻOŁNIERZE', p.army.s], ['RYCERZE', p.army.k], ['KATAPULTY', p.army.c], ['ZIEMIE', ownedBy(G.player).length], ['ROBIN HOOD', G.robin]];
+    rows.forEach(([l, n], i) => { T(l, 9, 131 + i * 10, i === 0 ? 9 : 11); TR(String(n), 99, 131 + i * 10, 0); });
+    // podpowiedź
+    if (hov >= 0 && mouse.x > 106) {
+      const t = G.terr[hov], own = t.owner < 0 ? 'WASALE' : G.lords[t.owner].s;
+      const w = Math.max(TW(t.name), TW(own)) + 8, tx = clamp(mouse.x + 8, 106, W - w - 2), ty = clamp(mouse.y - 24, 2, H - 26);
+      R(tx + 1, ty + 1, w, 22, 0); R(tx, ty, w, 22, 0); R(tx + 1, ty + 1, w - 2, 20, 7);
+      T(t.name, tx + 4, ty + 3, 0); T(own, tx + 4, ty + 13, t.owner < 0 ? 11 : (G.lords[t.owner].col === 7 ? 9 : G.lords[t.owner].col));
+    }
+    if (toasts.length) { const t = toasts[0]; const w = TW(t.t) + 10; R(212 - w / 2, 183, w, 12, 0); T(t.t, 217 - w / 2, 186, 7); }
+    soundButton(303, 4);
+  }
+};
+
+/* ---------- zakupy ---------- */
+const BuyS = {
+  enter() { this.q = { s: 0, k: 0, c: 0, castle: 0 }; this.moved = false; },
+  cost() { const q = this.q; return q.s * COST.s + q.k * COST.k + q.c * COST.c + q.castle * COST.castle; },
+  castleSpot() { const p = P(), t = G.terr[p.army.loc]; return t && t.owner === G.player && !t.castle ? p.army.loc : -1; },
+  add(k, n) {
+    const q = this.q, p = P();
+    const nv = q[k] + n;
+    if (nv < 0) { q[k] = 0; return; }
+    if (k === 'castle' && nv > 1) return;
+    if (this.cost() + n * COST[k] > p.gold) { const can = Math.floor((p.gold - this.cost()) / COST[k]); if (can > 0 && n > 0) q[k] += can; else SFX.thud(); return; }
+    q[k] = nv;
+  },
+  draw() {
+    ctx.drawImage(mapCanvas, 0, 0);
+    const p = P(), home = G.terr[p.homeT];
+    box(24, 10, 272, 180);
+    R(26, 12, 268, 13, 6); TC('KUP WOJSKO', 15, 1, 1);
+    T('TOWAR', 34, 32, 11); T('CENA', 112, 32, 11); T('ILOŚĆ', 196, 32, 11); TR('MASZ', 286, 32, 11);
+    const rowsDef = [['ŻOŁNIERZ', 's', p.army.s], ['RYCERZ', 'k', p.army.k], ['KATAPULTA', 'c', p.army.c]];
+    const cs = this.castleSpot();
+    if (cs >= 0) rowsDef.push(['ZAMEK', 'castle', G.terr[cs].name]);
+    rowsDef.forEach(([lab, k, has], i) => {
+      const y = 46 + i * 16;
+      T(lab, 34, y, 0); TR(String(COST[k]), 136, y, 9);
+      button(146, y - 3, 20, 12, '-10', () => this.add(k, -10));
+      button(168, y - 3, 12, 12, '-', () => this.add(k, -1));
+      TC(String(this.q[k]), y, 2, 1, 196);
+      button(212, y - 3, 12, 12, '+', () => this.add(k, 1));
+      button(226, y - 3, 20, 12, '+10', () => this.add(k, 10));
+      TR(String(has), 286, y, 0);
+    });
+    R(30, 112, 260, 1, 12);
+    T('KOSZT: ' + this.cost(), 34, 118, 2); TR('ZŁOTO: ' + p.gold, 286, 118, 9);
+    T('GARNIZON ZAMKU ' + home.name + ': ' + home.gar, 34, 134, 0);
+    button(34, 146, 112, 13, '5 ŻOŁN. DO ZAMKU', () => { const n = Math.min(5, p.army.s); p.army.s -= n; home.gar += n; if (n) this.moved = true; });
+    button(152, 146, 112, 13, '5 ŻOŁN. DO ARMII', () => { const n = Math.min(5, home.gar); home.gar -= n; p.army.s += n; if (n) { this.moved = true; if (G.terr[p.army.loc]?.owner !== G.player) p.army.loc = p.homeT; } });
+    T('Zakup kończy turę, przenoszenie - nie.', 34, 164, 12);
+    button(60, 174, 110, 13, this.cost() ? 'KUP (KONIEC TURY)' : 'KUP', () => {
+      if (!this.cost()) { go(MapS); return; }
+      const q = this.q;
+      p.gold -= this.cost(); p.army.s += q.s; p.army.k += q.k; p.army.c += q.c;
+      if (q.castle && cs >= 0) { G.terr[cs].castle = true; }
+      if (G.terr[p.army.loc]?.owner !== G.player) p.army.loc = p.homeT;
+      SFX.coin(); endTurn();
+    }, { off: false });
+    button(180, 174, 80, 13, 'WRÓĆ', () => go(MapS));
+  },
+  key(k) { if (k === 'Escape') go(MapS); }
+};
+
+/* ---------- zakończenia ---------- */
+const EndS = {
+  enter(type) { this.type = type; music(type === 'win' ? 'theme' : null); if (type === 'win') SFX.fanfare(); else SFX.sad(); },
+  draw() {
+    const p = P(), win = this.type === 'win';
+    if (win) {
+      R(0, 0, W, H, 6); for (let k = 0; k < 12; k++) { const a = k / 12 * Math.PI * 2 + TIME * 0.2; line(160, 70, 160 + Math.cos(a) * 200, 70 + Math.sin(a) * 200, 14); }
+      // korona
+      const cx = 160, cy = 70;
+      R(cx - 34, cy, 68, 18, 7); R(cx - 34, cy + 14, 68, 4, 8);
+      for (let k = 0; k < 5; k++) { const x = cx - 34 + k * 15.5; for (let j = 0; j < 14; j++) R(x + j * 0.3, cy - j * 1.6, 7 - j * 0.45, 2, 7); disc(x + 3, cy - 24, 3, 7); }
+      [2, 3, 5, 2].forEach((c, k) => disc(cx - 22 + k * 15, cy + 8, 3, c));
+      TSC('NIECH ŻYJE KRÓL!', 112, 7, 2);
+      TC(`${p.n.toUpperCase()} ZASIADA NA TRONIE ANGLII`, 140, 1);
+    } else {
+      nightSky(0, 200);
+      for (let x = 0; x < W; x++) { const y = 150 + vnoise(x / 30, 0, 3) * 18; R(x, y, 1, H - y, 0); }
+      castleSil(126, 100, 1, 11, false);
+      TSC(this.type === 'defeat' ? 'KLĘSKA' : 'KORONA DLA INNEGO', 20, 2, 2, 0);
+      TC(this.type === 'defeat' ? 'NORMANOWIE TRIUMFUJĄ' : 'ZOSTAJESZ WASALEM NOWEGO KRÓLA', 44, 15);
+    }
+    TC(`TUR: ${G.turn}   ZIEM: ${ownedBy(G.player).length}   ZŁOTA: ${p.gold}`, 156, 15);
+    button(120, 176, 80, 15, 'MENU', () => go(TitleS));
+  }
+};
+
+/* =====================================================================
+   BITWA
+   ===================================================================== */
+function miniSoldier(x, y, col, f, fr) {
+  R(x + 1, y, 3, 2, 12); R(x + 1, y + 2, 3, 1, 10); R(x, y + 3, 5, 3, col);
+  R(x + 1, y + 6, 1, 2 - fr, 9); R(x + 3, y + 6, 1, 1 + fr, 9);
+  R(f > 0 ? x + 5 : x - 1, y - 3, 1, 10, 15);
+}
+function miniKnight(x, y, col, f, fr) {
+  R(x, y + 5, 11, 4, 8); R(x + 1, y + 6, 9, 3, col);
+  R(f > 0 ? x + 10 : x - 2, y + 2, 3, 4, 8);
+  R(x + 1, y + 9, 1, 3 - fr, 9); R(x + 3, y + 9, 1, 2 + fr, 9); R(x + 7, y + 9, 1, 3 - fr, 9); R(x + 9, y + 9, 1, 2 + fr, 9);
+  R(x + 4, y, 3, 3, 15); R(x + 4, y + 3, 4, 3, col);
+  line(x + 5, y + 4, f > 0 ? x + 17 : x - 7, y - 1, 15);
+}
+const BattleS = {
+  enter(o) {
+    this.o = o;
+    this.A = { u: { s: o.att.u.s, k: o.att.u.k }, lead: o.att.lead, mult: 1 };
+    this.D = { u: { s: o.def.u.s, k: o.def.u.k }, lead: o.def.lead, mult: o.def.mult || 1 };
+    this.round = 0; this.phase = 'choose'; this.anim = 0; this.usedBomb = false; this.usedRobin = false;
+    this.log = 'Wybierz taktykę na tę rundę.'; this.sparks = [];
+    this.per = Math.max(1, Math.ceil(Math.max(raw(this.A.u) - 3 * this.A.u.k, this.D.u.s + this.D.u.k, this.A.u.s + this.A.u.k) / 30));
+    music('battle');
+  },
+  choose(t) { if (this.phase !== 'choose') return; this.tac = t; this.phase = 'anim'; this.anim = 0; this.arrows = t === 'robin'; },
+  update(dt) {
+    if (this.phase === 'anim') {
+      this.anim += dt;
+      if (Math.random() < dt * 14) SFX.clash();
+      if (Math.random() < dt * 40) this.sparks.push({ x: rnd(140, 180), y: rnd(60, 130), l: 0.2 });
+      if (this.anim > 1.2) this.applyRound();
+    }
+    this.sparks.forEach(s => s.l -= dt); this.sparks = this.sparks.filter(s => s.l > 0);
+  },
+  applyRound() {
+    const A = this.A, D = this.D, t = this.tac, a0 = { ...A.u }, d0 = { ...D.u };
+    if (t === 'bomb') { dealDamage(D.u, this.o.att.c * rnd(8, 14) / D.mult); this.usedBomb = true; }
+    else if (t === 'robin') { dealDamage(D.u, raw(D.u) * rnd(0.28, 0.4)); this.usedRobin = true; G.robin--; }
+    else if (t === 'retreat') { dealDamage(A.u, raw(A.u) * 0.12); return this.finish(false, 'Odwrót! Pościg wroga kosztuje cię część ludzi.'); }
+    else battleRound(A, D, TAC[t], TAC.stand);
+    this.round++;
+    this.log = `Straty — twoje: ${a0.s - A.u.s + a0.k - A.u.k}, wroga: ${d0.s - D.u.s + d0.k - D.u.k}.`;
+    const o = outcome(A, D);
+    if (o === 'A') this.finish(true, D.u.s + D.u.k > 0 ? 'Wróg rzuca broń i ucieka z pola!' : 'Wróg został rozbity do ostatniego człowieka!');
+    else if (o === 'D') this.finish(false, A.u.s + A.u.k > 0 ? 'Twoje wojska łamią szyki i uciekają!' : 'Twoja armia została rozbita!');
+    else if (this.round >= 10) this.finish(false, 'Zapada zmrok — wróg utrzymał pozycje.');
+    else this.phase = 'choose';
+  },
+  finish(win, txt) { this.phase = 'done'; this.win = win; this.log = txt; win ? SFX.fanfare() : SFX.sad(); },
+  drawArmy(u, left, col) {
+    const ns = u.s > 0 ? Math.ceil(u.s / this.per) : 0, nk = u.k > 0 ? Math.ceil(u.k / this.per) : 0;
+    const f = left ? 1 : -1, an = this.phase === 'anim' ? Math.sin(Math.min(1, this.anim / 1.2) * Math.PI) * 16 : 0;
+    const fr = Math.floor(TIME * 6) % 2;
+    const X = x => left ? x + an : W - x - 11 - an;
+    for (let i = 0; i < Math.min(nk, 16); i++) { const c = Math.floor(i / 4), r = i % 4; miniKnight(X(124 - c * 15), 62 + r * 18 + (c % 2) * 4, col, f, fr); }
+    const kc = Math.ceil(Math.min(nk, 16) / 4);
+    for (let i = 0; i < Math.min(ns, 36); i++) { const c = Math.floor(i / 6), r = i % 6; miniSoldier(X(126 - kc * 15 - c * 9) + (left ? 3 : 0), 60 + r * 12 + (c % 2) * 3, col, f, fr); }
+  },
+  draw() {
+    R(0, 0, W, 46, 14);
+    for (let x = 0; x < W; x++) { const y = 30 + vnoise(x / 22, 5, 7) * 16; R(x, y, 1, 50 - y, 12); }
+    R(0, 50, W, 92, 5);
+    for (let k = 0; k < 40; k++) R(hash2(k, 1, 9) * W, 52 + hash2(k, 2, 9) * 88, 2, 1, 13);
+    TSC(this.o.title, 4, 1, 1, 0);
+    R(6, 20, 1, 30, 9); R(7, 20, 12, 8, this.o.att.col);
+    R(W - 7, 20, 1, 30, 9); R(W - 19, 20, 12, 8, this.o.def.col);
+    T(this.o.att.name, 22, 22, 0); TR(this.o.def.name, W - 22, 22, 0);
+    this.drawArmy(this.A.u, true, this.o.att.col);
+    this.drawArmy(this.D.u, false, this.o.def.col);
+    this.sparks.forEach(s => R(s.x, s.y, 2, 2, Math.random() < 0.5 ? 1 : 7));
+    if (this.phase === 'anim' && this.arrows) for (let k = 0; k < 14; k++) { const t = (this.anim * 1.5 + k * 0.07) % 1, x = 20 + t * 270, y = 50 - Math.sin(t * Math.PI) * 40 + k * 5; line(x, y, x + 5, y + 1, 9); }
+    if (this.phase === 'anim' && this.tac === 'bomb') { const t = Math.min(1, this.anim), x = 60 + t * 200, y = 70 - Math.sin(t * Math.PI) * 60; disc(x, y, 2, 11); }
+    box(4, 142, 312, 54);
+    T(`TWOI: ${this.A.u.s} ŻOŁN. ${this.A.u.k} RYC.`, 10, 148, 0);
+    TR(`WRÓG: ${this.D.u.s} + ${this.D.u.k}`, 310, 148, 2);
+    T(this.log, 10, 159, 11);
+    if (this.phase === 'choose') {
+      const bs = [['STÓJ I WALCZ', () => this.choose('stand')], ['DZIKI ATAK', () => this.choose('wild')]];
+      bs.push(['BOMBARDUJ', () => this.choose('bomb'), this.usedBomb || !this.o.att.c]);
+      bs.push([`ROBIN HOOD (${G.robin})`, () => this.choose('robin'), this.usedRobin || G.robin <= 0]);
+      bs.push(['ODWRÓT', () => this.choose('retreat')]);
+      bs.forEach(([l, f, off], i) => button(8 + (i % 3) * 102, 170 + Math.floor(i / 3) * 13, i < 3 ? 98 : 98, 12, l, f, { off }));
+    } else if (this.phase === 'done') {
+      TC(this.win ? 'ZWYCIĘSTWO!' : 'PORAŻKA', 172, this.win ? 5 : 2, 1, 110);
+      button(200, 170, 100, 14, 'DALEJ', () => { music('theme'); this.o.onEnd(this.win, this.A.u, this.D.u); });
+    } else TC('...BITWA TRWA...', 176, 12);
+  },
+  key(k) {
+    if (this.phase === 'choose') { const m = { '1': 'stand', '2': 'wild', '3': 'bomb', '4': 'robin', '5': 'retreat' }[k]; if (m === 'bomb' && (this.usedBomb || !this.o.att.c)) return; if (m === 'robin' && (this.usedRobin || G.robin <= 0)) return; if (m) this.choose(m); }
+    else if (this.phase === 'done' && (k === 'Enter' || k === ' ')) { music('theme'); this.o.onEnd(this.win, this.A.u, this.D.u); }
+  }
+};
+
+/* =====================================================================
+   OBLĘŻENIE
+   ===================================================================== */
+const WX0 = 214, WX1 = 298, WTOP = 96, GND = 160;
+const SiegeS = {
+  enter(o) {
+    this.o = o; this.t = G.terr[o.ti]; this.wall = 100; this.day = 1; this.maxDay = 12;
+    this.def = { s: o.def.s, k: o.def.k }; this.ammo = 'stone'; this.fire = 3; this.plague = 1;
+    this.state = 'aim'; this.power = 0; this.pdir = 1; this.proj = null; this.holes = []; this.fx = [];
+    this.wind = ri(-3, 3); this.note = 'Przytrzymaj i puść, by strzelić.'; this.arm = 0;
+    music(null);
+  },
+  down(x, y) { if (this.state === 'aim' && y < 140) { this.state = 'charge'; this.power = 0; this.pdir = 1; } },
+  up() { if (this.state === 'charge') this.shoot(); },
+  key(k) { if (k === ' ' && this.state === 'aim') { this.state = 'charge'; this.power = 0; this.pdir = 1; } if (k === '1') this.ammo = 'stone'; if (k === '2' && this.fire) this.ammo = 'fire'; if (k === '3' && this.plague) this.ammo = 'plague'; },
+  keyup(k) { if (k === ' ' && this.state === 'charge') this.shoot(); },
+  shoot() {
+    const v = 70 + this.power * 115, a = 0.95;
+    this.proj = { x: 58, y: 130, vx: Math.cos(a) * v, vy: -Math.sin(a) * v, type: this.ammo, px: 58 };
+    if (this.ammo === 'fire') this.fire--; if (this.ammo === 'plague') this.plague--;
+    this.state = 'fly'; SFX.launch();
+  },
+  impact(kind, x, y) {
+    const p = this.proj; this.proj = null;
+    const d = this.def, tot = d.s + d.k;
+    let n = '';
+    if (kind === 'wall') {
+      if (p.type === 'stone') { const dmg = ri(15, 26); this.wall = Math.max(0, this.wall - dmg); this.holes.push({ x: clamp(x + ri(0, 50), WX0 + 6, WX1 - 8), y, r: ri(5, 8) }); n = `Trafienie w mur! (-${dmg}%)`; SFX.boom(); }
+      else { const dmg = ri(2, 5); this.wall = Math.max(0, this.wall - dmg); n = 'Odbija się od muru.'; SFX.thud(); }
+      this.fx.push({ x, y, l: 0.6, c: p.type === 'fire' ? 8 : 12 });
+    } else if (kind === 'inside') {
+      let k = 0;
+      if (p.type === 'stone') k = ri(1, 3);
+      if (p.type === 'fire') k = Math.max(2, Math.round(tot * rnd(0.08, 0.16)));
+      if (p.type === 'plague') k = Math.max(3, Math.round(tot * rnd(0.2, 0.3)));
+      k = Math.min(k, d.s); d.s -= k;
+      n = p.type === 'stone' ? `Kamień spada na dziedziniec (-${k}).` : p.type === 'fire' ? `Grecki ogień pali zamek! (-${k})` : `Zaraza wśród obrońców! (-${k})`;
+      p.type === 'fire' ? SFX.fire() : SFX.thud();
+      this.fx.push({ x, y: y - 4, l: 1.2, c: p.type === 'plague' ? 13 : 7, big: 1 });
+    } else { n = x < WX0 ? 'Za krótko!' : 'Za daleko!'; SFX.thud(); this.fx.push({ x, y: GND, l: 0.5, c: 9 }); }
+    // koniec dnia
+    const pa = P().army, lost = Math.min(pa.s, Math.floor(pa.s * rnd(0, 0.03)));
+    pa.s -= lost;
+    this.day++; this.wind = ri(-3, 3);
+    this.note = n + (lost ? ` Łucznicy zabili ${lost} twoich.` : '');
+    if (this.ammo === 'fire' && !this.fire) this.ammo = 'stone';
+    if (this.ammo === 'plague' && !this.plague) this.ammo = 'stone';
+    if (this.wall <= 0) { this.note = 'MUR RUNĄŁ! Do szturmu!'; }
+    this.state = 'aim';
+    if (this.day > this.maxDay) { this.state = 'over'; msg('KONIEC ZAPASÓW', 'Twoim ludziom kończy się żywność. Musisz szturmować teraz albo odstąpić.', [{ l: 'SZTURM', f: () => this.end('assault') }, { l: 'ODWRÓT', f: () => this.end('retreat') }]); }
+  },
+  end(r) { this.o.onEnd(r, this.def, this.wall); },
+  update(dt) {
+    if (this.state === 'charge') { this.power += this.pdir * dt * 0.85; if (this.power > 1) { this.power = 1; this.pdir = -1; } if (this.power < 0) { this.power = 0; this.pdir = 1; } this.arm = this.power; }
+    else this.arm = Math.max(-0.6, this.arm - dt * 6);
+    const p = this.proj;
+    if (p) {
+      const steps = 4;
+      for (let s = 0; s < steps && this.proj; s++) {
+        const h = dt / steps;
+        p.px = p.x; p.vx += this.wind * 4 * h; p.vy += 90 * h; p.x += p.vx * h; p.y += p.vy * h;
+        if (p.px < WX0 && p.x >= WX0 && p.y >= WTOP && p.y < GND) { this.impact('wall', WX0, p.y); break; }
+        if (p.x > 206 && p.x < 222 && p.y > 80 && p.y < 96) { this.impact('wall', WX0, 96); break; }
+        if (p.x >= WX0 && p.x <= WX1 && p.y >= 140) { this.impact('inside', p.x, 140); break; }
+        if (p.y >= GND || p.x > W + 20) { this.impact('miss', Math.min(p.x, W - 4), GND); break; }
+      }
+    }
+    this.fx.forEach(f => f.l -= dt); this.fx = this.fx.filter(f => f.l > 0);
+  },
+  draw() {
+    const t = this.t, col = G.lords[t.owner]?.col ?? 12;
+    R(0, 0, W, GND, 14);
+    for (let x = 0; x < W; x++) { const y = 120 + vnoise(x / 30, 9, 5) * 20; R(x, y, 1, GND - y, 12); }
+    R(0, GND, W, H - GND, 5); for (let k = 0; k < 30; k++) R(hash2(k, 3, 2) * W, GND + 2 + hash2(k, 4, 2) * 36, 2, 1, 13);
+    // zamek
+    R(236, 54, 34, 50, 11); for (let k = 0; k < 4; k++) R(236 + k * 9, 48, 6, 6, 11);
+    R(252, 30, 1, 18, 0); R(253, 30, 10, 6, col);
+    R(WX0, WTOP, WX1 - WX0, GND - WTOP, 12);
+    for (let y = WTOP; y < GND; y += 6) for (let x = WX0 + ((y / 6) % 2) * 5; x < WX1; x += 10) R(x, y, 1, 6, 11);
+    for (let y = WTOP; y < GND; y += 6) R(WX0, y, WX1 - WX0, 1, 11);
+    for (let k = 0; k < 9; k++) R(WX0 + k * 10, WTOP - 6, 6, 6, 12);
+    R(206, 80, 16, 80, 15); R(290, 80, 16, 80, 15); for (let k = 0; k < 3; k++) { R(206 + k * 6, 75, 4, 5, 15); R(290 + k * 6, 75, 4, 5, 15); }
+    R(212, 96, 4, 6, 0); R(296, 96, 4, 6, 0);
+    R(248, 132, 18, 28, 0); disc(257, 132, 9, 0);
+    this.holes.forEach(h => { disc(h.x, h.y, h.r, 0); disc(h.x - 1, h.y - 1, h.r - 2, 11); });
+    if (this.wall <= 0) { R(222, 104, 60, 56, 11); for (let k = 0; k < 12; k++) R(222 + hash2(k, 1, 1) * 56, 148 + hash2(k, 2, 1) * 10, 6, 4, 12); }
+    const heads = Math.min(8, Math.ceil((this.def.s + this.def.k) / 6));
+    for (let k = 0; k < heads; k++) { const x = WX0 + 4 + k * 10; R(x, WTOP - 9 + (Math.sin(TIME * 3 + k) > 0.8 ? -1 : 0), 4, 3, 10); R(x, WTOP - 11, 4, 2, 12); }
+    // katapulta
+    R(24, 150, 44, 5, 9); disc(30, 157, 4, 9); disc(62, 157, 4, 9); disc(30, 157, 1, 8); disc(62, 157, 1, 8);
+    R(42, 136, 4, 15, 9); R(36, 146, 16, 3, 8);
+    const ang = -0.9 + this.arm * 0.0 + (this.state === 'charge' ? -this.power * 0.6 : 0) + (this.arm < 0 ? 1.4 : 0);
+    const a2 = this.state === 'fly' || this.arm < 0 ? -2.3 : 2.5 - this.power * 0.5;
+    const tx = 44 + Math.cos(a2) * 24, ty = 138 + Math.sin(a2) * 24;
+    line(44, 138, tx, ty, 8, 2); disc(tx, ty, 2, 9);
+    void ang;
+    // pocisk
+    const p = this.proj;
+    if (p) {
+      if (p.type === 'stone') disc(p.x, p.y, 2, 11);
+      else if (p.type === 'fire') { disc(p.x, p.y, 2, 7); R(p.x - p.vx * 0.03, p.y - p.vy * 0.03, 2, 2, 8); R(p.x - p.vx * 0.06, p.y - p.vy * 0.06, 1, 1, 2); }
+      else { disc(p.x, p.y, 3, 13); R(p.x - 1, p.y - 1, 2, 2, 5); }
+    }
+    this.fx.forEach(f => { const r = (f.big ? 7 : 4) * (1.2 - f.l); for (let k = 0; k < 6; k++) R(f.x + Math.cos(k + TIME * 9) * r, f.y - Math.abs(Math.sin(k * 2 + TIME * 7)) * r * 1.5, 2, 2, k % 2 ? f.c : 1); });
+    // HUD
+    R(0, 0, W, 12, 0);
+    T(`${t.name}  DZIEŃ ${Math.min(this.day, this.maxDay)}/${this.maxDay}`, 4, 3, 1);
+    T(`MUR ${this.wall}%`, 150, 3, this.wall > 50 ? 7 : 10);
+    TR(`OBROŃCY ${this.def.s + this.def.k}`, 316, 3, 3);
+    T('WIATR', 4, 16, 0); for (let k = 0; k < Math.abs(this.wind); k++) T(this.wind > 0 ? '>' : '<', 40 + k * 6, 16, 2); if (!this.wind) T('-', 40, 16, 0);
+    if (this.state === 'charge' || this.state === 'aim') { R(4, 26, 52, 7, 0); R(5, 27, 50 * this.power, 5, this.power > 0.8 ? 2 : 7); }
+    box(2, 168, 316, 30);
+    T(this.note, 8, 172, 0);
+    const am = [['KAMIEŃ', 'stone', 99], ['OGIEŃ ' + this.fire, 'fire', this.fire], ['ZARAZA ' + this.plague, 'plague', this.plague]];
+    am.forEach(([l, k, n], i) => button(8 + i * 62, 182, 58, 12, l, () => { this.ammo = k; }, { off: !n, bg: this.ammo === k ? 3 : 15 }));
+    button(198, 182, 56, 12, 'SZTURM', () => { if (this.state === 'aim') this.end('assault'); }, { off: this.state !== 'aim' });
+    button(258, 182, 56, 12, 'ODWRÓT', () => { if (this.state === 'aim') this.end('retreat'); }, { off: this.state !== 'aim' });
+  }
+};
+
+/* =====================================================================
+   NAJAZD — walka na miecze
+   ===================================================================== */
+const FLOOR = 172;
+function drawFighter(f, col, isP) {
+  const d = f.face, x = Math.round(f.x), y = FLOOR;
+  const tun = f.state === 'hit' && Math.floor(f.t * 20) % 2 ? 1 : col;
+  if (f.state === 'dead') {
+    const k = Math.min(1, f.t * 3);
+    R(x - 18 * k, y - 6, 30, 6, tun); R(x + (d > 0 ? -22 : 12) * k, y - 7, 8, 7, 10); R(x - 6, y - 3, 22, 3, 9);
+    line(x - 10, y - 1, x + 18, y - 1, 15);
+    return;
+  }
+  const wk = f.state === 'walk' ? Math.sin(f.wt * 12) * 3 : 0;
+  R(x - 6 + wk, y - 16, 5, 16, 11); R(x + 1 - wk, y - 16, 5, 16, 11);
+  R(x - 7 + wk, y - 3, 7, 3, 9); R(x + 1 - wk, y - 3, 7, 3, 9);
+  R(x - 7, y - 34, 14, 19, tun); R(x - 7, y - 20, 14, 2, 9); R(x - 2, y - 34, 4, 14, isP ? 1 : 0);
+  R(x - 4, y - 43, 9, 9, 10); R(x - 5, y - 46, 11, 5, 12); R(x - 1 + d, y - 43, 2, 6, 12);
+  R(x + (d > 0 ? 2 : -4), y - 40, 2, 1, 0);
+  // tarcza na przedramieniu z tyłu
+  R(x - d * 9 - 3, y - 32, 7, 12, 0); R(x - d * 9 - 2, y - 31, 5, 10, isP ? col : 11);
+  let hx, hy, bx, by;
+  if (f.state === 'attack') {
+    const ph = f.t / f.dur;
+    if (ph < 0.35) { hx = x - d * 2; hy = y - 34; bx = hx - d * 8; by = hy - 14; }
+    else if (ph < 0.65) { hx = x + d * 12; hy = y - 28; bx = hx + d * 22; by = hy - 2; }
+    else { hx = x + d * 8; hy = y - 26; bx = hx + d * 14; by = hy + 6; }
+  } else if (f.state === 'parry') { hx = x + d * 9; hy = y - 30; bx = hx + d * 2; by = hy - 22; }
+  else { hx = x + d * 8; hy = y - 26; bx = hx + d * 12; by = hy - 12; }
+  line(x + d * 4, y - 30, hx, hy, tun, 3);
+  line(hx, hy, bx, by, 15, 2); R(hx - 2, hy - 1, 4, 3, 7);
+}
+const RaidS = {
+  enter(o) {
+    this.o = o; const p = P();
+    this.pl = { x: 60, face: 1, hp: 4 + p.sword, max: 4 + p.sword, state: 'idle', t: 0, wt: 0, dur: 0.42 - p.sword * 0.035, parryT: 0, tired: 0 };
+    this.left = o.guards; this.total = o.guards; this.spawn(); this.state = 'fight'; this.endT = 0; this.res = null;
+    music('battle');
+  },
+  spawn() { const d = this.o.diff; this.g = { x: 330, face: -1, hp: 2 + (d >= 3 ? 1 : 0), max: 2 + (d >= 3 ? 1 : 0), state: 'walk', t: 0, wt: 0, cool: 1.2, dur: 0.55 - d * 0.04 }; },
+  attack(f) { f.state = 'attack'; f.t = 0; f.hit = false; SFX.swish(); },
+  key(k) {
+    if (this.state === 'done') { if (k === 'Enter' || k === ' ') this.finish(); return; }
+    const p = this.pl;
+    if ((k === ' ' || k === 'ArrowDown') && (p.state === 'idle' || p.state === 'walk' || p.state === 'parry')) {
+      this.attack(p);
+      const g = this.g, sk = P().sword, d = this.o.diff;
+      if (g && (g.state === 'idle' || g.state === 'walk') && Math.abs(g.x - p.x) < 44 && Math.random() < clamp(0.15 + 0.12 * d - 0.06 * sk, 0.05, 0.55)) { g.state = 'parry'; g.t = 0; }
+    }
+  },
+  tryHit(a, b, isP) {
+    if (!b || b.state === 'dead') return;
+    const dx = (b.x - a.x) * a.face;
+    if (dx < 0 || dx > 40) return;
+    if (b.state === 'parry') { SFX.parry(); a.state = 'hit'; a.t = 0.15; a.x -= a.face * 6; return; }
+    b.hp--; b.state = 'hit'; b.t = 0; b.x += a.face * 10; SFX.hit();
+    if (b.hp <= 0) { b.state = 'dead'; b.t = 0; if (!isP) this.over('lose'); }
+  },
+  over(r) { if (this.state === 'done') return; this.state = 'done'; this.res = r; this.endT = 0; r === 'win' ? SFX.fanfare() : r === 'lose' ? SFX.sad() : 0; },
+  finish() { music('theme'); this.o.onEnd(this.res); },
+  update(dt) {
+    const p = this.pl, g = this.g, d = this.o.diff;
+    if (this.state === 'done') { this.endT += dt; return; }
+    p.t += dt; p.tired = Math.max(0, p.tired - dt);
+    if (p.state === 'attack') { if (!p.hit && p.t > p.dur * 0.4) { p.hit = true; this.tryHit(p, g, true); } if (p.t > p.dur) p.state = 'idle'; }
+    else if (p.state === 'hit') { if (p.t > 0.35) p.state = 'idle'; }
+    else {
+      if (keys.ArrowUp && !p.tired) { if (p.state !== 'parry') { p.state = 'parry'; p.parryT = 0; } p.parryT += dt; if (p.parryT > 1.3) { p.tired = 0.7; p.state = 'idle'; } }
+      else {
+        let mv = (keys.ArrowRight ? 1 : 0) - (keys.ArrowLeft ? 1 : 0);
+        p.state = mv ? 'walk' : 'idle'; if (mv) p.wt += dt; p.x += mv * 55 * dt;
+      }
+    }
+    if (g && g.state !== 'dead') p.x = Math.min(p.x, g.x - 22);
+    p.x = Math.min(p.x, 300);
+    if (p.x < 4) return this.over('flee');
+    if (!g) return;
+    g.t += dt; g.cool -= dt;
+    if (g.state === 'dead') {
+      if (g.t > 1.1) { this.left--; if (this.left > 0) this.spawn(); else { this.g = null; this.over('win'); } }
+    } else if (g.state === 'attack') { if (!g.hit && g.t > g.dur * 0.45) { g.hit = true; this.tryHit(g, p, false); } if (g.t > g.dur) { g.state = 'idle'; g.cool = rnd(0.5, 1.3) - d * 0.12; } }
+    else if (g.state === 'hit') { if (g.t > 0.35) { g.state = 'idle'; g.cool = rnd(0.25, 0.7); } }
+    else if (g.state === 'parry') { if (g.t > 0.45) g.state = 'idle'; }
+    else {
+      const dist = g.x - p.x;
+      if (dist > 34) { g.state = 'walk'; g.wt += dt; g.x -= 42 * dt; }
+      else { g.state = 'idle'; if (dist < 24) g.x += 25 * dt; if (g.cool <= 0) this.attack(g); }
+    }
+    if (p.state === 'dead') return;
+  },
+  draw() {
+    const L = this.o.lord;
+    R(0, 0, W, FLOOR, 11);
+    for (let y = 14; y < FLOOR; y += 8) { R(0, y, W, 1, 0); for (let x = ((y >> 3) % 2) * 10; x < W; x += 20) R(x, y, 1, 8, 0); }
+    for (const px of [40, 160, 280]) { R(px - 8, 14, 16, FLOOR - 14, 12); R(px - 8, 14, 2, FLOOR - 14, 15); R(px + 6, 14, 2, FLOOR - 14, 0); }
+    for (const tx of [100, 220]) { R(tx - 2, 60, 4, 14, 9); const fl = Math.sin(TIME * 20 + tx) * 2; R(tx - 3, 50 + fl, 6, 10, 8); R(tx - 2, 52 + fl, 4, 6, 7); R(tx - 1, 54 + fl, 2, 3, 1); }
+    for (const bx of [100, 220]) { R(bx - 10, 86, 20, 30, L.col); R(bx - 10, 116, 10, 6, L.col); R(bx, 116, 10, 4, L.col); R(bx - 3, 94, 6, 10, L.side === 'N' ? 0 : 1); }
+    R(0, 0, W, 14, 0);
+    R(0, FLOOR, W, H - FLOOR, 9); for (let x = 0; x < W; x += 24) R(x, FLOOR, 1, H - FLOOR, 8); R(0, FLOOR, W, 1, 8);
+    T('NAJAZD: ' + G.terr[this.o.ti].name, 4, 4, 7);
+    const p = this.pl;
+    for (let k = 0; k < p.max; k++) R(4 + k * 7, 18, 5, 5, k < p.hp ? 2 : 12);
+    if (this.g) for (let k = 0; k < this.g.max; k++) R(W - 9 - k * 7, 18, 5, 5, k < this.g.hp ? 8 : 12);
+    TR(`STRAŻ ${this.left}/${this.total}`, 316, 4, 15);
+    if (this.g) drawFighter(this.g, L.col, false);
+    drawFighter(p, P().col, true);
+    if (p.tired) TC('ZMĘCZENIE!', 30, 10);
+    T('← → RUCH  ↑ TARCZA  SPACJA CIOS', 4, 188, 15);
+    if (this.state === 'done') {
+      const t = { win: 'SKARBIEC JEST TWÓJ!', lose: 'POKONANY...', flee: 'UCIECZKA' }[this.res];
+      box(80, 70, 160, 46); TC(t, 80, this.res === 'win' ? 5 : 2); button(120, 96, 80, 14, 'DALEJ', () => this.finish());
+    }
+  }
+};
+// strzałki w czcionce
+FONT['←'] = '.....|..#..|.#...|#####|.#...|..#..|.....'.split('|');
+FONT['→'] = '.....|..#..|...#.|#####|...#.|..#..|.....'.split('|');
+FONT['↑'] = '..#..|.###.|#.#.#|..#..|..#..|..#..|.....'.split('|');
+
+/* =====================================================================
+   TURNIEJ — potykanie się na kopie (widok z siodła)
+   ===================================================================== */
+const HZ = 78, KP = 1.4;
+const JoustS = {
+  enter(o) { this.o = o; this.pass = 0; this.pts = [0, 0]; this.aimX = 190; this.aimY = 120; this.scroll = 0; this.newPass(); music(null); },
+  newPass() { this.t = 0; this.state = 'ready'; this.res = ''; this.rt = 0; this.gal = 0; this.fall = null; },
+  move(x, y) { if (this.state === 'ride') { this.aimX = clamp(x, 60, 300); this.aimY = clamp(y, 70, 190); } },
+  down(x, y) { if (this.state === 'ready') this.start(); else this.move(x, y); },
+  key(k) { if (this.state === 'ready' && (k === ' ' || k === 'Enter')) this.start(); else if (this.state === 'show' && this.rt > 0.8 && (k === ' ' || k === 'Enter')) this.next(); },
+  start() { this.state = 'ride'; this.t = 0; this.pass++; },
+  opp(t) { const d = 24 - 23.1 * t, s = KP / d, cx = 160 - 34 * s + Math.sin(TIME * 1.7) * 3 * s, gy = HZ + 70 * s; return { s, cx, gy, shx: cx + 13 * s, shy: gy - 52 * s }; },
+  tip() { const jk = P().joust, w = (5 - jk) * 2.2; return [this.aimX + Math.sin(TIME * 6.3) * w + Math.sin(TIME * 11) * 1.5, this.aimY + Math.cos(TIME * 5.1) * w + Math.abs(Math.sin(TIME * 9)) * 3]; },
+  update(dt) {
+    if (this.state === 'ride') {
+      this.t += dt / 3.3; this.scroll += dt * 9;
+      const sp = 70 + P().joust * 5;
+      if (keys.ArrowLeft) this.aimX -= sp * dt; if (keys.ArrowRight) this.aimX += sp * dt;
+      if (keys.ArrowUp) this.aimY -= sp * dt; if (keys.ArrowDown) this.aimY += sp * dt;
+      this.aimX = clamp(this.aimX, 60, 300); this.aimY = clamp(this.aimY, 70, 190);
+      this.gal += dt; if (this.gal > 0.28) { this.gal = 0; SFX.gallop(); }
+      if (this.t >= 1) this.impact();
+    } else if (this.state === 'show') { this.rt += dt; this.scroll += dt * 3; }
+  },
+  impact() {
+    this.t = 1; const o = this.opp(1), [tx, ty] = this.tip();
+    const nd = Math.hypot((tx - o.shx) / (7 * o.s), (ty - o.shy) / (9 * o.s));
+    const me = nd < 0.5 ? 'unhorse' : nd < 1.05 ? 'break' : 'miss';
+    const os = this.o.opp.joust, pj = P().joust;
+    let pr = 0.1 + 0.1 * os - 0.05 * pj + (me === 'miss' ? 0.12 : 0), r = Math.random();
+    const him = me === 'unhorse' ? 'none' : r < pr ? 'unhorse' : r < pr + 0.35 ? 'break' : 'miss';
+    if (me === 'break') this.pts[0]++; if (him === 'break') this.pts[1]++;
+    this.me = me; this.him = him; this.state = 'show'; this.rt = 0;
+    if (me === 'unhorse') { this.res = 'PRZECIWNIK SPADA Z KONIA!'; this.final = true; SFX.crash(); }
+    else if (him === 'unhorse') { this.res = 'SPADASZ Z KONIA!'; this.final = false; SFX.crash(); }
+    else {
+      this.res = (me === 'break' ? 'TWOJA KOPIA PĘKA NA TARCZY! ' : 'PUDŁO! ') + (him === 'break' ? 'Jego kopia pęka na twojej tarczy.' : 'On też chybia.');
+      me === 'break' || him === 'break' ? SFX.clash() : SFX.swish();
+      if (this.pass >= 3 && this.pts[0] !== this.pts[1]) this.final = this.pts[0] > this.pts[1];
+      else if (this.pass >= 5) this.final = false;
+      else this.final = null;
+    }
+  },
+  next() {
+    if (this.final === null) { this.newPass(); return; }
+    const win = this.final; music('theme'); this.o.onEnd(win);
+  },
+  drawKnight(o, unhorsed, k) {
+    const s = o.s, cx = o.cx, gy = o.gy, col = this.o.opp.col;
+    const Rs = (x, y, w, h, c) => R(cx + x * s, gy + y * s, Math.max(1, w * s), Math.max(1, h * s), c);
+    const lg = Math.sin(TIME * 14) * 3;
+    Rs(-9, -14 + lg, 4, 14 - lg, 9); Rs(5, -14 - lg, 4, 14 + lg, 9); Rs(-5, -12 - lg, 3, 12 + lg, 9); Rs(2, -12 + lg, 3, 12 - lg, 9);
+    Rs(-12, -36, 24, 22, 8); Rs(-12, -30, 24, 16, col); Rs(-12, -16, 24, 3, 7);
+    Rs(-4, -50, 8, 18, 8); Rs(-4, -50, 8, 6, 12); Rs(-5, -53, 3, 4, 8); Rs(2, -53, 3, 4, 8); Rs(-1, -44, 2, 10, col);
+    if (!unhorsed) {
+      Rs(-9, -64, 18, 24, 12); Rs(-9, -62, 18, 18, col); Rs(-2, -62, 4, 18, 1);
+      Rs(-5, -78, 10, 14, 15); Rs(-5, -72, 10, 2, 0); Rs(-1, -84, 2, 6, col);
+      Rs(-15, -60, 6, 14, 12);
+      // tarcza
+      const sw = 14, sh = 18, sx = 13 - sw / 2, sy = -52 - sh / 2;
+      Rs(sx - 0.7, sy - 0.7, sw + 1.4, sh * 0.6 + 1.4, 0); Rs(sx, sy, sw, sh * 0.6, col);
+      for (let j = 0; j < 6; j++) Rs(sx + j * 1.2, sy + sh * 0.6 + j * 1.2, sw - j * 2.4, 1.3, col);
+      Rs(sx + sw / 2 - 1.5, sy, 3, sh * 0.9, col === 7 ? 0 : 1); Rs(sx, sy + 4, sw, 3, col === 7 ? 0 : 1);
+      // kopia przeciwnika
+      if (!(this.state === 'show' && this.him === 'break')) line(cx - 12 * s, gy - 56 * s, cx + 46 * s, gy - 34 * s, 15, Math.max(1, Math.round(2 * s)));
+    } else {
+      const f = Math.min(1, k * 2.5);
+      Rs(-30 - 30 * f, -80 + 70 * f, 18, 12, col); Rs(-38 - 30 * f, -82 + 72 * f, 9, 9, 15);
+    }
+  },
+  draw() {
+    const shake = this.state === 'show' && this.rt < 0.3 ? (Math.random() - 0.5) * 6 : 0;
+    const iFell = this.state === 'show' && this.me !== 'unhorse' && this.him === 'unhorse';
+    ctx.save();
+    if (iFell) { const a = Math.min(1, this.rt * 1.4); ctx.translate(Math.round(-a * 30), Math.round(a * a * 120)); }
+    ctx.translate(shake, shake);
+    R(-40, -60, W + 80, HZ + 60, 14);
+    for (let k = 0; k < 4; k++) R(hash2(k, 7, 1) * W, 10 + k * 9, 30 + k * 6, 4, 15);
+    // trybuny
+    for (let x = -20; x < W + 20; x += 34) { const c = [2, 7, 4, 3, 8, 5][(x / 34 + 1) % 6 | 0]; R(x, HZ - 14, 32, 14, c); R(x, HZ - 17, 32, 3, 0); R(x + 15, HZ - 25, 1, 8, 9); R(x + 16, HZ - 25, 6, 4, c); for (let h = 0; h < 30; h += 3) R(x + 1 + h, HZ - 12 + ((x + h) % 2), 2, 2, 10); }
+    R(-40, HZ, W + 80, H - HZ + 60, 5);
+    for (let k = 0; k < 14; k++) { const d = ((k * 2 - this.scroll) % 28 + 28) % 28 + 0.7, s = KP / d; R(-40, HZ + 70 * s, W + 80, Math.max(1, s * 2), 13); }
+    // szranki (bariera) — pasy biało-czerwone przesuwają się z prędkością galopu
+    for (let s0 = 0.02; s0 < 1.8; s0 += 0.006) {
+      const x = 160 - 16 * s0, yb = HZ + 70 * s0, d = KP / s0;
+      const c = Math.floor((d + this.scroll * 1.2) / 1.1) % 2 ? 1 : 2;
+      R(x, yb - 12 * s0, Math.max(1, 1.6 * s0), 12 * s0, c);
+      R(x, yb - 12 * s0, Math.max(1, 1.6 * s0), Math.max(1, 1.5 * s0), 9);
+    }
+    // przeciwnik
+    if (this.state !== 'ready' || this.pass > 0) {
+      let t = this.state === 'ready' ? 0 : this.t;
+      const o = this.opp(t);
+      if (this.state === 'show') { o.cx -= this.rt * 140; o.s *= 1 + this.rt * 0.4; o.gy = HZ + 70 * o.s; }
+      if (o.cx > -60) this.drawKnight(o, this.state === 'show' && this.me === 'unhorse', this.rt);
+    }
+    // własny koń i kopia
+    const bob = this.state === 'ride' ? Math.abs(Math.sin(TIME * 11)) * 4 : 0;
+    const pc = P().col;
+    for (let yy = 150; yy < 200; yy++) { const w = 14 + (yy - 150) * 0.7; R(231 - w / 2, yy + bob, w, 1, 8); }
+    R(220, 144 + bob, 5, 9, 8); R(237, 144 + bob, 5, 9, 8); R(221, 146 + bob, 3, 5, 9); R(238, 146 + bob, 3, 5, 9);
+    R(228, 150 + bob, 6, 50, 9); for (let k = 0; k < 8; k++) R(226 + (k % 2) * 8, 154 + k * 6 + bob, 2, 4, 9);
+    for (let yy = 182; yy < 200; yy++) { const w = 14 + (yy - 150) * 0.7 + 2; R(231 - w / 2, yy + bob, w, 1, pc); }
+    R(206, 182 + bob, 52, 2, 7);
+    if (this.state !== 'show' || this.me === 'miss' || this.me === 'unhorse') {
+      const [tx, ty] = this.state === 'ready' ? [this.aimX, this.aimY + 30] : this.tip();
+      line(306, 214, tx, ty, 12, 4); line(306, 212, tx, ty, 15, 2); disc(292, 200 + bob, 9, 11); disc(291, 199 + bob, 6, 12);
+      R(tx - 1, ty - 1, 3, 3, 1);
+    } else { line(306, 214, 250, 150, 12, 4); line(306, 212, 250, 150, 15, 2); for (let k = 0; k < 6; k++) R(250 + rnd(-10, 10), 150 + rnd(-10, 10), 2, 2, 15); }
+    ctx.restore();
+    // HUD
+    R(0, 0, W, 12, 0);
+    T(`TURNIEJ: ${this.o.opp.s}`, 4, 3, 7);
+    TR(`NAJAZD ${this.pass}  KOPIE ${this.pts[0]}:${this.pts[1]}`, 316, 3, 15);
+    if (this.state === 'ready') { box(50, 40, 220, 48); TC(this.pass ? 'KOLEJNY NAJAZD' : 'SZRANKI GOTOWE', 48, 2); TC('Celuj grotem w środek tarczy', 60, 0); TC('KLIKNIJ / SPACJA, BY RUSZYĆ', 72, 11); }
+    if (this.state === 'show') {
+      const lines = wrap(this.res, 40);
+      box(20, 30, 280, 26 + lines.length * 10);
+      lines.forEach((l, i) => TC(l, 38 + i * 10, this.me === 'unhorse' ? 5 : this.him === 'unhorse' ? 2 : 0));
+      if (this.rt > 0.8) button(120, 40 + lines.length * 10, 80, 13, this.final === null ? 'DALEJ' : (this.final ? 'WYGRANA!' : 'KONIEC'), () => this.next());
+    }
+  }
+};
+
+/* =====================================================================
+   PĘTLA GŁÓWNA I WEJŚCIE
+   ===================================================================== */
+const keys = {};
+const coarse = window.matchMedia && matchMedia('(pointer: coarse)').matches;
+function updatePad() { const show = coarse && scene === RaidS; pad.style.display = show ? 'flex' : 'none'; fit(); }
+function fit() {
+  const padH = pad.style.display === 'flex' ? 70 : 0;
+  let s = Math.min(innerWidth / W, (innerHeight - padH - 6) / H);
+  if (s >= 2) s = Math.floor(s * 2) / 2;
+  cv.style.width = Math.floor(W * s) + 'px'; cv.style.height = Math.floor(H * s) + 'px';
+}
+addEventListener('resize', fit);
+function toLogical(e) { const r = cv.getBoundingClientRect(); return { x: (e.clientX - r.left) / r.width * W, y: (e.clientY - r.top) / r.height * H }; }
+cv.addEventListener('pointerdown', e => {
+  ac(); const p = toLogical(e); mouse.x = p.x; mouse.y = p.y; mouse.down = true;
+  try { cv.setPointerCapture(e.pointerId); } catch (er) {}
+  if (!handleHits(p) && !modals.length) scene.down && scene.down(p.x, p.y);
+  e.preventDefault();
+});
+cv.addEventListener('pointermove', e => { const p = toLogical(e); mouse.x = p.x; mouse.y = p.y; if (!modals.length) scene.move && scene.move(p.x, p.y); });
+const ptrUp = () => { mouse.down = false; if (!modals.length) scene.up && scene.up(); };
+cv.addEventListener('pointerup', ptrUp); cv.addEventListener('pointercancel', ptrUp);
+addEventListener('keydown', e => {
+  ac();
+  const k = e.key;
+  if ([' ', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(k)) e.preventDefault();
+  if (keys[k]) return;
+  keys[k] = true;
+  if (k === 'm' || k === 'M') { toggleSound(); return; }
+  if (modals.length) { if (k === 'Enter' || k === ' ') modalPress(0); else if (k === 'Escape') modalPress(modals[0].buttons.length - 1); else { const n = parseInt(k); if (n >= 1) modalPress(n - 1); } return; }
+  scene.key && scene.key(k);
+});
+addEventListener('keyup', e => { keys[e.key] = false; scene.keyup && scene.keyup(e.key); });
+addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
+pad.querySelectorAll('button').forEach(b => {
+  const k = b.dataset.k;
+  b.addEventListener('pointerdown', e => { e.preventDefault(); ac(); keys[k] = true; scene.key && scene.key(k); });
+  const off = e => { e.preventDefault(); keys[k] = false; };
+  b.addEventListener('pointerup', off); b.addEventListener('pointerleave', off); b.addEventListener('pointercancel', off);
+});
+let last = performance.now();
+function frame(ts) {
+  const dt = Math.min(0.05, (ts - last) / 1000); last = ts; TIME += dt;
+  hits = [];
+  try {
+    if (!modals.length || scene !== JoustS) scene.update && scene.update(modals.length && scene !== MapS ? 0 : dt);
+    scene.draw();
+    if (modals.length) { hits = []; drawModal(); }
+  } catch (err) { console.error(err); }
+  requestAnimationFrame(frame);
+}
+buildMap();
+go(TitleS);
+fit();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

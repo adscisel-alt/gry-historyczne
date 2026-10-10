@@ -12,6 +12,11 @@ https://adscisel-alt.github.io/gry-historyczne/
 - `cyberdetektyw.html` — „Damian Teacher: Cyberdetektyw”, klockowa gra RPG 3D o zasadach bezpieczeństwa
   w internecie dla klas VI–VIII (Szkoła Mentis): 9 spraw z quizami i słowniczkiem PL–EN (m.in. AI, deepfake,
   uzależnienie od ekranu), 12 złotych kłódek z poradami, finał z Phisherem i certyfikat do druku
+- `obronca-korony.html` — „Obrońca Korony”, remake gry *Defender of the Crown* (Cinemaware; wersja C64 z 1987 r.):
+  mapa 20 hrabstw Anglii, 4 saskich rycerzy do wyboru, 3 normańskich baronów, bitwy z wyborem taktyki,
+  oblężenia z katapultą (kamienie, grecki ogień, zaraza), nocne najazdy z walką na miecze, turnieje na kopie
+  w widoku z siodła, Robin Hood i porwana lady Rowena. Paleta i rozdzielczość C64 (320×200); grafika
+  rysowana kodem, muzyka autorska — bez materiałów z oryginału. Zapis gry w przeglądarce.
 
 Wszystkie strony są samowystarczalne (działają offline, bez zależności sieciowych).
 Deploy: `.github/workflows/pages.yml` publikuje główną gałąź przy każdym pushu.
