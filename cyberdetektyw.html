@@ -1,0 +1,1507 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Damian Teacher: Cyberdetektyw</title>
+<style>
+  :root{
+    --zloto:#ffd23f; --zielony:#2fbf71; --czerwony:#e5484d; --tlo:#0f1622; --panel:rgba(14,20,32,.92);
+    --tekst:#f2f5fa; --ramka:rgba(255,255,255,.16); --cyjan:#3fd6ff;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;height:100%;overflow:hidden;background:#8fd0ff;
+    font-family:"Segoe UI","Trebuchet MS",Verdana,Arial,sans-serif;color:var(--tekst);
+    -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;}
+  #scena{position:fixed;inset:0;display:block;width:100%;height:100%;}
+  button{font-family:inherit;cursor:pointer}
+  .ukryty{display:none !important}
+  .piks{image-rendering:pixelated;image-rendering:crisp-edges}
+
+  /* ---------- HUD ---------- */
+  #hud{position:fixed;inset:0;pointer-events:none;z-index:5}
+  #karta-gracza{position:absolute;top:12px;left:12px;display:flex;gap:10px;align-items:center;
+    background:var(--panel);border:2px solid var(--ramka);border-radius:10px;padding:8px 12px 8px 8px;
+    box-shadow:0 4px 0 rgba(0,0,0,.35)}
+  #karta-gracza img{width:46px;height:46px;border-radius:6px;border:2px solid var(--zloto);background:#222}
+  #karta-gracza .imie{font-weight:800;letter-spacing:.06em;color:var(--zloto);font-size:15px}
+  #karta-gracza .ranga{font-size:12px;opacity:.85;margin-top:1px}
+  #pasek-xp{width:150px;height:8px;background:rgba(255,255,255,.12);border-radius:4px;margin-top:5px;overflow:hidden}
+  #pasek-xp div{height:100%;width:0;background:linear-gradient(90deg,#2fbf71,#7cf0a8);transition:width .5s}
+  #odznaki{position:absolute;top:84px;left:12px;display:flex;gap:5px}
+  #odznaki span{width:30px;height:30px;display:grid;place-items:center;font-size:17px;border-radius:7px;
+    background:var(--panel);border:2px solid var(--ramka);filter:grayscale(1);opacity:.45;transition:all .4s}
+  #odznaki span.ma{filter:none;opacity:1;border-color:var(--zloto);box-shadow:0 0 10px rgba(255,210,63,.5)}
+  #prawy-gorny{position:absolute;top:12px;right:12px;display:flex;gap:8px;align-items:center;pointer-events:auto}
+  .kafel{background:var(--panel);border:2px solid var(--ramka);border-radius:9px;padding:7px 11px;font-weight:700;
+    color:var(--tekst);font-size:14px;box-shadow:0 3px 0 rgba(0,0,0,.35)}
+  button.kafel:hover{border-color:var(--zloto)}
+  #cel{position:absolute;top:12px;left:50%;transform:translateX(-50%);text-align:center;max-width:min(520px,52vw)}
+  #cel .ramka{background:var(--panel);border:2px solid var(--ramka);border-radius:10px;padding:7px 16px 8px;
+    box-shadow:0 3px 0 rgba(0,0,0,.35)}
+  #cel .tytul{font-size:11px;letter-spacing:.18em;color:var(--zloto);font-weight:800}
+  #cel .opis{font-size:14px;font-weight:600;margin-top:2px}
+  #kompas{margin:6px auto 0;width:38px;height:38px;border-radius:50%;background:var(--panel);border:2px solid var(--ramka);
+    display:grid;place-items:center;position:relative}
+  #kompas .strz{width:26px;height:26px;filter:drop-shadow(0 1px 1px #000)}
+  #kompas-dyst{font-size:11px;opacity:.8;margin-top:2px;text-shadow:0 1px 3px #000}
+  #podpowiedz-e{position:absolute;left:50%;bottom:110px;transform:translateX(-50%);background:var(--panel);
+    border:2px solid var(--zloto);border-radius:10px;padding:9px 16px;font-weight:700;font-size:15px;
+    box-shadow:0 4px 0 rgba(0,0,0,.35);white-space:nowrap}
+  #podpowiedz-e kbd{background:var(--zloto);color:#111;border-radius:5px;padding:1px 8px;margin-right:6px;font-family:inherit}
+  #bit{position:absolute;left:12px;bottom:14px;display:flex;align-items:flex-end;gap:8px;max-width:min(420px,70vw);
+    transition:opacity .4s, transform .4s}
+  #bit.schowany{opacity:0;transform:translateY(16px)}
+  #bit img{width:44px;height:44px;border-radius:8px;border:2px solid var(--cyjan);background:#222;flex:none}
+  #bit .dymek{background:var(--panel);border:2px solid var(--cyjan);border-radius:12px 12px 12px 2px;padding:8px 12px;
+    font-size:13.5px;line-height:1.4}
+  #bit .dymek b{color:var(--cyjan)}
+  #sterowanie-info{position:absolute;right:12px;bottom:10px;font-size:11.5px;opacity:.75;text-align:right;line-height:1.6;
+    text-shadow:0 1px 3px rgba(0,0,0,.9)}
+  #toasty{position:absolute;top:120px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;gap:6px;align-items:center}
+  .toast{background:var(--panel);border:2px solid var(--zloto);border-radius:10px;padding:8px 16px;font-weight:700;
+    animation:toast 3.4s forwards;box-shadow:0 4px 0 rgba(0,0,0,.35);text-align:center;max-width:80vw}
+  @keyframes toast{0%{opacity:0;transform:translateY(-10px) scale(.95)}8%{opacity:1;transform:none}85%{opacity:1}100%{opacity:0}}
+
+  /* ---------- dialog ---------- */
+  #dialog{position:fixed;inset:0;z-index:20;display:flex;align-items:flex-end;justify-content:center;padding:12px;
+    background:linear-gradient(180deg,transparent 30%,rgba(0,0,0,.45))}
+  .dlg{width:min(760px,100%);max-height:calc(100% - 20px);overflow:auto;background:var(--panel);
+    border:3px solid var(--zloto);border-radius:14px;padding:14px 16px 14px;box-shadow:0 6px 0 rgba(0,0,0,.4)}
+  .dlg-glowa{display:flex;gap:12px;align-items:center}
+  #dlg-portret{width:58px;height:58px;border-radius:8px;border:2px solid var(--ramka);background:#222;flex:none}
+  #dlg-kto{font-weight:800;font-size:17px;color:var(--zloto)}
+  #dlg-sprawa{font-size:12px;letter-spacing:.12em;opacity:.75;text-transform:uppercase}
+  #dlg-zamknij{margin-left:auto;background:none;border:2px solid var(--ramka);color:var(--tekst);border-radius:8px;
+    width:34px;height:34px;font-size:16px}
+  #dlg-boss{margin:10px 0 0;display:flex;gap:14px;align-items:center;font-weight:700}
+  #dlg-boss .hp{flex:1;height:12px;background:rgba(255,255,255,.12);border-radius:6px;overflow:hidden;border:1px solid var(--ramka)}
+  #dlg-boss .hp div{height:100%;background:linear-gradient(90deg,#8a2be2,#39ff7a);transition:width .4s}
+  #dlg-tekst{font-size:16.5px;line-height:1.5;margin:12px 2px 4px;min-height:1.5em}
+  #dlg-tekst b{color:var(--zloto)}
+  #dlg-opcje{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+  #dlg-opcje button{text-align:left;background:rgba(255,255,255,.06);border:2px solid var(--ramka);color:var(--tekst);
+    border-radius:10px;padding:10px 12px;font-size:15px;line-height:1.35;display:flex;gap:10px;align-items:flex-start}
+  #dlg-opcje button:hover:not(:disabled){border-color:var(--zloto);background:rgba(255,210,63,.08)}
+  #dlg-opcje button .nr{flex:none;background:rgba(255,255,255,.14);border-radius:5px;padding:0 7px;font-weight:800;font-size:13px;margin-top:1px}
+  #dlg-opcje button.dobra{border-color:var(--zielony);background:rgba(47,191,113,.18)}
+  #dlg-opcje button.zla{border-color:var(--czerwony);background:rgba(229,72,77,.15);opacity:.75}
+  #dlg-opcje button:disabled{cursor:default}
+  #dlg-feedback{margin-top:10px;border-radius:10px;padding:10px 12px;font-size:14.5px;line-height:1.45}
+  #dlg-feedback.ok{background:rgba(47,191,113,.16);border:2px solid var(--zielony)}
+  #dlg-feedback.zle{background:rgba(229,72,77,.14);border:2px solid var(--czerwony)}
+  #dlg-feedback:empty{display:none}
+  .dlg-stopka{display:flex;justify-content:flex-end;margin-top:10px}
+  #btn-dalej{background:var(--zielony);color:#fff;border:none;border-radius:10px;padding:10px 20px;font-weight:800;font-size:15px;
+    box-shadow:0 4px 0 #1b7f4a}
+  #btn-dalej:active{transform:translateY(2px);box-shadow:0 2px 0 #1b7f4a}
+  /* dowody */
+  .dowod{margin:12px 0 2px;border-radius:10px;overflow:hidden;font-size:14px;line-height:1.45;color:#1d2330}
+  .dowod .naglowek{background:#dfe6f1;padding:6px 12px;font-size:12px;font-weight:700;letter-spacing:.08em;color:#4a5568}
+  .email{background:#fff}
+  .email .pola{padding:8px 12px;border-bottom:1px solid #e3e8ef;font-size:13px}
+  .email .tresc{padding:10px 12px}
+  .sms,.czat{background:#eef1f6;padding:10px 12px;display:flex;flex-direction:column;gap:6px}
+  .bubel{background:#fff;border-radius:14px 14px 14px 3px;padding:8px 12px;max-width:88%;box-shadow:0 1px 1px rgba(0,0,0,.08)}
+  .bubel small{display:block;font-weight:700;color:#6b46c1;font-size:11.5px}
+  .zly-link{color:#1a56db;text-decoration:underline;word-break:break-all}
+  .nagroda{text-align:center;margin:8px 0}
+  .nagroda .ikona{font-size:52px;line-height:1.1}
+  .nagroda .nazwa{font-weight:800;color:var(--zloto);font-size:19px;margin-top:4px}
+  .zasada{margin-top:10px;text-align:left;background:rgba(63,214,255,.1);border:2px solid var(--cyjan);border-radius:10px;padding:10px 12px;font-size:14.5px}
+  .zasada b{color:var(--cyjan)}
+
+  /* ---------- notes / ekrany ---------- */
+  .nakladka{position:fixed;inset:0;z-index:30;display:flex;align-items:center;justify-content:center;padding:14px;
+    background:rgba(5,9,16,.72)}
+  .nakladka .okno{width:min(760px,100%);max-height:100%;overflow:auto;background:var(--panel);border:3px solid var(--zloto);
+    border-radius:14px;padding:18px 20px;box-shadow:0 6px 0 rgba(0,0,0,.4)}
+  .okno h2{margin:0 0 4px;color:var(--zloto);letter-spacing:.08em}
+  .sprawa-wiersz{display:flex;gap:12px;padding:10px 0;border-top:1px solid var(--ramka)}
+  .sprawa-wiersz .ik{font-size:26px;width:36px;text-align:center;flex:none}
+  .sprawa-wiersz .st{font-size:12px;font-weight:800;letter-spacing:.1em}
+  .sprawa-wiersz .zas{font-size:14px;opacity:.92;margin-top:3px;line-height:1.4}
+  .okno .przyciski{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap}
+  .btn{border:none;border-radius:10px;padding:10px 18px;font-weight:800;font-size:15px;color:#fff;background:#3b4a63;box-shadow:0 4px 0 #222c3b}
+  .btn.zielony{background:var(--zielony);box-shadow:0 4px 0 #1b7f4a}
+  .btn.czerwony{background:#a33a3e;box-shadow:0 4px 0 #6d2427}
+  .wskazowki li{margin:5px 0;font-size:14px;line-height:1.4}
+
+  /* ---------- start ---------- */
+  #start{position:fixed;inset:0;z-index:40;display:flex;align-items:center;justify-content:center;padding:16px;
+    background:radial-gradient(ellipse at 50% 45%,rgba(0,0,0,.05),rgba(0,0,0,.45))}
+  #start .srodek{text-align:center;max-width:680px;width:100%}
+  .logo-szkola{display:inline-flex;gap:8px;align-items:center;background:#fff;color:#111;border-radius:8px;padding:6px 14px 6px 8px;
+    font-weight:800;font-size:13px;box-shadow:0 4px 0 rgba(0,0,0,.3)}
+  .logo-szkola span:first-child{background:#111;color:var(--cyjan);border-radius:5px;padding:2px 7px;font-size:15px}
+  .tytul1,.tytul2{font-weight:900;line-height:.95;letter-spacing:.02em;margin:0;font-family:Impact,"Arial Black","Segoe UI",sans-serif}
+  .tytul1{font-size:clamp(34px,7.5vw,72px);color:#fff;margin-top:16px;
+    text-shadow:0 3px 0 #b8c4d6,0 6px 0 #6b7a90,0 9px 0 #2b3442,0 14px 18px rgba(0,0,0,.5)}
+  .tytul2{font-size:clamp(38px,9vw,90px);color:#ffcf2e;
+    text-shadow:0 3px 0 #f08c1a,0 6px 0 #b8560f,0 9px 0 #5a2a06,0 14px 18px rgba(0,0,0,.5)}
+  .podtytul{font-weight:700;font-size:clamp(14px,2.2vw,18px);margin:14px auto 18px;max-width:520px;
+    text-shadow:0 2px 0 #000,0 0 10px rgba(0,0,0,.6)}
+  #imie{display:block;margin:0 auto;width:min(340px,90%);font-size:20px;font-weight:700;text-align:center;padding:12px;
+    border-radius:10px;border:none;box-shadow:0 4px 0 rgba(0,0,0,.3);color:#111;-webkit-user-select:text;user-select:text}
+  #imie-etykieta{font-size:13px;font-weight:700;margin:0 0 6px;text-shadow:0 1px 3px #000}
+  #graj{margin:14px auto 0;display:block;background:#2fbf71;color:#fff;border:none;border-radius:10px;padding:12px 48px;
+    font-weight:900;font-size:22px;box-shadow:0 5px 0 #1b7f4a;letter-spacing:.06em}
+  #graj:active{transform:translateY(3px);box-shadow:0 2px 0 #1b7f4a}
+  #postep-info{margin-top:10px;font-size:13px;font-weight:700;text-shadow:0 1px 3px #000}
+  .sterowanie-start{margin-top:14px;font-size:12.5px;font-weight:700;opacity:.95;text-shadow:0 1px 3px #000}
+
+  /* ---------- certyfikat ---------- */
+  #certyfikat .okno{background:#fffdf5;color:#1d2330;border:8px double #c9a227;text-align:center;padding:28px 24px}
+  #certyfikat h1{margin:6px 0;font-family:Georgia,serif;letter-spacing:.12em;color:#7a5b0c;font-size:clamp(22px,4vw,34px)}
+  #certyfikat .komu{font-family:Georgia,serif;font-size:clamp(24px,5vw,40px);font-weight:700;margin:10px 0;color:#1d2330}
+  #certyfikat p{font-size:15px;line-height:1.55;margin:8px auto;max-width:560px}
+  #certyfikat .podpis{display:flex;justify-content:space-around;margin-top:22px;font-size:13px;gap:10px}
+  #certyfikat .podpis div{border-top:1px solid #888;padding-top:4px;min-width:160px}
+  @media print{
+    body>*:not(#certyfikat){display:none !important}
+    #certyfikat{position:static;background:none}
+    #certyfikat .przyciski{display:none}
+    html,body{overflow:visible;background:#fff}
+  }
+
+  /* ---------- dotyk ---------- */
+  #dotyk{position:fixed;inset:0;z-index:6;pointer-events:none;display:none}
+  body.dotykowy #dotyk{display:block}
+  body.dotykowy #sterowanie-info{display:none}
+  #joystick{position:absolute;left:28px;bottom:90px;width:120px;height:120px;border-radius:50%;
+    background:rgba(255,255,255,.12);border:2px solid rgba(255,255,255,.35);pointer-events:auto;touch-action:none}
+  #joystick .galka{position:absolute;left:50%;top:50%;width:52px;height:52px;margin:-26px 0 0 -26px;border-radius:50%;
+    background:rgba(255,255,255,.55)}
+  .przycisk-d{position:absolute;width:64px;height:64px;border-radius:50%;background:rgba(14,20,32,.7);border:2px solid rgba(255,255,255,.4);
+    color:#fff;font-size:22px;font-weight:900;pointer-events:auto;touch-action:none;display:grid;place-items:center}
+  #d-skok{right:24px;bottom:100px}
+  #d-e{right:100px;bottom:60px;border-color:var(--zloto);color:var(--zloto)}
+  body.dotykowy #bit{bottom:220px}
+  @media (max-width:640px){
+    #odznaki{top:80px}
+    #odznaki span{width:26px;height:26px;font-size:14px}
+    #pasek-xp{width:100px}
+    #cel{top:120px;max-width:86vw}
+    #karta-gracza .ranga{font-size:11px}
+  }
+</style>
+</head>
+<body>
+<canvas id="scena"></canvas>
+
+<div id="hud" class="ukryty">
+  <div id="karta-gracza">
+    <img id="hud-portret" class="piks" alt="">
+    <div>
+      <div class="imie">DAMIAN TEACHER</div>
+      <div class="ranga" id="hud-ranga">Poz. 1 · Stażysta</div>
+      <div id="pasek-xp"><div></div></div>
+    </div>
+  </div>
+  <div id="odznaki"></div>
+  <div id="prawy-gorny">
+    <div class="kafel" id="hud-klodki" title="Złote kłódki">🔒 0/12</div>
+    <button class="kafel" id="btn-notes" title="Notes detektywa (N)">📒</button>
+    <button class="kafel" id="btn-dzwiek" title="Dźwięk (M)">🔊</button>
+  </div>
+  <div id="cel">
+    <div class="ramka"><div class="tytul" id="cel-tytul">ZADANIE</div><div class="opis" id="cel-opis"></div></div>
+    <div id="kompas"><svg class="strz" viewBox="0 0 24 24"><path d="M12 2 L20 13 H15 V22 H9 V13 H4 Z" fill="#ffd23f" stroke="#3a2b00" stroke-width="1.2" stroke-linejoin="round"/></svg></div>
+    <div id="kompas-dyst"></div>
+  </div>
+  <div id="toasty"></div>
+  <div id="podpowiedz-e" class="ukryty"></div>
+  <div id="bit" class="schowany"><img id="bit-portret" class="piks" alt=""><div class="dymek" id="bit-tekst"></div></div>
+  <div id="sterowanie-info">
+    <b>WASD</b> — chodzenie · <b>Spacja</b> — skok · <b>Shift</b> — bieg<br>
+    <b>E</b> — rozmowa · <b>Mysz</b> — kamera (kliknij) · <b>Kółko</b> — zoom<br>
+    <b>N</b> — notes · <b>M</b> — dźwięk · <b>F</b> — pełny ekran
+  </div>
+</div>
+
+<div id="dotyk">
+  <div id="joystick"><div class="galka"></div></div>
+  <div class="przycisk-d" id="d-skok">⤒</div>
+  <div class="przycisk-d" id="d-e">E</div>
+</div>
+
+<div id="dialog" class="ukryty">
+  <div class="dlg">
+    <div class="dlg-glowa">
+      <img id="dlg-portret" class="piks" alt="">
+      <div><div id="dlg-kto"></div><div id="dlg-sprawa"></div></div>
+      <button id="dlg-zamknij" title="Zamknij (Esc)">✕</button>
+    </div>
+    <div id="dlg-boss" class="ukryty"><span id="dlg-serca"></span><div class="hp"><div></div></div><span>Phisher</span></div>
+    <div id="dlg-dowod"></div>
+    <div id="dlg-tekst"></div>
+    <div id="dlg-opcje"></div>
+    <div id="dlg-feedback"></div>
+    <div class="dlg-stopka"><button id="btn-dalej">Dalej ▶</button></div>
+  </div>
+</div>
+
+<div id="notes" class="nakladka ukryty"><div class="okno" id="notes-okno"></div></div>
+<div id="certyfikat" class="nakladka ukryty"><div class="okno" id="cert-okno"></div></div>
+
+<div id="start">
+  <div class="srodek">
+    <div class="logo-szkola"><span>&lt;/&gt;</span><span>Akademia Cyberbezpieczeństwa</span></div>
+    <h1 class="tytul1">DAMIAN TEACHER</h1>
+    <h1 class="tytul2">CYBERDETEKTYW</h1>
+    <div class="podtytul">Przemierzaj Cyber Miasteczko, rozwiąż 6 spraw i pokonaj Phishera na szczycie jego wieży!</div>
+    <div id="imie-etykieta">Jak masz na imię, asystencie detektywa?</div>
+    <input id="imie" maxlength="20" placeholder="Twoje imię" autocomplete="off">
+    <button id="graj">▶ GRAJ</button>
+    <div id="postep-info"></div>
+    <div class="sterowanie-start">WASD – chodzenie · Spacja – skok · E – rozmowa · mysz – kamera · F – pełny ekran</div>
+  </div>
+</div>
+
+<script type="importmap">
+{"imports":{"three":"./vendor/three.module.min.js"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+
+/* =================================================================
+   DAMIAN TEACHER: CYBERDETEKTYW
+   Gra RPG w klockowym świecie o zasadach bezpieczeństwa w sieci.
+   ================================================================= */
+
+const JEST_DOTYK = matchMedia('(pointer: coarse)').matches;
+if (JEST_DOTYK) document.body.classList.add('dotykowy');
+const $ = id => document.getElementById(id);
+
+/* ---------------- renderer i scena ---------------- */
+const renderer = new THREE.WebGLRenderer({ canvas: $('scena'), antialias: !JEST_DOTYK });
+renderer.setPixelRatio(Math.min(devicePixelRatio, JEST_DOTYK ? 1.5 : 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = !JEST_DOTYK;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+const scena = new THREE.Scene();
+const NIEBO = 0x8fd0ff;
+scena.background = new THREE.Color(NIEBO);
+scena.fog = new THREE.Fog(NIEBO, 45, 130);
+const kamera = new THREE.PerspectiveCamera(68, innerWidth / innerHeight, 0.1, 400);
+
+addEventListener('resize', () => {
+  kamera.aspect = innerWidth / innerHeight;
+  kamera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+scena.add(new THREE.HemisphereLight(0xdff2ff, 0x6f8f4f, 1.6));
+const slonce = new THREE.DirectionalLight(0xfff4dd, 2.4);
+slonce.position.set(75, 80, 55);
+slonce.target.position.set(40, 0, 40);
+slonce.castShadow = true;
+slonce.shadow.mapSize.set(2048, 2048);
+Object.assign(slonce.shadow.camera, { left: -60, right: 60, top: 60, bottom: -60, near: 10, far: 220 });
+slonce.shadow.bias = -0.0006;
+scena.add(slonce, slonce.target);
+
+/* ---------------- pomocnicze ---------------- */
+function rng(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const los = rng(20261010);
+function jasn(hex, k) {
+  const c = [(hex >> 16) & 255, (hex >> 8) & 255, hex & 255].map(v => Math.max(0, Math.min(255, v * (1 + k))) | 0);
+  return `rgb(${c[0]},${c[1]},${c[2]})`;
+}
+function tasuj(a) { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.random() * (i + 1) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; }
+
+/* ---------------- tekstury pikselowe ---------------- */
+let ziarno = 1;
+function plotno(n = 16) { const c = document.createElement('canvas'); c.width = c.height = n; return c; }
+function naTeksture(c, mip = true) {
+  const t = new THREE.CanvasTexture(c);
+  t.magFilter = THREE.NearestFilter;
+  t.minFilter = mip ? THREE.NearestMipmapLinearFilter : THREE.NearestFilter;
+  t.generateMipmaps = mip;
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+function tex(rysuj) { const c = plotno(); const g = c.getContext('2d'); rysuj(g, rng(ziarno++ * 977)); return naTeksture(c); }
+const px = (g, x, y, k, w = 1, h = 1) => { g.fillStyle = k; g.fillRect(x, y, w, h); };
+const szum = (baza, amp = .16) => (g, r) => { for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) px(g, x, y, jasn(baza, (r() - .5) * 2 * amp)); };
+const cegly = (baza, zaprawa) => (g, r) => {
+  px(g, 0, 0, zaprawa, 16, 16);
+  for (let w = 0; w < 4; w++) { const off = w % 2 ? 4 : 0;
+    for (let b = -1; b < 2; b++) for (let y = w * 4; y < w * 4 + 3; y++) for (let x = b * 8 + off; x < b * 8 + off + 7; x++)
+      if (x >= 0 && x < 16) px(g, x, y, jasn(baza, (r() - .5) * .25)); }
+};
+const deski = baza => (g, r) => {
+  for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) px(g, x, y, jasn(baza, (r() - .5) * .14 + (y % 4 === 3 ? -.32 : 0)));
+  for (let w = 0; w < 4; w++) { const sx = (w * 7 + 3) % 16; for (let y = w * 4; y < w * 4 + 3; y++) px(g, sx, y, jasn(baza, -.3)); }
+};
+const dachowka = baza => (g, r) => {
+  for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) px(g, x, y, jasn(baza, (r() - .5) * .18 + (y % 4 === 3 ? -.28 : 0) + ((x + (y >> 2) * 2) % 4 === 0 ? -.12 : 0)));
+};
+
+const T = {};
+T.trawaG = tex(szum(0x62b544, .14));
+T.ziemia = tex(szum(0x8a5a3a, .18));
+T.trawaB = tex((g, r) => { szum(0x8a5a3a, .18)(g, r); for (let x = 0; x < 16; x++) { const h = 3 + (r() * 2.4 | 0); for (let y = 0; y < h; y++) px(g, x, y, jasn(0x62b544, (r() - .5) * .28)); } });
+T.sciezka = tex((g, r) => { szum(0xa89a7a, .14)(g, r); for (let i = 0; i < 14; i++) px(g, r() * 16 | 0, r() * 16 | 0, jasn(0x7d705a, (r() - .5) * .3)); });
+T.kamien = tex(szum(0x8e9297, .12));
+T.bruk = tex((g, r) => { szum(0x9a9a9a, .12)(g, r); g.strokeStyle = 'rgba(40,40,45,.55)'; g.lineWidth = 1;
+  for (let i = 0; i < 6; i++) { const x = r() * 12 | 0, y = r() * 12 | 0; g.strokeRect(x + .5, y + .5, 3 + r() * 4 | 0, 3 + r() * 3 | 0); } });
+T.cegla = tex(cegly(0xb5513c, '#d8cfc0'));
+T.deski = tex(deski(0xb98a52));
+T.bialy = tex(szum(0xeeebe2, .05));
+T.zolty = tex(deski(0xf2c84b));
+T.szklo = tex(g => { g.clearRect(0, 0, 16, 16); px(g, 0, 0, 'rgba(180,225,255,.38)', 16, 16);
+  px(g, 0, 0, '#f4f8fb', 16, 1); px(g, 0, 15, '#f4f8fb', 16, 1); px(g, 0, 0, '#f4f8fb', 1, 16); px(g, 15, 0, '#f4f8fb', 1, 16);
+  for (let i = 0; i < 4; i++) px(g, 3 + i, 9 - i, 'rgba(255,255,255,.75)'); });
+T.pien = tex((g, r) => { for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) px(g, x, y, jasn(0x6b4a2b, (r() - .5) * .16 + (x % 4 === 0 ? -.25 : 0))); });
+T.liscie = tex((g, r) => { for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) px(g, x, y, jasn(0x3f8f2f, (r() - .5) * .3 + (r() < .15 ? -.35 : 0))); });
+T.dachCz = tex(dachowka(0xc8402f));
+T.dachNb = tex(dachowka(0x3a6fc8));
+T.dachZi = tex(dachowka(0x2f8f5a));
+T.dachPo = tex(dachowka(0xe0802a));
+T.woda = tex((g, r) => { for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) { const k = (r() - .5) * .16; g.fillStyle = `rgba(${50 + k * 80 | 0},${130 + k * 80 | 0},${230},.72)`; g.fillRect(x, y, 1, 1); } });
+T.piasek = tex(szum(0xe2d08f, .1));
+T.linia = tex(szum(0xf3f3f3, .04));
+T.boisko = tex((g, r) => { for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) px(g, x, y, jasn(y < 8 ? 0x4fa83a : 0x5cb846, (r() - .5) * .1)); });
+T.fiolet = tex(szum(0x8b5cf6, .1));
+T.cyjan = tex(szum(0x22c3e6, .1));
+T.czerwona = tex(szum(0xd8343a, .1));
+T.zolta = tex(szum(0xf6c624, .1));
+T.ciemny = tex(szum(0x2a2d3a, .12));
+T.neon = tex((g, r) => { szum(0x1e2130, .12)(g, r); px(g, 2, 3, '#39ff7a', 10, 1); px(g, 11, 3, '#39ff7a', 1, 8); px(g, 4, 10, '#39ff7a', 8, 1); px(g, 4, 10, '#39ff7a', 1, 4); px(g, 2, 3, '#39ff7a', 1, 2); });
+T.neonE = tex(g => { px(g, 0, 0, '#000', 16, 16); px(g, 2, 3, '#39ff7a', 10, 1); px(g, 11, 3, '#39ff7a', 1, 8); px(g, 4, 10, '#39ff7a', 8, 1); px(g, 4, 10, '#39ff7a', 1, 4); px(g, 2, 3, '#39ff7a', 1, 2); });
+T.latarnia = tex((g, r) => { szum(0x7ff7ff, .08)(g, r); px(g, 0, 0, '#d9ffff', 16, 2); px(g, 0, 14, '#d9ffff', 16, 2); px(g, 0, 0, '#d9ffff', 2, 16); px(g, 14, 0, '#d9ffff', 2, 16); });
+
+const L = m => new THREE.MeshLambertMaterial(m);
+const M = {
+  trawa: [L({ map: T.trawaB }), L({ map: T.trawaB }), L({ map: T.trawaG }), L({ map: T.ziemia }), L({ map: T.trawaB }), L({ map: T.trawaB })],
+  ziemia: L({ map: T.ziemia }), sciezka: L({ map: T.sciezka }), kamien: L({ map: T.kamien }), bruk: L({ map: T.bruk }),
+  cegla: L({ map: T.cegla }), deski: L({ map: T.deski }), bialy: L({ map: T.bialy }), zolty: L({ map: T.zolty }),
+  szklo: L({ map: T.szklo, transparent: true, depthWrite: false }),
+  pien: L({ map: T.pien }), liscie: L({ map: T.liscie }),
+  dachCz: L({ map: T.dachCz }), dachNb: L({ map: T.dachNb }), dachZi: L({ map: T.dachZi }), dachPo: L({ map: T.dachPo }),
+  woda: L({ map: T.woda, transparent: true, depthWrite: false }),
+  piasek: L({ map: T.piasek }), linia: L({ map: T.linia }), boisko: L({ map: T.boisko }),
+  fiolet: L({ map: T.fiolet }), cyjan: L({ map: T.cyjan }), czerwona: L({ map: T.czerwona }), zolta: L({ map: T.zolta }),
+  ciemny: L({ map: T.ciemny }), neon: L({ map: T.neon, emissive: 0xffffff, emissiveMap: T.neonE, emissiveIntensity: 1 }),
+  latarnia: new THREE.MeshBasicMaterial({ map: T.latarnia }),
+};
+
+/* ---------------- typy bloków ---------------- */
+const TYPY = [null];
+const B = {};
+function typ(nazwa, opcje = {}) { B[nazwa] = TYPY.length; TYPY.push({ nazwa, staly: true, nieprzezr: true, mat: M[nazwa], ...opcje }); }
+['trawa', 'ziemia', 'sciezka', 'kamien', 'bruk', 'cegla', 'deski', 'bialy', 'zolty', 'pien', 'liscie', 'dachCz', 'dachNb', 'dachZi', 'dachPo',
+  'piasek', 'linia', 'boisko', 'fiolet', 'cyjan', 'czerwona', 'zolta', 'ciemny', 'neon', 'latarnia'].forEach(n => typ(n));
+typ('szklo', { nieprzezr: false });
+typ('woda', { staly: false, nieprzezr: false, woda: true });
+
+/* ---------------- świat wokselowy ---------------- */
+const W = 80, HY = 40, OY = 2;
+const vox = new Uint8Array(W * W * HY);
+const idx = (x, y, z) => ((y + OY) * W + x) * W + z;
+function get(x, y, z) { if (x < 0 || z < 0 || x >= W || z >= W || y < -OY || y >= HY - OY) return 0; return vox[idx(x, y, z)]; }
+function set(x, y, z, t) { if (x < 0 || z < 0 || x >= W || z >= W || y < -OY || y >= HY - OY) return; vox[idx(x, y, z)] = t; }
+function staly(x, y, z) { const t = get(x, y, z); return t > 0 && TYPY[t].staly; }
+function powierzchnia(x, z) { x = Math.floor(x); z = Math.floor(z); for (let y = HY - OY - 1; y >= -OY; y--) if (staly(x, y, z)) return y + 1; return 0; }
+const zaj = new Uint8Array(W * W);
+const zajmij = (x0, z0, x1, z1, m = 0) => { for (let x = x0 - m; x <= x1 + m; x++) for (let z = z0 - m; z <= z1 + m; z++) if (x >= 0 && z >= 0 && x < W && z < W) zaj[x * W + z] = 1; };
+const wolne = (x, z, m) => { for (let a = x - m; a <= x + m; a++) for (let b = z - m; b <= z + m; b++) { if (a < 0 || b < 0 || a >= W || b >= W || zaj[a * W + b]) return false; } return true; };
+
+// grunt
+for (let x = 0; x < W; x++) for (let z = 0; z < W; z++) set(x, 0, z, B.trawa);
+
+// plac centralny z cyber-fontanną
+const PX = 40, PZ = 40;
+for (let x = PX - 9; x <= PX + 9; x++) for (let z = PZ - 9; z <= PZ + 9; z++) {
+  const d = Math.hypot(x - PX, z - PZ);
+  if (d <= 8.6) { set(x, 0, z, B.bruk); zaj[x * W + z] = 1; }
+  if (d > 2.2 && d <= 3.3) set(x, 1, z, B.kamien);
+  else if (d <= 2.2) set(x, 1, z, B.woda);
+}
+for (let y = 1; y <= 3; y++) set(PX, y, PZ, B.neon);
+set(PX, 4, PZ, B.latarnia);
+
+// ścieżki (odcinki poziome/pionowe o szerokości 3)
+function odcinek(x1, z1, x2, z2) {
+  for (let x = Math.min(x1, x2) - (x1 === x2 ? 1 : 0); x <= Math.max(x1, x2) + (x1 === x2 ? 1 : 0); x++)
+    for (let z = Math.min(z1, z2) - (z1 === z2 ? 1 : 0); z <= Math.max(z1, z2) + (z1 === z2 ? 1 : 0); z++) {
+      if (get(x, 0, z) === B.trawa) set(x, 0, z, B.sciezka);
+      zajmij(x, z, x, z, 1);
+    }
+}
+odcinek(40, 8, 40, 58);   // główna N–S
+odcinek(16, 40, 66, 40);  // główna W–E (biblioteka → wieża)
+odcinek(18, 24, 40, 24); odcinek(18, 20, 18, 24);  // szkoła
+odcinek(40, 24, 58, 24); odcinek(58, 20, 58, 24);  // poczta
+odcinek(16, 56, 40, 56); odcinek(16, 56, 16, 59);  // kawiarnia
+odcinek(40, 52, 56, 52); odcinek(56, 52, 56, 56);  // park
+
+// budynki
+const NAPISY = [];
+function budynek(o) {
+  const { x: x0, z: z0, w, d, h, sc, dach } = o;
+  const x1 = x0 + w - 1, z1 = z0 + d - 1;
+  const [strona, dv] = o.drzwi;
+  const czyDrzwi = (x, z) => (strona === 'S' && z === z1 && (x === dv || x === dv + 1)) || (strona === 'N' && z === z0 && (x === dv || x === dv + 1))
+    || (strona === 'E' && x === x1 && (z === dv || z === dv + 1)) || (strona === 'W' && x === x0 && (z === dv || z === dv + 1));
+  for (let x = x0; x <= x1; x++) for (let z = z0; z <= z1; z++) {
+    set(x, 0, z, B.deski);
+    const brzeg = x === x0 || x === x1 || z === z0 || z === z1;
+    if (!brzeg) continue;
+    const naroznik = (x === x0 || x === x1) && (z === z0 || z === z1);
+    const wzd = (x === x0 || x === x1) ? z : x;
+    for (let y = 1; y <= h; y++) {
+      if (czyDrzwi(x, z) && y <= 2) continue;
+      let t = naroznik ? B.pien : sc;
+      if (!naroznik && (y === 2 || y === 3) && wzd % 3 === 1 && !czyDrzwi(x, z) && !czyDrzwi(x + 1, z) && !czyDrzwi(x - 1, z) && !czyDrzwi(x, z + 1) && !czyDrzwi(x, z - 1)) t = B.szklo;
+      set(x, y, z, t);
+    }
+  }
+  // dach dwuspadowy schodkowy
+  const wzdluzX = w >= d;
+  for (let k = 0; ; k++) {
+    const y = h + 1 + k;
+    if (wzdluzX) { const a = z0 - 1 + k, b = z1 + 1 - k; if (a > b) break; for (let x = x0 - 1; x <= x1 + 1; x++) for (let z = a; z <= b; z++) set(x, y, z, dach); }
+    else { const a = x0 - 1 + k, b = x1 + 1 - k; if (a > b) break; for (let z = z0 - 1; z <= z1 + 1; z++) for (let x = a; x <= b; x++) set(x, y, z, dach); }
+  }
+  zajmij(x0, z0, x1, z1, 2);
+  // napis nad drzwiami
+  const s = o.drzwi;
+  const p = s[0] === 'S' ? [s[1] + 1, z1 + 1.05] : s[0] === 'N' ? [s[1] + 1, z0 - 0.05] : s[0] === 'E' ? [x1 + 1.05, s[1] + 1] : [x0 - 0.05, s[1] + 1];
+  NAPISY.push({ tekst: o.napis, x: p[0], y: 3.7, z: p[1] });
+}
+budynek({ x: 10, z: 8, w: 16, d: 12, h: 5, sc: B.cegla, dach: B.dachCz, drzwi: ['S', 17], napis: '🏫 SZKOŁA' });
+budynek({ x: 52, z: 10, w: 11, d: 10, h: 4, sc: B.zolty, dach: B.dachNb, drzwi: ['S', 57], napis: '📮 POCZTA' });
+budynek({ x: 6, z: 34, w: 10, d: 12, h: 5, sc: B.bialy, dach: B.dachZi, drzwi: ['E', 39], napis: '📚 BIBLIOTEKA' });
+budynek({ x: 10, z: 60, w: 11, d: 10, h: 4, sc: B.deski, dach: B.dachPo, drzwi: ['N', 15], napis: '☕ KAWIARNIA' });
+// wnętrza: ławki w szkole, regały w bibliotece
+for (let x = 12; x <= 23; x += 3) for (let z = 12; z <= 16; z += 2) set(x, 1, z, B.deski);
+for (let z = 36; z <= 43; z++) { set(7, 1, z, B.deski); set(7, 2, z, B.deski); }
+for (let x = 8; x <= 13; x++) { set(x, 1, 35, B.deski); set(x, 1, 44, B.deski); }
+for (let x = 12; x <= 18; x += 3) set(x, 1, 66, B.deski);
+
+// boisko
+for (let x = 29; x <= 47; x++) for (let z = 61; z <= 75; z++) {
+  const brzeg = x === 29 || x === 47 || z === 61 || z === 75 || z === 68;
+  set(x, 0, z, brzeg ? B.linia : B.boisko);
+}
+for (const zb of [62, 74]) { for (let y = 1; y <= 2; y++) { set(36, y, zb, B.linia); set(41, y, zb, B.linia); } for (let x = 37; x <= 40; x++) set(x, 2, zb, B.linia); }
+zajmij(29, 61, 47, 75, 1);
+
+// park z oczkiem wodnym i placem zabaw
+for (let x = 55; x <= 70; x++) for (let z = 59; z <= 72; z++) {
+  const d = Math.hypot((x - 63) / 5.2, (z - 66) / 4.2);
+  if (d <= 1) { set(x, 0, z, B.woda); set(x, -1, z, B.piasek); }
+  else if (d <= 1.25) set(x, 0, z, B.piasek);
+}
+for (let x = 53; x <= 55; x++) for (let z = 66; z <= 68; z++) for (let y = 1; y <= 3; y++) set(x, y, z, (x + z + y) % 2 ? B.fiolet : B.cyjan);
+set(56, 1, 67, B.zolta); set(56, 2, 67, B.zolta); set(57, 1, 67, B.zolta);
+for (let x = 52; x <= 53; x++) set(x, 1, 63, B.deski);
+for (let x = 66; x <= 67; x++) set(x, 1, 58, B.deski);
+zajmij(51, 58, 71, 73, 1);
+
+// Wieża Phishera
+for (let x = 68; x <= 73; x++) for (let z = 34; z <= 39; z++) for (let y = 1; y <= 14; y++) {
+  const brzeg = x === 68 || x === 73 || z === 34 || z === 39;
+  set(x, y, z, brzeg && y % 4 === 2 ? B.neon : B.ciemny);
+}
+const SCHODY = [];
+for (let z = 40; z >= 33; z--) SCHODY.push([67, z]);
+for (let x = 68; x <= 74; x++) SCHODY.push([x, 33]);
+for (let i = 0; i < 14; i++) { const [x, z] = SCHODY[i]; for (let y = 1; y <= i + 1; y++) set(x, y, z, B.ciemny); }
+for (let x = 68; x <= 73; x++) for (let z = 34; z <= 39; z++) {
+  const brzeg = x === 68 || x === 73 || z === 34 || z === 39;
+  if (brzeg && (x + z) % 2 === 0 && !(x >= 72 && z <= 35)) set(x, 15, z, B.ciemny);
+}
+for (let y = 15; y <= 19; y++) set(68, y, 39, B.pien);
+for (let x = 69; x <= 70; x++) for (let y = 18; y <= 19; y++) set(x, y, 39, B.czerwona);
+set(73, 15, 39, B.latarnia); set(68, 15, 34, B.latarnia);
+zajmij(66, 32, 75, 41, 2);
+NAPISY.push({ tekst: '🗼 WIEŻA PHISHERA', x: 66.4, y: 3.2, z: 41.6 });
+
+// pagórki
+function pagorek(cx, cz, r, h) {
+  for (let x = cx - r; x <= cx + r; x++) for (let z = cz - r; z <= cz + r; z++) {
+    if (x < 0 || z < 0 || x >= W || z >= W || zaj[x * W + z]) continue;
+    const d = Math.hypot(x - cx, z - cz); if (d > r) continue;
+    const hh = Math.round(h * (1 - d / r) + .35);
+    for (let y = 1; y <= hh; y++) set(x, y, z, y === hh ? B.trawa : B.ziemia);
+  }
+  zajmij(cx - r, cz - r, cx + r, cz + r, 0);
+}
+pagorek(70, 9, 6, 4); pagorek(32, 12, 4, 2); pagorek(6, 24, 4, 3); pagorek(25, 47, 3, 2); pagorek(73, 50, 4, 2); pagorek(5, 73, 4, 2);
+
+// drzewa
+function drzewo(x, z) {
+  const h = 4 + (los() * 2 | 0);
+  for (let y = 1; y <= h; y++) set(x, y, z, B.pien);
+  for (let y = h - 1; y <= h + 1; y++) {
+    const r = y === h + 1 ? 1 : 2;
+    for (let a = -r; a <= r; a++) for (let b = -r; b <= r; b++) {
+      if (Math.abs(a) === 2 && Math.abs(b) === 2 && los() < .7) continue;
+      if (!get(x + a, y, z + b)) set(x + a, y, z + b, B.liscie);
+    }
+  }
+  set(x, h + 2, z, B.liscie);
+  zajmij(x, z, x, z, 2);
+}
+for (let i = 0; i < 26; i++) for (const [x, z] of [[2 + i * 3, 2], [2 + i * 3, 77], [2, 2 + i * 3], [77, 2 + i * 3]]) if (x < 78 && z < 78 && wolne(x, z, 0)) drzewo(x, z);
+for (let i = 0; i < 700; i++) { const x = 3 + (los() * 74 | 0), z = 3 + (los() * 74 | 0); if (wolne(x, z, 2)) drzewo(x, z); }
+
+/* ---------------- budowa siatek ---------------- */
+const zbior = new Map();
+for (let y = -OY; y < HY - OY; y++) for (let x = 0; x < W; x++) for (let z = 0; z < W; z++) {
+  const t = vox[idx(x, y, z)]; if (!t) continue;
+  const zakryty = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]].every(([a, b, c]) => {
+    const yy = y + b; if (yy < -OY) return true;
+    const xx = x + a, zz = z + c; if (xx < 0 || zz < 0 || xx >= W || zz >= W) return true;
+    const n = get(xx, yy, zz); return n && TYPY[n].nieprzezr;
+  });
+  if (zakryty) continue;
+  if (!zbior.has(t)) zbior.set(t, []);
+  zbior.get(t).push(x, y, z);
+}
+const geomBlok = new THREE.BoxGeometry(1, 1, 1);
+const geomWoda = new THREE.BoxGeometry(1, .86, 1);
+const mtx = new THREE.Matrix4();
+for (const [t, poz] of zbior) {
+  const def = TYPY[t];
+  const n = poz.length / 3;
+  const im = new THREE.InstancedMesh(def.woda ? geomWoda : geomBlok, def.mat, n);
+  for (let i = 0; i < n; i++) { mtx.makeTranslation(poz[i * 3] + .5, poz[i * 3 + 1] + (def.woda ? .43 : .5), poz[i * 3 + 2] + .5); im.setMatrixAt(i, mtx); }
+  im.castShadow = def.nieprzezr; im.receiveShadow = true;
+  if (def.woda || t === B.szklo) im.renderOrder = 2;
+  scena.add(im);
+}
+
+// kwiatki (dekoracja bez kolizji)
+{
+  const kol = [0xff5a6e, 0xffd23f, 0xffffff, 0x8b5cf6];
+  const g = new THREE.BoxGeometry(.22, .3, .22);
+  kol.forEach((k, ki) => {
+    const pts = [];
+    for (let i = 0; i < 90; i++) { const x = los() * 78 + 1, z = los() * 78 + 1; const xi = x | 0, zi = z | 0;
+      if (get(xi, 0, zi) === B.trawa && !get(xi, 1, zi) && !zaj[xi * W + zi]) pts.push([x, z]); }
+    const im = new THREE.InstancedMesh(g, L({ color: k }), pts.length);
+    pts.forEach(([x, z], i) => { mtx.makeTranslation(x, 1.15, z); im.setMatrixAt(i, mtx); });
+    scena.add(im);
+  });
+}
+
+// chmury
+const chmury = new THREE.Group();
+{
+  const mat = new THREE.MeshLambertMaterial({ color: 0xffffff, transparent: true, opacity: .9 });
+  for (let i = 0; i < 16; i++) {
+    const c = new THREE.Group();
+    const n = 2 + (los() * 3 | 0);
+    for (let j = 0; j < n; j++) { const m = new THREE.Mesh(new THREE.BoxGeometry(4 + los() * 6, 1.4, 3 + los() * 5), mat); m.position.set(j * 3 - n, 0, los() * 3); c.add(m); }
+    c.position.set(los() * 160 - 40, 32 + los() * 6, los() * 160 - 40);
+    chmury.add(c);
+  }
+  scena.add(chmury);
+}
+
+/* ---------------- napisy i duszki tekstowe ---------------- */
+function spriteTekst(txt, { kolor = '#fff', tlo = 'rgba(10,14,22,.72)', rozm = 44, skala = .011, obrys = null } = {}) {
+  const c = document.createElement('canvas'); const g = c.getContext('2d');
+  const font = `800 ${rozm}px "Segoe UI","Trebuchet MS",Arial,sans-serif`;
+  g.font = font; const w = Math.ceil(g.measureText(txt).width) + rozm * .9;
+  c.width = w; c.height = Math.ceil(rozm * 1.55);
+  g.font = font; g.textAlign = 'center'; g.textBaseline = 'middle';
+  if (tlo) { g.fillStyle = tlo; if (g.roundRect) { g.beginPath(); g.roundRect(0, 0, c.width, c.height, rozm * .3); g.fill(); } else g.fillRect(0, 0, c.width, c.height); }
+  if (obrys) { g.lineWidth = rozm * .16; g.strokeStyle = obrys; g.strokeText(txt, c.width / 2, c.height / 2 + 2); }
+  g.fillStyle = kolor; g.fillText(txt, c.width / 2, c.height / 2 + 2);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: t, transparent: true }));
+  s.scale.set(c.width * skala, c.height * skala, 1);
+  return s;
+}
+NAPISY.forEach(n => { const s = spriteTekst(n.tekst, { kolor: '#ffd23f', rozm: 52, skala: .013 }); s.position.set(n.x, n.y, n.z); scena.add(s); });
+
+/* ---------------- postacie ---------------- */
+function twarz(o) {
+  const c = plotno(); const g = c.getContext('2d'); const P = (x, y, k, w = 1, h = 1) => px(g, x, y, k, w, h);
+  if (o.kaptur) { P(0, 0, o.kaptur, 16, 16); P(3, 4, '#0b0d10', 10, 11); P(5, 8, '#39ff7a', 2, 1); P(9, 8, '#39ff7a', 2, 1); P(5, 9, '#1c8f45', 2, 1); P(9, 9, '#1c8f45', 2, 1); P(6, 12, '#1c8f45', 4, 1); return c; }
+  if (o.robot) { P(0, 0, '#cfd6df', 16, 16); P(2, 3, '#10202b', 12, 10); P(4, 6, '#3fd6ff', 3, 2); P(9, 6, '#3fd6ff', 3, 2); P(5, 10, '#3fd6ff', 6, 1); P(4, 9, '#3fd6ff'); P(11, 9, '#3fd6ff'); return c; }
+  P(0, 0, o.skora, 16, 16);
+  P(0, 0, o.wlosy, 16, 4);
+  if (o.fryz === 'dlugie') { P(0, 0, o.wlosy, 2, 15); P(14, 0, o.wlosy, 2, 15); P(2, 4, o.wlosy, 3, 1); }
+  if (o.fryz === 'grzywka') P(2, 4, o.wlosy, 12, 1);
+  if (o.fryz === 'kucyki') { P(0, 0, o.wlosy, 2, 8); P(14, 0, o.wlosy, 2, 8); }
+  if (o.fryz === 'siwe') { P(0, 0, o.wlosy, 2, 7); P(14, 0, o.wlosy, 2, 7); }
+  P(3, 6, jasn(parseInt(o.wlosy.slice(1), 16), -.25), 3, 1); P(10, 6, jasn(parseInt(o.wlosy.slice(1), 16), -.25), 3, 1);
+  P(3, 8, '#fff', 3, 2); P(4, 8, o.oczy || '#3b5f9a', 2, 2);
+  P(10, 8, '#fff', 3, 2); P(10, 8, o.oczy || '#3b5f9a', 2, 2);
+  P(7, 10, jasn(parseInt(o.skora.slice(1), 16), -.15), 2, 2);
+  P(6, 13, '#9b4a4a', 4, 1);
+  if (o.policzki) { P(2, 11, '#f19aa0', 2, 1); P(12, 11, '#f19aa0', 2, 1); }
+  if (o.broda) { P(1, 11, o.broda, 2, 5); P(13, 11, o.broda, 2, 5); P(1, 14, o.broda, 14, 2); P(5, 12, o.broda, 6, 1); P(3, 13, o.broda, 2, 1); P(11, 13, o.broda, 2, 1); P(6, 13, '#7a3b3b', 4, 1); }
+  if (o.okulary) { const k = '#15171c'; P(2, 7, k, 5, 1); P(2, 10, k, 5, 1); P(2, 7, k, 1, 4); P(6, 7, k, 1, 4); P(9, 7, k, 5, 1); P(9, 10, k, 5, 1); P(9, 7, k, 1, 4); P(13, 7, k, 1, 4); P(7, 8, k, 2, 1); P(0, 8, k, 2, 1); P(14, 8, k, 2, 1); }
+  return c;
+}
+function bokGlowy(o) {
+  const c = plotno(); const g = c.getContext('2d');
+  if (o.kaptur) { px(g, 0, 0, o.kaptur, 16, 16); return c; }
+  if (o.robot) { px(g, 0, 0, '#b9c2cc', 16, 16); px(g, 6, 6, '#3fd6ff', 4, 4); return c; }
+  px(g, 0, 0, o.skora, 16, 16);
+  px(g, 0, 0, o.wlosy, 16, 5); px(g, 9, 0, o.wlosy, 7, o.fryz === 'dlugie' || o.fryz === 'siwe' ? 15 : 10);
+  if (o.fryz === 'dlugie') px(g, 0, 0, o.wlosy, 16, 15);
+  if (o.okulary) px(g, 0, 8, '#15171c', 7, 1);
+  if (o.broda) px(g, 0, 11, o.broda, 7, 5);
+  px(g, 6, 8, jasn(parseInt(o.skora.slice(1), 16), -.12), 2, 3);
+  return c;
+}
+function tylGlowy(o) {
+  const c = plotno(); const g = c.getContext('2d');
+  if (o.kaptur || o.robot) { px(g, 0, 0, o.kaptur || '#b9c2cc', 16, 16); return c; }
+  px(g, 0, 0, o.wlosy, 16, 16);
+  if (!(o.fryz === 'dlugie' || o.fryz === 'kucyki' || o.fryz === 'siwe')) px(g, 0, 12, o.skora, 16, 4);
+  return c;
+}
+function tulow(o) {
+  const c = plotno(); const g = c.getContext('2d'); const P = (x, y, k, w = 1, h = 1) => px(g, x, y, k, w, h);
+  P(0, 0, o.koszula, 16, 16);
+  const ciem = jasn(parseInt(o.koszula.slice(1), 16), -.25);
+  switch (o.wzor) {
+    case 'marynarka':
+      P(5, 0, '#f1f1f1', 6, 4); P(6, 4, '#f1f1f1', 4, 3); P(7, 7, '#f1f1f1', 2, 2);
+      P(7, 0, '#8e2420', 2, 1); P(7, 1, '#c0392b', 2, 8); P(7, 9, '#8e2420', 2, 1);
+      P(4, 0, ciem, 1, 9); P(11, 0, ciem, 1, 9); P(11, 4, '#ffd23f', 2, 1);
+      P(4, 10, '#d9d9d9'); P(4, 12, '#d9d9d9'); P(0, 14, '#2b2b2b', 16, 2); P(7, 14, '#c9a227', 2, 2);
+      P(2, 5, '#ffffff', 2, 3); P(2, 5, '#3fd6ff', 2, 1); break;
+    case 'bluza':
+      P(4, 10, ciem, 8, 4); P(6, 0, '#ffffff', 1, 5); P(9, 0, '#ffffff', 1, 5); P(4, 0, ciem, 8, 1); break;
+    case 'paski':
+      for (let y = 1; y < 16; y += 4) P(0, y, o.akcent, 16, 2); break;
+    case 'fartuch':
+      P(3, 6, '#6b4a2f', 10, 10); P(4, 0, '#6b4a2f', 1, 6); P(11, 0, '#6b4a2f', 1, 6); P(6, 9, '#f2e6d0', 4, 2); break;
+    case 'sweter':
+      P(6, 0, o.akcent, 4, 16); P(5, 0, ciem, 1, 16); P(10, 0, ciem, 1, 16); for (let y = 3; y < 16; y += 4) P(5, y, '#f2e6d0'); break;
+    case 'poczta':
+      P(0, 9, '#1f4fa3', 16, 2); P(10, 3, '#1f4fa3', 3, 3); P(11, 4, '#ffd23f'); P(6, 0, ciem, 4, 1); break;
+    case 'phisher':
+      P(5, 0, '#000', 6, 2); P(5, 4, '#39ff7a', 6, 1); P(5, 9, '#39ff7a', 6, 1); P(5, 4, '#39ff7a', 1, 6); P(10, 4, '#39ff7a', 1, 4);
+      P(7, 6, '#39ff7a', 2, 2); P(9, 6, '#39ff7a', 1, 3); P(4, 11, ciem, 8, 4); break;
+    case 'sukienka':
+      P(0, 9, o.akcent, 16, 7); P(6, 0, '#ffffff', 4, 2); break;
+    default:
+      P(6, 0, ciem, 4, 2);
+  }
+  return c;
+}
+function rekaTex(o) { const c = plotno(); const g = c.getContext('2d'); px(g, 0, 0, o.rekaw || o.koszula, 16, 16); if (o.wzor === 'marynarka') px(g, 0, 11, '#f1f1f1', 16, 1); px(g, 0, 12, o.robot ? '#9aa4ae' : o.skora || '#e0ac88', 16, 4); return c; }
+function nogaTex(o) { const c = plotno(); const g = c.getContext('2d'); px(g, 0, 0, o.spodnie, 16, 16); if (o.wzor === 'sukienka') px(g, 0, 0, o.akcent, 16, 3); px(g, 0, 13, o.buty, 16, 3); return c; }
+
+const POSTACIE = [];
+function postac(o) {
+  const g = new THREE.Group();
+  const mt = c => L({ map: naTeksture(c, false) });
+  const kol = k => L({ color: k });
+  const twarzC = twarz(o);
+  const bok = mt(bokGlowy(o));
+  const glowa = new THREE.Mesh(new THREE.BoxGeometry(.5, .5, .5),
+    [bok, bok, kol(o.kaptur || o.wlosy || '#cfd6df'), kol(o.skora || '#cfd6df'), mt(twarzC), mt(tylGlowy(o))]);
+  glowa.position.y = 1.66;
+  const tm = mt(tulow(o)); const kp = kol(o.koszula);
+  const tul = new THREE.Mesh(new THREE.BoxGeometry(.52, .72, .3), [kp, kp, kp, kp, tm, kp]);
+  tul.position.y = 1.05;
+  const czesc = (w, h, d, mat, x, y) => { const p = new THREE.Group(); const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); m.position.y = -h / 2; m.castShadow = true; p.add(m); p.position.set(x, y, 0); g.add(p); return p; };
+  const rm = mt(rekaTex(o)); const nm = mt(nogaTex(o));
+  const rL = czesc(.2, .7, .22, rm, -.37, 1.4), rP = czesc(.2, .7, .22, rm, .37, 1.4);
+  const nL = czesc(.24, .7, .26, nm, -.13, .7), nP = czesc(.24, .7, .26, nm, .13, .7);
+  glowa.castShadow = tul.castShadow = true;
+  g.add(glowa, tul);
+  if (o.kucyk) { const k = new THREE.Mesh(new THREE.BoxGeometry(.16, .34, .12), kol(o.wlosy)); k.position.set(0, 1.55, -.3); g.add(k); }
+  if (o.wedka) {
+    const w = new THREE.Group();
+    const kij = new THREE.Mesh(new THREE.BoxGeometry(.05, .05, 1.5), kol('#5a3a1e')); kij.position.z = .7; w.add(kij);
+    const zylka = new THREE.Mesh(new THREE.BoxGeometry(.015, .9, .015), kol('#dddddd')); zylka.position.set(0, -.45, 1.45); w.add(zylka);
+    const kc = plotno(); const kg = kc.getContext('2d'); px(kg, 0, 0, '#fff', 16, 16); px(kg, 0, 0, '#c8ccd2', 16, 1); for (let i = 0; i < 8; i++) { px(kg, i, i, '#c8ccd2'); px(kg, 15 - i, i, '#c8ccd2'); } px(kg, 6, 9, '#e5484d', 4, 4);
+    const kop = new THREE.Mesh(new THREE.BoxGeometry(.34, .24, .04), mt(kc)); kop.position.set(0, -.98, 1.45); w.add(kop);
+    w.position.set(0, -.6, .05); w.rotation.x = -.5;
+    rP.add(w); g.userData.koperta = kop;
+  }
+  const nazwa = spriteTekst(o.imie, { kolor: o.kolorNazwy || '#ffffff', rozm: 40, skala: .0062 });
+  nazwa.position.y = 2.2; g.add(nazwa);
+  g.userData = { ...g.userData, rL, rP, nL, nP, glowa, faza: Math.random() * 6, twarzC, nazwa };
+  POSTACIE.push(g);
+  return g;
+}
+function animujPostac(p, predkosc, t) {
+  const u = p.userData;
+  const sw = Math.sin(t * 9 + u.faza) * Math.min(1, predkosc / 4) * .75;
+  u.nL.rotation.x = sw; u.nP.rotation.x = -sw;
+  u.rL.rotation.x = -sw + (u.machanie ? Math.sin(t * 6) * .3 - .8 : 0); u.rP.rotation.x = sw;
+  u.glowa.position.y = 1.66 + Math.sin(t * 2 + u.faza) * .012;
+}
+
+/* ---------------- Damian Teacher ---------------- */
+const WYGLAD_DAMIAN = { imie: 'Damian Teacher', kolorNazwy: '#ffd23f', skora: '#e8b894', wlosy: '#3a2a1f', broda: '#4a3426', okulary: true, oczy: '#3d6fa8',
+  koszula: '#24345a', wzor: 'marynarka', spodnie: '#34405a', buty: '#3b2618' };
+const damian = postac(WYGLAD_DAMIAN);
+scena.add(damian);
+
+// Bit — robot-asystent
+const bit = new THREE.Group();
+{
+  const bc = twarz({ robot: true });
+  const bok = L({ map: naTeksture(bokGlowy({ robot: true }), false) });
+  const cialo = new THREE.Mesh(new THREE.BoxGeometry(.42, .38, .38), [bok, bok, L({ color: 0xdfe5ec }), L({ color: 0x9aa4ae }), L({ map: naTeksture(bc, false) }), bok]);
+  cialo.castShadow = true; bit.add(cialo);
+  const ant = new THREE.Mesh(new THREE.BoxGeometry(.04, .2, .04), L({ color: 0x9aa4ae })); ant.position.y = .29; bit.add(ant);
+  const kulka = new THREE.Mesh(new THREE.BoxGeometry(.1, .1, .1), new THREE.MeshBasicMaterial({ color: 0xffd23f })); kulka.position.y = .42; bit.add(kulka);
+  for (const s of [-1, 1]) { const sm = new THREE.Mesh(new THREE.BoxGeometry(.3, .03, .1), L({ color: 0x3fd6ff })); sm.position.set(s * .32, .05, 0); bit.add(sm); }
+  bit.userData.twarzC = bc;
+  scena.add(bit);
+}
+
+/* ---------------- świadkowie / NPC ---------------- */
+const NPC = {};
+function dodajNPC(id, x, z, wyglad, kat = 0) {
+  const p = postac(wyglad);
+  p.position.set(x, powierzchnia(x, z), z);
+  p.rotation.y = kat;
+  p.userData.id = id; p.userData.katBaz = kat;
+  scena.add(p);
+  NPC[id] = p;
+  return p;
+}
+dodajNPC('ola', 21.2, 22.2, { imie: 'Ola', skora: '#f1c7a5', wlosy: '#c9772e', fryz: 'dlugie', oczy: '#2f7d4f', policzki: true, koszula: '#e86fa6', wzor: 'bluza', spodnie: '#3f5fa8', buty: '#f2f2f2' }, -.4);
+dodajNPC('halina', 61.4, 21.8, { imie: 'Pani Halina', skora: '#efc6a8', wlosy: '#c9c9c9', fryz: 'siwe', okulary: true, oczy: '#6b4f2f', koszula: '#7a4fa0', wzor: 'sweter', akcent: '#c79be0', spodnie: '#4d4d5a', buty: '#2b2b2b', policzki: true }, -.6);
+dodajNPC('krystyna', 18.2, 36.8, { imie: 'Pani Krystyna', skora: '#f0c19c', wlosy: '#5b3a24', fryz: 'kucyki', kucyk: true, okulary: true, koszula: '#2f8f5a', wzor: 'sweter', akcent: '#f2e6d0', spodnie: '#3a3a44', buty: '#5a3a1e' }, .9);
+dodajNPC('marek', 19.4, 57.8, { imie: 'Pan Marek', skora: '#c99470', wlosy: '#1f1f1f', broda: '#1f1f1f', koszula: '#f2f2f2', wzor: 'fartuch', spodnie: '#2b2b33', buty: '#1f1f1f' }, 2.4);
+dodajNPC('kuba', 58.6, 55.4, { imie: 'Kuba', skora: '#f2c9a8', wlosy: '#e3c25a', fryz: 'grzywka', oczy: '#3b6fd0', policzki: true, koszula: '#2f7fd8', wzor: 'paski', akcent: '#ffffff', spodnie: '#2c3e5c', buty: '#d8343a' }, -2.2);
+dodajNPC('zosia', 44, 57.6, { imie: 'Zosia', skora: '#d9a07a', wlosy: '#2a1a12', fryz: 'dlugie', oczy: '#4a2f1f', koszula: '#ffd23f', wzor: 'sukienka', akcent: '#e5484d', spodnie: '#e5484d', buty: '#ffffff', kucyk: true }, 2.6);
+const boss = dodajNPC('phisher', 71, 37.4, { imie: 'Phisher', kolorNazwy: '#39ff7a', kaptur: '#17191f', koszula: '#17191f', wzor: 'phisher', rekaw: '#17191f', skora: '#0b0d10', spodnie: '#101114', buty: '#000000', wedka: true }, Math.PI * .75);
+
+// znaczniki misji
+const ZNACZNIKI = {};
+function ustawZnacznik(id, rodzaj) {
+  const p = NPC[id];
+  if (ZNACZNIKI[id]) { p.remove(ZNACZNIKI[id]); ZNACZNIKI[id].material.map.dispose(); }
+  const s = rodzaj === 'ok' ? spriteTekst('✔', { kolor: '#2fbf71', tlo: null, obrys: '#0b2a18', rozm: 80, skala: .009 })
+    : rodzaj === 'zamek' ? spriteTekst('?', { kolor: '#e5484d', tlo: null, obrys: '#3a0d10', rozm: 96, skala: .01 })
+    : spriteTekst('!', { kolor: '#ffd23f', tlo: null, obrys: '#3a2b00', rozm: 110, skala: .011 });
+  s.position.y = 2.95; p.add(s); ZNACZNIKI[id] = s;
+}
+
+/* ---------------- złote kłódki ---------------- */
+const WSKAZOWKI = [
+  'Aktualizuj system i aplikacje — poprawki zamykają dziury, przez które wchodzą włamywacze.',
+  'Kłódka przy adresie strony oznacza tylko szyfrowane połączenie. Oszuści też potrafią ją mieć!',
+  'Nie podłączaj do komputera znalezionych pendrive’ów — mogą ukrywać złośliwe programy.',
+  'Na wspólnym komputerze zawsze się wylogowuj i nie zapisuj hasła w przeglądarce.',
+  'Ustaw profil w mediach społecznościowych jako prywatny — niech widzą Cię tylko znajomi.',
+  'Zdjęcie może zdradzić, gdzie mieszkasz: numer domu, szkoła w tle, lokalizacja w telefonie.',
+  'Instaluj aplikacje tylko z oficjalnych sklepów i sprawdzaj, o jakie uprawnienia proszą.',
+  'Rób kopie zapasowe ważnych plików — ochronią je przed awarią i programami wymuszającymi okup.',
+  'Reklama „celebryta poleca inwestycję, zarobisz tysiące w tydzień” to prawie zawsze oszustwo.',
+  'Incydenty i oszustwa w sieci możesz zgłaszać do CERT Polska: incydent.cert.pl.',
+  'To, co trafi do internetu, może tam zostać na zawsze. Pomyśl, zanim opublikujesz.',
+  'Higiena cyfrowa to też przerwy od ekranu. Zmęczony umysł łatwiej daje się oszukać!',
+];
+const KLODKI_POZ = [[13.5, 10.5, 1], [24.5, 5.5], [70.5, 9.5], [10.5, 40.5, 1], [63.5, 66.5], [54.5, 67.5], [67.5, 36.5], [72.5, 38.5],
+  [38.5, 73.2], [12.5, 73.5], [60.5, 7.5], [6.5, 24.5]];
+const klodki = [];
+{
+  const zloto = new THREE.MeshLambertMaterial({ color: 0xffc928, emissive: 0x6b4a00 });
+  const stal = new THREE.MeshLambertMaterial({ color: 0xd9dde3, emissive: 0x333333 });
+  KLODKI_POZ.forEach(([x, z, yy], i) => {
+    const g = new THREE.Group();
+    const korpus = new THREE.Mesh(new THREE.BoxGeometry(.42, .34, .16), zloto); g.add(korpus);
+    const pal = new THREE.Mesh(new THREE.TorusGeometry(.13, .04, 6, 12, Math.PI), stal); pal.position.y = .17; g.add(pal);
+    const dz = new THREE.Mesh(new THREE.BoxGeometry(.06, .12, .18), new THREE.MeshBasicMaterial({ color: 0x5a3a00 })); dz.position.y = -.03; g.add(dz);
+    const y = (yy ?? powierzchnia(x, z)) + .7;
+    g.position.set(x, y, z); g.userData = { i, y };
+    scena.add(g); klodki.push(g);
+  });
+}
+
+/* ---------------- SPRAWY ---------------- */
+const SPRAWY = [
+  { id: 'phishing', npc: 'ola', ikona: '📧', tytul: 'Złota wygrana', miejsce: 'Szkoła', odznaka: 'Tropiciel Phishingu',
+    zasada: 'Nie klikam w linki z podejrzanych wiadomości i <b>nigdy nie podaję hasła</b> w odpowiedzi na maila. Pośpiech i „wygrana” to czerwone flagi.',
+    kroki: [
+      { kto: 'ola', t: 'Panie Damianie! Dostałam maila, że wygrałam smartfon <b>Fonix 15 Pro</b>! Muszę tylko w 24 godziny kliknąć link i zalogować się hasłem do poczty. Klikam?' },
+      { kto: 'damian', t: 'Spokojnie, Olu. Najpierw obejrzymy tę wiadomość jak prawdziwi detektywi. {imie}, pomożesz mi?' },
+      { kto: 'damian', t: 'Oto nasz dowód. Przeczytaj go uważnie — każdy szczegół się liczy.',
+        dowod: `<div class="dowod email"><div class="naglowek">📧 SKRZYNKA ODBIORCZA</div><div class="pola"><b>Od:</b> nagrody@fonix-wygrana.xyz<br><b>Temat:</b> GRATULACJE!!! Wygrałaś Fonix 15 Pro 🎁</div>
+          <div class="tresc">Droga Zwyciężczyni!<br>Zostałaś wylosowana! Masz tylko <b>24 godziny</b>, aby odebrać nagrodę. Kliknij:<br><span class="zly-link">http://fonix-nagrody.xyz/login</span><br>i podaj <b>login oraz hasło</b> do swojej poczty. Inaczej nagroda przepadnie!</div></div>` },
+      { q: 'Które sygnały w tym mailu są najbardziej podejrzane?', o: [
+        { t: 'Presja czasu („tylko 24 godziny”) i prośba o hasło', ok: 1, why: 'Dokładnie! Oszuści chcą, żebyśmy działali w pośpiechu i nie zdążyli pomyśleć. Żadna uczciwa firma nie prosi o hasło w mailu.' },
+        { t: 'To, że temat jest napisany wielkimi literami', why: 'To bywa wskazówką, ale nie najważniejszą. Szukaj mocniejszych dowodów: pośpiechu i prośby o hasło.' },
+        { t: 'To, że mail przyszedł po południu', why: 'Godzina wysłania niczego nie dowodzi. Spójrz jeszcze raz na treść wiadomości.' }] },
+      { q: 'Spójrz na adres w linku. Dokąd naprawdę prowadzi?', o: [
+        { t: 'Na oficjalną stronę firmy Fonix', why: 'Nie! Domena to fonix-nagrody.xyz — każdy może ją kupić za kilka złotych. Liczy się to, co stoi tuż przed pierwszym ukośnikiem „/”.' },
+        { t: 'Do obcej domeny fonix-nagrody.xyz, która tylko udaje firmę', ok: 1, why: 'Brawo! Oszuści wstawiają do adresu znaną nazwę, żeby wyglądał wiarygodnie. Prawdziwy adres trzeba czytać od końca domeny.' },
+        { t: 'Tego nie da się sprawdzić', why: 'Da się! Wystarczy uważnie przeczytać adres, zanim się kliknie (na komputerze widać go po najechaniu myszką).' }] },
+      { q: 'Co Ola powinna teraz zrobić?', o: [
+        { t: 'Kliknąć, ale wpisać nieprawdziwe hasło', why: 'Samo kliknięcie może zainstalować złośliwe oprogramowanie albo potwierdzić oszustom, że adres jest aktywny.' },
+        { t: 'Nie klikać, pokazać maila zaufanemu dorosłemu i oznaczyć go jako spam/phishing', ok: 1, why: 'Idealnie! Zgłoszenie wiadomości jako phishing pomaga ochronić też innych użytkowników.' },
+        { t: 'Przesłać link koleżankom, żeby też mogły wygrać', why: 'W ten sposób narażamy też znajomych. Podejrzanych linków nigdy nie przekazujemy dalej.' }] },
+      { kto: 'ola', t: 'Uff! Dobrze, że nie kliknęłam. Dziękuję, Panie Damianie! I Tobie, {imie}!' },
+    ] },
+  { id: 'paczka', npc: 'halina', ikona: '📦', tytul: 'Paczka, której nie było', miejsce: 'Poczta', odznaka: 'Strażnik SMS-ów',
+    zasada: 'Status przesyłki sprawdzam tylko w oficjalnej aplikacji albo wpisując adres samodzielnie. Podejrzane SMS-y przekazuję bezpłatnie na numer <b>8080</b> (CERT Polska).',
+    kroki: [
+      { kto: 'halina', t: 'Dzień dobry, panie Damianie. Przyszedł mi SMS, że moja paczka czeka i muszę dopłacić <b>1,99 zł</b>. Tylko że... ja nic nie zamawiałam.' },
+      { kto: 'damian', t: 'Dobrze, że pani zapytała, zanim pani kliknęła. {imie}, rzućmy okiem na tego SMS-a.',
+        dowod: `<div class="dowod"><div class="naglowek">💬 WIADOMOŚĆ SMS · +48 731 0__ ___</div><div class="sms"><div class="bubel">Twoja przesylka zostala wstrzymana z powodu niedoplaty 1,99 zl. Oplac teraz, aby uniknac zwrotu: <span class="zly-link">http://dostawa-paczki24.top/pl</span></div></div></div>` },
+      { q: 'Dlaczego oszuści proszą tylko o 1,99 zł?', o: [
+        { t: 'Bo są uczciwi i to zwykła opłata pocztowa', why: 'Niestety nie. Prawdziwa poczta nie wysyła linków do płatności z przypadkowych domen.' },
+        { t: 'Żeby wyłudzić dane karty albo logowanie do banku — potem zabiorą dużo więcej', ok: 1, why: 'Tak! Mała kwota usypia czujność. Na fałszywej stronie płatności wpisujesz dane karty lub login do banku, a oszuści mogą wyczyścić konto.' },
+        { t: 'Bo paczka jest bardzo lekka', why: 'Waga paczki nie ma tu znaczenia. Oszuści celowo wybierają drobną kwotę, żebyśmy nie myśleli długo.' }] },
+      { q: 'Co jest najmocniejszym dowodem, że SMS jest fałszywy?', o: [
+        { t: 'Pani Halina nic nie zamawiała, a link prowadzi do dziwnej domeny .top', ok: 1, why: 'Świetnie! Brak zamówienia i obca, dziwna domena to dwa mocne dowody.' },
+        { t: 'SMS nie ma polskich znaków', why: 'To bywa wskazówką, ale prawdziwe firmy też czasem piszą bez „ogonków”. Najmocniejsze dowody to brak zamówienia i obca domena.' },
+        { t: 'SMS przyszedł z numeru telefonu', why: 'Z numeru telefonu przychodzą zarówno prawdziwe, jak i fałszywe SMS-y — to niczego nie dowodzi.' }] },
+      { q: 'Co zrobić z takim SMS-em?', o: [
+        { t: 'Odpisać oszustom, żeby przestali', why: 'Odpowiedź potwierdza, że numer jest aktywny — i przychodzi jeszcze więcej oszustw.' },
+        { t: 'Kliknąć, żeby sprawdzić, co tam jest', why: 'Nigdy! Strona może wyłudzić dane albo próbować zainstalować złośliwą aplikację.' },
+        { t: 'Nie klikać, przekazać SMS na numer 8080 i usunąć', ok: 1, why: 'Tak! Bezpłatny numer 8080 prowadzi CERT Polska. Dzięki zgłoszeniom fałszywe strony szybciej trafiają na listę ostrzeżeń.' }] },
+      { kto: 'halina', t: 'No proszę, 8080. Zapiszę sobie na lodówce! Dziękuję wam, młodzi detektywi.' },
+    ] },
+  { id: 'hasla', npc: 'krystyna', ikona: '🔐', tytul: 'Twierdza haseł', miejsce: 'Biblioteka', odznaka: 'Mistrz Haseł',
+    zasada: 'Używam <b>długich haseł-zdań</b>, innego do każdego konta, włączam <b>weryfikację dwuetapową (2FA)</b> i nikomu nie zdradzam haseł.',
+    kroki: [
+      { kto: 'krystyna', t: 'Panie Damianie, ktoś włamał się na konto biblioteki w mediach społecznościowych i opublikował głupie memy! Hasło było... no, <b>„biblioteka1”</b>. I to samo mam do poczty.' },
+      { kto: 'damian', t: 'Rozumiem. Zbudujmy razem prawdziwą twierdzę haseł. {imie}, Ty wybierasz!' },
+      { q: 'Które hasło jest najsilniejsze?', o: [
+        { t: 'Biblioteka2026!', why: 'Nazwa + rok + wykrzyknik to jeden z pierwszych schematów, jakie sprawdzają programy do łamania haseł.' },
+        { t: 'zielony-słoń-czyta-komiksy-o-7', ok: 1, why: 'Tak! Długie hasło z kilku przypadkowych słów (hasło-zdanie) jest bardzo trudne do złamania, a łatwe do zapamiętania. Długość jest ważniejsza niż udziwnienia.' },
+        { t: 'Qwerty123', why: 'To jedno z najpopularniejszych haseł świata — łamie się je w ułamku sekundy.' },
+        { t: 'Krystyna1975', why: 'Imię i rok urodzenia łatwo znaleźć w internecie. To słabe hasło.' }] },
+      { q: 'Pani Krystyna ma jedno hasło do wszystkiego. Dlaczego to groźne?', o: [
+        { t: 'Nie jest groźne — łatwiej zapamiętać', why: 'Wygoda kosztuje: jeden wyciek otwiera wszystkie drzwi naraz.' },
+        { t: 'Bo gdy wycieknie z jednego serwisu, oszuści sprawdzą je wszędzie: w poczcie, sklepie, banku', ok: 1, why: 'Właśnie! Dlatego każde konto potrzebuje innego hasła. Pomaga w tym menedżer haseł.' },
+        { t: 'Bo hasło się „zużywa”', why: 'Hasła się nie zużywają — problemem jest powtarzanie ich w wielu miejscach.' }] },
+      { q: 'Co najlepiej ochroni konto, nawet gdy hasło wycieknie?', o: [
+        { t: 'Weryfikacja dwuetapowa (2FA) — dodatkowy kod z aplikacji lub SMS przy logowaniu', ok: 1, why: 'Doskonale! Nawet znając hasło, włamywacz nie zaloguje się bez drugiego składnika.' },
+        { t: 'Karteczka z hasłem przyklejona do monitora', why: 'Każdy, kto przejdzie obok, pozna hasło. To nie jest zabezpieczenie!' },
+        { t: 'Zmiana hasła na „biblioteka2”, potem „biblioteka3”...', why: 'Takie „zmiany” są przewidywalne — programy łamiące hasła sprawdzają je od razu.' }] },
+      { q: 'Najlepszy przyjaciel prosi o Twoje hasło do gry. Co robisz?', o: [
+        { t: 'Podaję — przecież się przyjaźnimy', why: 'Przyjaźnie się zmieniają, a hasło może trafić dalej. Hasło znasz tylko Ty (i ewentualnie rodzic).' },
+        { t: 'Nie podaję. Hasło jest jak szczoteczka do zębów — tylko moje!', ok: 1, why: 'Dokładnie! Prawdziwy przyjaciel to zrozumie.' }] },
+      { kto: 'krystyna', t: 'Hasło-zdanie i 2FA... Już zmieniam wszystkie hasła! Dziękuję!' },
+    ] },
+  { id: 'nieznajomy', npc: 'kuba', ikona: '🎮', tytul: 'Nieznajomy z gry', miejsce: 'Park', odznaka: 'Obrońca Prywatności',
+    zasada: 'Nie podaję obcym <b>danych osobowych ani zdjęć</b>. Gdy ktoś prosi o sekret przed rodzicami — mówię zaufanemu dorosłemu, blokuję i zgłaszam.',
+    kroki: [
+      { kto: 'kuba', t: 'Panie Damianie! W grze online napisał do mnie <b>ProGamer_14</b>. Obiecał mi 5000 diamentów za darmo! Chce tylko moje zdjęcie, adres i nazwę szkoły.' },
+      { kto: 'damian', t: 'Kuba, dobrze, że mi o tym mówisz. Pokaż proszę tę rozmowę.',
+        dowod: `<div class="dowod"><div class="naglowek">🎮 CZAT W GRZE</div><div class="czat">
+          <div class="bubel"><small>ProGamer_14</small>hej, jestes super graczem 😎</div>
+          <div class="bubel"><small>ProGamer_14</small>dam ci 5000 diamentow, tylko wyslij fotke i gdzie mieszkasz</div>
+          <div class="bubel"><small>ProGamer_14</small>i nie mow rodzicom, to nasz sekret 🤫</div>
+          <div class="bubel"><small>ProGamer_14</small>moze spotkamy sie w sobote w parku?</div></div></div>` },
+      { q: 'Którą informację można bezpiecznie pokazać innym graczom?', o: [
+        { t: 'Swój nick w grze', ok: 1, why: 'Tak. Nick to pseudonim — nie zdradza, kim jesteś ani gdzie mieszkasz.' },
+        { t: 'Adres domowy', why: 'Adres to dane osobowe. Obca osoba nigdy nie powinna go poznać.' },
+        { t: 'Nazwę szkoły i swoje zdjęcie', why: 'Szkoła + zdjęcie wystarczą, żeby obca osoba mogła Cię odnaleźć.' }] },
+      { q: 'Które zdanie to NAJWIĘKSZA czerwona flaga?', o: [
+        { t: '„jestes super graczem”', why: 'Komplementy też bywają pułapką, ale najgroźniejsze jest coś innego. Szukaj dalej!' },
+        { t: '„nie mow rodzicom, to nasz sekret”', ok: 1, why: 'Tak. Ktoś, kto prosi dziecko o sekret przed rodzicami, prawie zawsze ma złe zamiary. Takie „sekrety” zawsze trzeba zdradzić dorosłemu!' },
+        { t: '„hej”', why: 'Zwykłe przywitanie nie jest groźne. Spójrz na prośbę o tajemnicę.' }] },
+      { q: 'Co Kuba powinien zrobić?', o: [
+        { t: 'Spotkać się, ale zabrać kolegę', why: 'Nigdy nie spotykaj się z osobą poznaną w internecie bez rodzica. Za nickiem „ProGamer_14” może kryć się dorosły.' },
+        { t: 'Zrobić zrzut ekranu, zablokować i zgłosić gracza, a potem powiedzieć rodzicom', ok: 1, why: 'Wzorowo! Zrzut ekranu to dowód, blokada chroni, a dorosły pomoże zgłosić sprawę — także na policję, jeśli trzeba.' },
+        { t: 'Wysłać zdjęcie, ale bez adresu', why: 'Zdjęcie też jest daną osobową i może zostać wykorzystane przeciwko Tobie.' }] },
+      { kto: 'kuba', t: 'Już blokuję! I powiem mamie. Diamenty nie są tego warte.' },
+    ] },
+  { id: 'blik', npc: 'marek', ikona: '💸', tytul: 'Pilny przelew od wujka', miejsce: 'Kawiarnia', odznaka: 'Pogromca Oszustów',
+    zasada: '<b>Kod BLIK jest jak gotówka</b> — nie wysyłam go nikomu na czacie. Prośby o pieniądze sprawdzam, dzwoniąc na znany numer. Zbyt piękna okazja = czerwona flaga.',
+    kroki: [
+      { kto: 'marek', t: 'Panie Damianie, mój wujek Tomek napisał na komunikatorze, że pilnie potrzebuje <b>kodu BLIK na 500 zł</b>, bo utknął w sklepie bez karty. Odda jutro. To przecież wujek...' },
+      { kto: 'damian', t: 'Zanim cokolwiek wyślesz, sprawdźmy tę rozmowę.',
+        dowod: `<div class="dowod"><div class="naglowek">💬 KOMUNIKATOR · Wujek Tomek</div><div class="czat">
+          <div class="bubel"><small>Wujek Tomek</small>Cześć, masz chwilkę?</div>
+          <div class="bubel"><small>Wujek Tomek</small>Pilna sprawa, potrzebuję kodu BLIK na 500 zł, oddam jutro</div>
+          <div class="bubel"><small>Wujek Tomek</small>Szybko, kasa zaraz się zamyka!</div>
+          <div class="bubel"><small>Wujek Tomek</small>Tylko nie dzwoń, mam słaby zasięg</div></div></div>` },
+      { q: 'Co w tej rozmowie nie pasuje?', o: [
+        { t: 'Nic — wujek zawsze tak pisze', why: 'Nawet jeśli styl pasuje, oszust mógł przejąć konto wujka i czytać jego stare wiadomości.' },
+        { t: 'Pośpiech, prośba o kod BLIK i zakaz dzwonienia', ok: 1, why: 'Tak! To klasyczne oszustwo „na znajomego”: ktoś przejął konto wujka i pisze do jego kontaktów.' },
+        { t: 'Że wujek przywitał się „Cześć”', why: 'Przywitanie jest w porządku. Podejrzane są pośpiech, BLIK i zakaz dzwonienia.' }] },
+      { q: 'Jak sprawdzić, czy to naprawdę wujek?', o: [
+        { t: 'Zapytać na tym samym czacie: „Czy to na pewno Ty?”', why: 'Oszust na przejętym koncie po prostu odpisze „Tak, to ja!”.' },
+        { t: 'Zadzwonić do wujka na jego zwykły numer telefonu', ok: 1, why: 'Brawo! Sprawdzamy innym kanałem niż ten, którym przyszła prośba.' },
+        { t: 'Wysłać tylko połowę kwoty', why: 'Oszuści chętnie przyjmą każdą kwotę. Kod BLIK to jak gotówka — nie da się jej cofnąć.' }] },
+      { q: 'Sklep w sieci sprzedaje konsolę za 199 zł zamiast 2499 zł. Płatność tylko szybkim przelewem, a strona powstała wczoraj. To...', o: [
+        { t: 'Okazja życia! Trzeba kupować!', why: 'Za piękne, żeby było prawdziwe. Tak wyglądają fałszywe sklepy.' },
+        { t: 'Najpewniej fałszywy sklep — sprawdzam opinie w niezależnych źródłach i dane firmy', ok: 1, why: 'Dokładnie! Cena dużo niższa niż wszędzie, świeża strona i tylko przedpłata to czerwone flagi.' }] },
+      { kto: 'marek', t: 'Zadzwoniłem — wujek siedzi w domu i nic nie pisał! Ktoś włamał mu się na konto. Zaraz go ostrzegę.' },
+    ] },
+  { id: 'hejt', npc: 'zosia', ikona: '🛡️', tytul: 'Hejt w klasowej grupie', miejsce: 'Boisko', odznaka: 'Tarcza Przyjaciół',
+    zasada: 'Nie biorę udziału w hejcie. <b>Zbieram dowody, mówię dorosłemu i wspieram</b> osobę krzywdzoną. Bezpłatna, anonimowa pomoc: <b>116 111</b>.',
+    kroki: [
+      { kto: 'zosia', t: 'Ktoś założył klasową grupę <b>„Śmieszne fotki Zosi”</b> i wrzuca tam przerobione zdjęcia ze mną. Wszyscy się śmieją... Nie chcę jutro iść do szkoły.' },
+      { kto: 'damian', t: 'Zosiu, to nie Twoja wina i nie zostaniesz z tym sama. {imie}, pomożemy jej razem.' },
+      { q: 'Co Zosia powinna zrobić najpierw?', o: [
+        { t: 'Odpisać równie złośliwie', why: 'Odwet zwykle nakręca przemoc, a Zosia sama mogłaby mieć kłopoty.' },
+        { t: 'Zrobić zrzuty ekranu jako dowody i powiedzieć zaufanemu dorosłemu', ok: 1, why: 'Tak! Dowody pomogą szkole zatrzymać hejt, a dorosły zapewni wsparcie.' },
+        { t: 'Usunąć wszystkie konta i nikomu nic nie mówić', why: 'Milczenie chroni sprawcę. Dowody i wsparcie dorosłych to podstawa.' }] },
+      { q: 'Jesteś w tej grupie i widzisz te zdjęcia. Co robisz?', o: [
+        { t: 'Daję reakcję 😂, bo wszyscy dają', why: 'Każde polubienie dokłada cegiełkę do krzywdy drugiej osoby.' },
+        { t: 'Nic — to nie moja sprawa', why: 'Bierność świadków daje sprawcy poczucie bezkarności.' },
+        { t: 'Nie udostępniam, wspieram Zosię, zgłaszam grupę i mówię nauczycielowi', ok: 1, why: 'Wspaniale! Świadek, który reaguje, ma ogromną moc zatrzymania hejtu.' }] },
+      { q: 'Pod jaki numer dziecko może bezpłatnie i anonimowo zadzwonić po pomoc?', o: [
+        { t: '116 111 — Telefon Zaufania dla Dzieci i Młodzieży', ok: 1, why: 'Tak! Pod 116 111 można porozmawiać o każdym problemie, także o przemocy w sieci.' },
+        { t: '8080', why: '8080 służy do zgłaszania podejrzanych SMS-ów. Po rozmowę i wsparcie dzwoń pod 116 111.' },
+        { t: 'Na infolinię sklepu internetowego', why: 'Sklep nie pomoże w takiej sprawie. Właściwy numer to 116 111.' }] },
+      { kto: 'zosia', t: 'Dziękuję... Pójdę z mamą do wychowawczyni. Już czuję się lepiej.' },
+    ] },
+];
+const BOSS_PYTANIA = [
+  { q: 'SMS: „Twoje konto bankowe zostanie zablokowane! Zaloguj się: bank-weryfikacja.info”. Co robisz?', o: [
+    { t: 'Loguję się tylko przez oficjalną aplikację banku, a SMS przekazuję na 8080', ok: 1, why: 'Tak! Bank nie wysyła linków do logowania w SMS-ach.' },
+    { t: 'Klikam szybko, zanim zablokują', why: 'Pośpiech to broń oszusta. Link prowadzi do fałszywej strony banku.' },
+    { t: 'Odpisuję „STOP”', why: 'Odpowiedź potwierdza tylko, że numer jest aktywny.' }] },
+  { q: 'Które hasło wybierzesz do nowego konta?', o: [
+    { t: 'rower-kakao-tęcza-plecak', ok: 1, why: 'Długie hasło-zdanie: trudne do złamania, łatwe do zapamiętania.' },
+    { t: 'haslo123', why: 'To hasło jest na każdej liście najpopularniejszych haseł.' },
+    { t: 'Moje imię i rok urodzenia', why: 'Takie dane łatwo znaleźć w internecie.' }] },
+  { q: 'Nieznajomy z gry prosi o Twoje zdjęcie „do profilu drużyny”.', o: [
+    { t: 'Odmawiam, blokuję i mówię rodzicom', ok: 1, why: 'Zdjęcie to dane osobowe — obcym ich nie wysyłamy.' },
+    { t: 'Wysyłam stare zdjęcie', why: 'Każde zdjęcie może zostać wykorzystane przeciwko Tobie.' },
+    { t: 'Wysyłam, jeśli obieca nagrodę', why: 'Nagroda to przynęta. Nie daj się złapać!' }] },
+  { q: 'Kolega pisze na czacie: „Pożycz kod BLIK, oddam jutro”.', o: [
+    { t: 'Dzwonię do niego i sprawdzam, czy to naprawdę on', ok: 1, why: 'Tak! Weryfikujemy innym kanałem — konto mogło zostać przejęte.' },
+    { t: 'Wysyłam, to przecież kolega', why: 'Konto kolegi mogło zostać przejęte. Kod BLIK to gotówka!' },
+    { t: 'Wysyłam mały kod, żeby sprawdzić', why: 'Każdy kod to prawdziwe pieniądze, których nie odzyskasz.' }] },
+  { q: 'Co oznacza kłódka przy adresie strony?', o: [
+    { t: 'Że połączenie jest szyfrowane — ale strona i tak może należeć do oszusta', ok: 1, why: 'Dokładnie! Kłódka to nie certyfikat uczciwości.' },
+    { t: 'Że strona jest na pewno bezpieczna', why: 'Oszuści też łatwo zdobywają kłódkę dla swoich stron.' },
+    { t: 'Że strona jest płatna', why: 'Kłódka nie ma nic wspólnego z opłatami.' }] },
+  { q: 'Jesteś w galerii handlowej z darmowym Wi-Fi bez hasła.', o: [
+    { t: 'Nie loguję się tam do ważnych kont, np. do banku', ok: 1, why: 'Otwarte sieci mogą być podsłuchiwane. Ważne sprawy załatwiaj w zaufanej sieci.' },
+    { t: 'Loguję się do wszystkiego, bo jest szybkie', why: 'W otwartej sieci ktoś może podglądać Twój ruch lub podstawić fałszywą sieć.' }] },
+  { q: 'Aplikacja-latarka prosi o dostęp do kontaktów, mikrofonu i lokalizacji.', o: [
+    { t: 'Odmawiam — latarka tego nie potrzebuje', ok: 1, why: 'Tak! Dawaj aplikacjom tylko te uprawnienia, których naprawdę potrzebują.' },
+    { t: 'Zgadzam się na wszystko, żeby działała', why: 'Taka aplikacja może zbierać i sprzedawać Twoje dane.' }] },
+  { q: 'Na ekranie wyskakuje: „Twój komputer ma WIRUSA! Zadzwoń na ten numer i zainstaluj program do zdalnej pomocy!”', o: [
+    { t: 'Nie dzwonię, nic nie instaluję, zamykam stronę i mówię dorosłemu', ok: 1, why: 'Tak! To oszustwo „na pomoc techniczną” — przestępcy chcą przejąć komputer.' },
+    { t: 'Dzwonię szybko, bo wirus to poważna sprawa', why: 'Prawdziwe firmy nie straszą wyskakującymi okienkami z numerem telefonu.' },
+    { t: 'Instaluję program, który polecają', why: 'Program do zdalnej pomocy da oszustom pełną kontrolę nad komputerem.' }] },
+  { q: 'Chcesz wrzucić zdjęcie z wycieczki klasowej z kolegami.', o: [
+    { t: 'Najpierw pytam kolegów, czy się zgadzają', ok: 1, why: 'Tak! Wizerunek innych osób publikujemy tylko za ich zgodą.' },
+    { t: 'Wrzucam od razu i oznaczam wszystkich', why: 'Każdy ma prawo zdecydować, czy chce być w internecie.' }] },
+  { q: 'Mail od „dyrekcji szkoły” z załącznikiem „oceny.exe”.', o: [
+    { t: 'Nie otwieram — plik .exe to program, który może być wirusem. Pytam w szkole', ok: 1, why: 'Brawo! Oceny nie przychodzą jako program do uruchomienia.' },
+    { t: 'Otwieram, bo jestem ciekaw ocen', why: 'Plik .exe to program. Uruchomienie go może zainfekować komputer.' }] },
+];
+
+/* ---------------- stan gry i zapis ---------------- */
+const KLUCZ = 'cyberdetektyw-damian-v1';
+let stan = { imie: '', xp: 0, rozwiazane: {}, klodki: [], bossWygrany: false };
+try { const s = JSON.parse(localStorage.getItem(KLUCZ) || 'null'); if (s) stan = { ...stan, ...s }; } catch (e) { }
+function zapisz() { try { localStorage.setItem(KLUCZ, JSON.stringify(stan)); } catch (e) { } }
+const POZIOMY = [[0, 'Stażysta'], [120, 'Młodszy Detektyw'], [300, 'Detektyw'], [520, 'Starszy Detektyw'], [780, 'Inspektor Cyberpolicji'], [1050, 'Mistrz Cyberbezpieczeństwa']];
+const poziom = xp => { let i = 0; while (i + 1 < POZIOMY.length && xp >= POZIOMY[i + 1][0]) i++; return i; };
+function dodajXP(n) {
+  const przed = poziom(stan.xp); stan.xp += n; const po = poziom(stan.xp);
+  zapisz(); odswiezHUD();
+  if (po > przed) { toast(`⭐ Awans! Poziom ${po + 1}: ${POZIOMY[po][1]}`); sfx('lvl'); }
+}
+const ileRozw = () => SPRAWY.filter(s => stan.rozwiazane[s.id]).length;
+
+/* ---------------- dźwięk ---------------- */
+let ac = null, dzwiek = true;
+function sfx(rodz) {
+  if (!dzwiek) return;
+  try { ac = ac || new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return; }
+  const S = { ok: [[660, .08], [880, .14]], zle: [[220, .14], [165, .22]], pick: [[784, .06], [988, .06], [1319, .14]], blip: [[600, .03]],
+    lvl: [[523, .1], [659, .1], [784, .1], [1047, .28]], win: [[523, .12], [659, .12], [784, .12], [1047, .12], [784, .1], [1047, .4]], skok: [[330, .05]] }[rodz];
+  let t = ac.currentTime;
+  for (const [f, d] of S) {
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.type = 'square'; o.frequency.value = f;
+    g.gain.setValueAtTime(rodz === 'skok' ? .025 : .055, t); g.gain.exponentialRampToValueAtTime(.0008, t + d);
+    o.connect(g).connect(ac.destination); o.start(t); o.stop(t + d + .02); t += d * .9;
+  }
+}
+
+/* ---------------- HUD ---------------- */
+const PORTRETY = {};
+function portret(c) { const d = document.createElement('canvas'); d.width = d.height = 64; const g = d.getContext('2d'); g.imageSmoothingEnabled = false; g.drawImage(c, 0, 0, 64, 64); return d.toDataURL(); }
+PORTRETY.damian = portret(damian.userData.twarzC);
+PORTRETY.bit = portret(bit.userData.twarzC);
+for (const id in NPC) PORTRETY[id] = portret(NPC[id].userData.twarzC);
+const IMIONA = { damian: 'Damian Teacher', bit: 'Bit', ola: 'Ola', halina: 'Pani Halina', krystyna: 'Pani Krystyna', marek: 'Pan Marek', kuba: 'Kuba', zosia: 'Zosia', phisher: 'Phisher' };
+$('hud-portret').src = PORTRETY.damian;
+$('bit-portret').src = PORTRETY.bit;
+$('odznaki').innerHTML = SPRAWY.map(s => `<span id="odz-${s.id}" title="${s.odznaka}">${s.ikona}</span>`).join('');
+
+function odswiezHUD() {
+  const p = poziom(stan.xp);
+  $('hud-ranga').textContent = `Poz. ${p + 1} · ${POZIOMY[p][1]}`;
+  const od = POZIOMY[p][0], doo = POZIOMY[p + 1]?.[0];
+  $('pasek-xp').firstElementChild.style.width = doo ? `${(stan.xp - od) / (doo - od) * 100}%` : '100%';
+  SPRAWY.forEach(s => $('odz-' + s.id).classList.toggle('ma', !!stan.rozwiazane[s.id]));
+  $('hud-klodki').textContent = `🔒 ${stan.klodki.length}/${KLODKI_POZ.length}`;
+  for (const s of SPRAWY) ustawZnacznik(s.npc, stan.rozwiazane[s.id] ? 'ok' : 'nowa');
+  ustawZnacznik('phisher', stan.bossWygrany ? 'ok' : ileRozw() >= SPRAWY.length ? 'nowa' : 'zamek');
+  boss.visible = !stan.bossWygrany;
+}
+function toast(t) { const d = document.createElement('div'); d.className = 'toast'; d.innerHTML = t; $('toasty').appendChild(d); setTimeout(() => d.remove(), 3500); }
+let bitTimer = 0;
+function bitMowi(t, czas = 7) { $('bit-tekst').innerHTML = `<b>Bit:</b> ${t}`; $('bit').classList.remove('schowany'); bitTimer = czas; }
+
+function aktualnyCel() {
+  const s = SPRAWY.find(s => !stan.rozwiazane[s.id]);
+  if (s) return { tytul: `SPRAWA ${SPRAWY.indexOf(s) + 1}/${SPRAWY.length}: ${s.tytul.toUpperCase()}`, opis: `Idź do: ${s.miejsce} — porozmawiaj z: ${IMIONA[s.npc]}`, cel: NPC[s.npc].position };
+  if (!stan.bossWygrany) {
+    const naWiezy = gracz.p.y > 8 || Math.hypot(gracz.p.x - 67.5, gracz.p.z - 40.5) < 2;
+    return { tytul: 'FINAŁ: WIEŻA PHISHERA', opis: 'Wejdź po schodach na szczyt wieży i pokonaj Phishera!', cel: naWiezy ? boss.position : new THREE.Vector3(67.5, 1, 41) };
+  }
+  const k = KLODKI_POZ.findIndex((_, i) => !stan.klodki.includes(i));
+  if (k >= 0) return { tytul: 'MIASTECZKO URATOWANE!', opis: 'Szukaj ukrytych złotych kłódek z poradami', cel: klodki[k].position };
+  return { tytul: 'MISTRZ CYBERBEZPIECZEŃSTWA', opis: 'Wszystko odkryte! Spaceruj po miasteczku.', cel: null };
+}
+
+/* ---------------- dialogi ---------------- */
+const dlg = { akt: false, kroki: [], i: 0, koniec: null, odp: false, blad: false, pisanie: null, boss: null, sprawa: null };
+const zamien = t => t.replaceAll('{imie}', `<b>${stan.imie || 'Asystencie'}</b>`);
+function otworzDialog(kroki, { sprawa = null, naglowek = '', koniec = null, boss = null } = {}) {
+  Object.assign(dlg, { akt: true, kroki, i: 0, koniec, boss, sprawa, naglowek });
+  $('dialog').classList.remove('ukryty');
+  $('bit').classList.add('schowany'); bitTimer = 0;
+  document.exitPointerLock?.();
+  klawisze.clear();
+  renderKrok();
+}
+function zamknijDialog() {
+  if (!dlg.akt) return;
+  dlg.akt = false; clearInterval(dlg.pisanie); dlg.pisanie = null;
+  $('dialog').classList.add('ukryty');
+  blokadaE = performance.now() + 400;
+  const k = dlg.koniec; dlg.koniec = null; k?.();
+}
+function piszTekst(html) {
+  const el = $('dlg-tekst'); clearInterval(dlg.pisanie);
+  const tymcz = document.createElement('div'); tymcz.innerHTML = html; const pelny = tymcz.textContent;
+  let n = 0; el.textContent = '';
+  dlg.pelny = html;
+  dlg.pisanie = setInterval(() => { n += 2; el.textContent = pelny.slice(0, n); if (n % 8 === 0) sfx('blip'); if (n >= pelny.length) dokonczPisanie(); }, 16);
+}
+function dokonczPisanie() { clearInterval(dlg.pisanie); dlg.pisanie = null; $('dlg-tekst').innerHTML = dlg.pelny; }
+function ustawMowce(kto) { $('dlg-portret').src = PORTRETY[kto] || PORTRETY.bit; $('dlg-kto').textContent = IMIONA[kto] || kto; }
+function odswiezBossa() {
+  const b = dlg.boss; if (!b) { $('dlg-boss').classList.add('ukryty'); return; }
+  $('dlg-boss').classList.remove('ukryty');
+  $('dlg-serca').textContent = '❤️'.repeat(b.serca) + '🖤'.repeat(3 - b.serca);
+  $('dlg-boss').querySelector('.hp div').style.width = `${b.hp / b.hpMax * 100}%`;
+}
+function renderKrok() {
+  const k = dlg.kroki[dlg.i];
+  dlg.odp = false; dlg.blad = false;
+  $('dlg-sprawa').textContent = dlg.naglowek;
+  $('dlg-dowod').innerHTML = ''; $('dlg-opcje').innerHTML = ''; $('dlg-feedback').innerHTML = ''; $('dlg-feedback').className = '';
+  $('btn-dalej').classList.remove('ukryty'); $('btn-dalej').textContent = 'Dalej ▶';
+  odswiezBossa();
+  if (k.fn) k.fn();
+  if (k.nagroda) {
+    const s = k.nagroda;
+    ustawMowce('damian');
+    clearInterval(dlg.pisanie); dlg.pisanie = null;
+    $('dlg-tekst').innerHTML = `<div class="nagroda"><div class="ikona">${s.ikona}</div><div>Sprawa rozwiązana!</div><div class="nazwa">Odznaka: ${s.odznaka}</div></div>
+      <div class="zasada"><b>📜 Zasada cyberdetektywa:</b><br>${s.zasada}</div>`;
+    $('btn-dalej').textContent = 'Zakończ sprawę ✔';
+    return;
+  }
+  if (k.q) {
+    ustawMowce(k.kto || (dlg.boss ? 'phisher' : 'damian'));
+    piszTekst(zamien(k.q));
+    $('btn-dalej').classList.add('ukryty');
+    tasuj(k.o).forEach((o, i) => {
+      const b = document.createElement('button');
+      b.innerHTML = `<span class="nr">${i + 1}</span><span>${o.t}</span>`;
+      b.onclick = () => wybierz(o, b, k);
+      $('dlg-opcje').appendChild(b);
+    });
+    return;
+  }
+  ustawMowce(k.kto);
+  if (k.dowod) $('dlg-dowod').innerHTML = k.dowod;
+  piszTekst(zamien(k.t));
+  if (dlg.i === dlg.kroki.length - 1 && !dlg.boss) $('btn-dalej').textContent = 'Zamknij';
+}
+function wybierz(o, btn, k) {
+  if (dlg.odp || btn.disabled) return;
+  dokonczPisanie();
+  const fb = $('dlg-feedback');
+  const przyciski = [...$('dlg-opcje').children];
+  if (o.ok) {
+    dlg.odp = true; btn.classList.add('dobra'); przyciski.forEach(b => b.disabled = true);
+    fb.className = 'ok'; fb.innerHTML = '✔ ' + o.why; sfx('ok');
+    if (dlg.boss) { dlg.boss.hp--; odswiezBossa(); dodajXP(20); }
+    else dodajXP(dlg.blad ? 10 : 30);
+    $('btn-dalej').classList.remove('ukryty');
+  } else {
+    btn.classList.add('zla'); btn.disabled = true;
+    fb.className = 'zle'; fb.innerHTML = '✘ ' + o.why; sfx('zle');
+    dlg.blad = true;
+    if (dlg.boss) {
+      dlg.boss.serca--; dlg.odp = true; odswiezBossa();
+      przyciski.forEach(b => b.disabled = true);
+      const dobra = k.o.find(x => x.ok);
+      przyciski.find(b => b.textContent.endsWith(dobra.t))?.classList.add('dobra');
+      fb.innerHTML += `<br><b>Poprawna odpowiedź:</b> ${dobra.t}`;
+      $('btn-dalej').classList.remove('ukryty');
+    }
+  }
+}
+function dalej() {
+  if (!dlg.akt) return;
+  if (dlg.pisanie) { dokonczPisanie(); return; }
+  const k = dlg.kroki[dlg.i];
+  if (k.q && !dlg.odp) return;
+  if (k.nagroda) ukonczSprawe(k.nagroda);
+  if (k.q && dlg.boss) {
+    const b = dlg.boss;
+    if (b.hp <= 0) dlg.kroki.push(...bossWygrana());
+    else if (b.serca <= 0) dlg.kroki.push(...bossPrzegrana());
+    else dlg.kroki.push(b.pula.shift());
+  }
+  dlg.i++;
+  if (dlg.i >= dlg.kroki.length) { zamknijDialog(); return; }
+  renderKrok();
+}
+$('btn-dalej').onclick = dalej;
+$('dlg-zamknij').onclick = zamknijDialog;
+
+function ukonczSprawe(s) {
+  if (stan.rozwiazane[s.id]) return;
+  stan.rozwiazane[s.id] = true;
+  dodajXP(50); sfx('win');
+  toast(`${s.ikona} Odznaka zdobyta: <b>${s.odznaka}</b>`);
+  odswiezHUD();
+  const n = ileRozw();
+  setTimeout(() => {
+    if (n < SPRAWY.length) { const nast = SPRAWY.find(x => !stan.rozwiazane[x.id]); bitMowi(`Świetna robota! Zostało spraw: <b>${SPRAWY.length - n}</b>. Następna czeka w miejscu: <b>${nast.miejsce}</b>. Strzałka u góry pokaże drogę!`, 8); }
+    else bitMowi('Mamy wszystkie 6 odznak! Czas na finał: <b>Wieża Phishera</b> na wschodzie miasteczka. Wejdź po schodach na szczyt!', 10);
+  }, 600);
+}
+
+function rozmowa(id) {
+  const s = SPRAWY.find(s => s.npc === id);
+  if (s) {
+    const nr = SPRAWY.indexOf(s) + 1;
+    if (stan.rozwiazane[s.id]) {
+      otworzDialog([{ kto: id, t: `Jeszcze raz dziękuję za pomoc! Zapamiętam zasadę na zawsze.` }, { nagroda: s }], { naglowek: `Sprawa ${nr}: ${s.tytul} ✔` });
+    } else otworzDialog([...s.kroki, { nagroda: s }], { naglowek: `Sprawa ${nr}: ${s.tytul}` });
+    return;
+  }
+  if (id === 'phisher') {
+    if (stan.bossWygrany) return;
+    const brak = SPRAWY.length - ileRozw();
+    if (brak > 0) {
+      otworzDialog([{ kto: 'phisher', t: `Hehehe... Myślisz, że złapiesz MNIE, mistrza oszustw? Brakuje Ci jeszcze <b>${brak}</b> ${brak === 1 ? 'odznaki' : 'odznak'}. Wracaj, kiedy rozwiążesz wszystkie sprawy!` }], { naglowek: 'Wieża Phishera' });
+      return;
+    }
+    const pula = tasuj(BOSS_PYTANIA).map(q => ({ ...q, kto: 'phisher' }));
+    const b = { hp: 6, hpMax: 6, serca: 3, pula };
+    otworzDialog([
+      { kto: 'phisher', t: 'A więc to Ty, Damianie Teacherze! I Twój mały asystent {imie}... Zarzucę na was moją wędkę pełną sztuczek. Jeśli połkniecie haczyk — miasteczko będzie moje!' },
+      { kto: 'damian', t: '{imie}, pamiętaj wszystko, czego się nauczyliśmy. Każda dobra odpowiedź osłabia Phishera. Mamy 3 serca — do dzieła!' },
+      pula.shift(),
+    ], { naglowek: 'Finał: pojedynek z Phisherem', boss: b });
+  }
+}
+function bossWygrana() {
+  return [
+    { kto: 'phisher', t: 'Nieee! Moje sztuczki nie działają na tych, którzy <b>myślą, zanim klikną</b>! Uciekam z tego miasteczka!',
+      fn: () => { if (!stan.bossWygrany) { stan.bossWygrany = true; dodajXP(200); zapisz(); sfx('win'); konfetti(boss.position); boss.visible = false; odswiezHUD(); } } },
+    { kto: 'damian', t: 'Udało się, {imie}! Cyber Miasteczko jest bezpieczne. Jestem z Ciebie dumny — zasłużyłeś/aś na certyfikat!' },
+  ];
+}
+function bossPrzegrana() {
+  return [{ kto: 'phisher', t: 'Ha! Tym razem połknęliście haczyk! Przejrzyj notes detektywa (klawisz <b>N</b>) i wróć, gdy będziesz gotów/gotowa!' },
+    { kto: 'damian', t: 'Nie poddajemy się, {imie}. Każdy błąd to lekcja. Powtórzmy zasady i spróbujmy jeszcze raz!' }];
+}
+
+/* ---------------- notes i certyfikat ---------------- */
+function pokazNotes() {
+  const p = poziom(stan.xp);
+  $('notes-okno').innerHTML = `<h2>📒 NOTES DETEKTYWA</h2>
+    <div style="opacity:.85;font-size:14px">Asystent: <b>${stan.imie || '—'}</b> · Poziom ${p + 1}: ${POZIOMY[p][1]} · ${stan.xp} XP · Kłódki ${stan.klodki.length}/${KLODKI_POZ.length}</div>
+    ${SPRAWY.map((s, i) => `<div class="sprawa-wiersz"><div class="ik">${s.ikona}</div><div>
+      <div class="st" style="color:${stan.rozwiazane[s.id] ? 'var(--zielony)' : 'var(--zloto)'}">SPRAWA ${i + 1} · ${s.miejsce.toUpperCase()} · ${stan.rozwiazane[s.id] ? 'ROZWIĄZANA ✔' : 'OTWARTA'}</div>
+      <div style="font-weight:700">${s.tytul}</div>
+      <div class="zas">${stan.rozwiazane[s.id] ? s.zasada : '<i>Rozwiąż sprawę, aby odblokować zasadę.</i>'}</div></div></div>`).join('')}
+    ${stan.klodki.length ? `<div class="sprawa-wiersz"><div class="ik">🔒</div><div><div class="st" style="color:var(--zloto)">PORADY ZE ZŁOTYCH KŁÓDEK</div><ul class="wskazowki">${stan.klodki.map(i => `<li>${WSKAZOWKI[i]}</li>`).join('')}</ul></div></div>` : ''}
+    <div class="przyciski">
+      ${stan.bossWygrany ? '<button class="btn zielony" id="n-cert">🏆 Certyfikat</button>' : ''}
+      <button class="btn czerwony" id="n-reset">Zacznij od nowa</button>
+      <button class="btn zielony" id="n-zamknij">Wróć do gry</button></div>`;
+  $('notes').classList.remove('ukryty'); document.exitPointerLock?.();
+  $('n-zamknij').onclick = () => $('notes').classList.add('ukryty');
+  $('n-reset').onclick = () => { if (confirm('Na pewno usunąć cały postęp?')) { try { localStorage.removeItem(KLUCZ); } catch (e) { } location.reload(); } };
+  if ($('n-cert')) $('n-cert').onclick = () => { $('notes').classList.add('ukryty'); pokazCertyfikat(); };
+}
+function pokazCertyfikat() {
+  const data = new Date().toLocaleDateString('pl-PL', { day: 'numeric', month: 'long', year: 'numeric' });
+  $('cert-okno').innerHTML = `<div style="font-size:44px">🏆</div>
+    <h1>CERTYFIKAT CYBERDETEKTYWA</h1>
+    <p>Niniejszym zaświadcza się, że</p>
+    <div class="komu">${(stan.imie || 'Asystent').replace(/[<>&]/g, '')}</div>
+    <p>jako asystent(ka) <b>Damiana Teachera</b> rozwiązał(a) 6 spraw w Cyber Miasteczku, pokonał(a) Phishera i zna zasady bezpiecznego korzystania z internetu.</p>
+    <p style="font-size:14px">Ranga: <b>${POZIOMY[poziom(stan.xp)][1]}</b> · ${stan.xp} XP · Złote kłódki: ${stan.klodki.length}/${KLODKI_POZ.length}</p>
+    <div class="podpis"><div>${data}</div><div>Damian Teacher<br><small>główny cyberdetektyw</small></div></div>
+    <div class="przyciski" style="justify-content:center"><button class="btn" id="c-druk">🖨️ Drukuj</button><button class="btn zielony" id="c-zamknij">Graj dalej</button></div>`;
+  $('certyfikat').classList.remove('ukryty'); document.exitPointerLock?.();
+  $('c-druk').onclick = () => print();
+  $('c-zamknij').onclick = () => { $('certyfikat').classList.add('ukryty'); bitMowi('W miasteczku wciąż ukrywają się złote kłódki z poradami. Znajdziesz wszystkie?', 8); };
+}
+$('btn-notes').onclick = pokazNotes;
+$('btn-dzwiek').onclick = () => { dzwiek = !dzwiek; $('btn-dzwiek').textContent = dzwiek ? '🔊' : '🔇'; };
+
+/* ---------------- konfetti ---------------- */
+const czastki = [];
+function konfetti(p) {
+  const g = new THREE.BoxGeometry(.18, .18, .18);
+  const kol = [0xffd23f, 0x2fbf71, 0x3fd6ff, 0xe5484d, 0x8b5cf6];
+  for (let i = 0; i < 140; i++) {
+    const m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: kol[i % kol.length] }));
+    m.position.set(p.x, p.y + 1.2, p.z);
+    m.userData.v = new THREE.Vector3((Math.random() - .5) * 9, 6 + Math.random() * 8, (Math.random() - .5) * 9);
+    m.userData.t = 3.5 + Math.random();
+    scena.add(m); czastki.push(m);
+  }
+}
+
+/* ---------------- sterowanie ---------------- */
+const klawisze = new Set();
+let wGrze = false, blokadaE = 0;
+let yaw = 0, pitch = .38, dyst = 6.5, dystAkt = 6.5;
+const ekranOtwarty = () => dlg.akt || !$('notes').classList.contains('ukryty') || !$('certyfikat').classList.contains('ukryty');
+addEventListener('keydown', e => {
+  if (document.activeElement === $('imie')) { if (e.code === 'Enter') start(); return; }
+  if (dlg.akt) {
+    if (e.code === 'Escape') zamknijDialog();
+    else if (['Enter', 'Space', 'KeyE'].includes(e.code)) { e.preventDefault(); if (!$('btn-dalej').classList.contains('ukryty') || dlg.pisanie) dalej(); }
+    else if (/^Digit[1-4]$/.test(e.code)) { const b = $('dlg-opcje').children[+e.code.slice(5) - 1]; b?.click(); }
+    return;
+  }
+  if (!$('notes').classList.contains('ukryty')) { if (e.code === 'Escape' || e.code === 'KeyN') $('notes').classList.add('ukryty'); return; }
+  if (!wGrze) return;
+  if (e.code === 'Space') e.preventDefault();
+  if (e.code === 'KeyE') interakcja();
+  if (e.code === 'KeyN') pokazNotes();
+  if (e.code === 'KeyM') $('btn-dzwiek').click();
+  if (e.code === 'KeyF') { if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen?.().catch(() => { }); }
+  klawisze.add(e.code);
+});
+addEventListener('keyup', e => klawisze.delete(e.code));
+addEventListener('blur', () => klawisze.clear());
+
+const plotnoEl = renderer.domElement;
+let mysz = false;
+plotnoEl.addEventListener('mousedown', e => { if (!wGrze || ekranOtwarty()) return; mysz = true; try { const r = plotnoEl.requestPointerLock?.(); r?.catch?.(() => { }); } catch (err) { } });
+addEventListener('mouseup', () => mysz = false);
+addEventListener('mousemove', e => {
+  if (!wGrze || ekranOtwarty()) return;
+  if (document.pointerLockElement === plotnoEl || mysz) { yaw -= e.movementX * .0026; pitch = Math.max(-.25, Math.min(1.25, pitch + e.movementY * .0026)); }
+});
+plotnoEl.addEventListener('wheel', e => { dyst = Math.max(3, Math.min(12, dyst + Math.sign(e.deltaY) * .7)); }, { passive: true });
+
+// dotyk
+const joy = { id: null, x: 0, y: 0, dx: 0, dy: 0 }, obr = { id: null, x: 0, y: 0 };
+const joyEl = $('joystick'), galka = joyEl.querySelector('.galka');
+joyEl.addEventListener('touchstart', e => { const t = e.changedTouches[0]; const r = joyEl.getBoundingClientRect(); joy.id = t.identifier; joy.x = r.left + r.width / 2; joy.y = r.top + r.height / 2; e.preventDefault(); }, { passive: false });
+addEventListener('touchmove', e => {
+  for (const t of e.changedTouches) {
+    if (t.identifier === joy.id) { let dx = t.clientX - joy.x, dy = t.clientY - joy.y; const d = Math.hypot(dx, dy), m = 50; if (d > m) { dx *= m / d; dy *= m / d; } joy.dx = dx / m; joy.dy = dy / m; galka.style.transform = `translate(${dx}px,${dy}px)`; }
+    else if (t.identifier === obr.id) { yaw -= (t.clientX - obr.x) * .006; pitch = Math.max(-.25, Math.min(1.25, pitch + (t.clientY - obr.y) * .006)); obr.x = t.clientX; obr.y = t.clientY; }
+  }
+}, { passive: true });
+addEventListener('touchend', e => { for (const t of e.changedTouches) { if (t.identifier === joy.id) { joy.id = null; joy.dx = joy.dy = 0; galka.style.transform = ''; } if (t.identifier === obr.id) obr.id = null; } });
+plotnoEl.addEventListener('touchstart', e => { const t = e.changedTouches[0]; if (obr.id === null) { obr.id = t.identifier; obr.x = t.clientX; obr.y = t.clientY; } }, { passive: true });
+$('d-skok').addEventListener('touchstart', e => { e.preventDefault(); klawisze.add('Space'); }, { passive: false });
+$('d-skok').addEventListener('touchend', () => klawisze.delete('Space'));
+$('d-e').addEventListener('touchstart', e => { e.preventDefault(); interakcja(); }, { passive: false });
+
+/* ---------------- gracz i fizyka ---------------- */
+const gracz = { p: new THREE.Vector3(40.5, 1, 49.5), v: new THREE.Vector3(), naZiemi: false, kat: Math.PI, predk: 0 };
+const PW = .3, PH = 1.8, G = 28, SKOK = 8.6;
+function koliduje(p) {
+  const x0 = Math.floor(p.x - PW), x1 = Math.floor(p.x + PW), y0 = Math.floor(p.y), y1 = Math.floor(p.y + PH - .01), z0 = Math.floor(p.z - PW), z1 = Math.floor(p.z + PW);
+  for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) for (let z = z0; z <= z1; z++) if (staly(x, y, z)) return true;
+  return false;
+}
+const tmp = new THREE.Vector3();
+function krokFizyki(dt, mx, mz) {
+  const p = gracz.p;
+  const wWodzie = TYPY[get(Math.floor(p.x), Math.floor(p.y + .3), Math.floor(p.z))]?.woda;
+  const v = (klawisze.has('ShiftLeft') || klawisze.has('ShiftRight') ? 8 : 5.2) * (wWodzie ? .55 : 1);
+  const dx = mx * v * dt, dz = mz * v * dt;
+  let zablok = false;
+  if (dx) { tmp.copy(p); tmp.x += dx; if (koliduje(tmp)) zablok = true; else p.x = tmp.x; }
+  if (dz) { tmp.copy(p); tmp.z += dz; if (koliduje(tmp)) zablok = true; else p.z = tmp.z; }
+  if (zablok && gracz.naZiemi) { tmp.copy(p); tmp.x += dx * 4; tmp.z += dz * 4; tmp.y += 1.05; if (!koliduje(tmp)) gracz.v.y = SKOK; }
+  gracz.v.y -= G * dt;
+  tmp.copy(p); tmp.y += gracz.v.y * dt;
+  if (koliduje(tmp)) {
+    if (gracz.v.y < 0) { p.y = Math.floor(tmp.y) + 1; gracz.naZiemi = true; } else p.y = Math.floor(tmp.y + PH) - PH - .001;
+    gracz.v.y = 0;
+  } else { p.y = tmp.y; gracz.naZiemi = false; }
+  p.x = Math.max(1.4, Math.min(W - 1.4, p.x)); p.z = Math.max(1.4, Math.min(W - 1.4, p.z));
+  if (p.y < -12) { p.set(40.5, 1, 49.5); gracz.v.set(0, 0, 0); }
+}
+function aktualizujGracza(dt) {
+  let fx = 0, fz = 0;
+  if (!ekranOtwarty()) {
+    if (klawisze.has('KeyW') || klawisze.has('ArrowUp')) fz -= 1;
+    if (klawisze.has('KeyS') || klawisze.has('ArrowDown')) fz += 1;
+    if (klawisze.has('KeyA') || klawisze.has('ArrowLeft')) fx -= 1;
+    if (klawisze.has('KeyD') || klawisze.has('ArrowRight')) fx += 1;
+    if (joy.id !== null) { fx += joy.dx; fz += joy.dy; }
+  }
+  const dl = Math.hypot(fx, fz); if (dl > 1) { fx /= dl; fz /= dl; }
+  const s = Math.sin(yaw), c = Math.cos(yaw);
+  const mx = fx * c + fz * s, mz = -fx * s + fz * c;
+  if (klawisze.has('Space') && gracz.naZiemi && !ekranOtwarty()) { gracz.v.y = SKOK; gracz.naZiemi = false; sfx('skok'); }
+  const n = 3;
+  for (let i = 0; i < n; i++) krokFizyki(dt / n, mx, mz);
+  // odpychanie od postaci
+  for (const id in NPC) { const q = NPC[id]; if (!q.visible) continue; const dx = gracz.p.x - q.position.x, dz = gracz.p.z - q.position.z, d = Math.hypot(dx, dz);
+    if (d < .7 && d > .001 && Math.abs(gracz.p.y - q.position.y) < 1.5) { tmp.copy(gracz.p); tmp.x = q.position.x + dx / d * .7; tmp.z = q.position.z + dz / d * .7; if (!koliduje(tmp)) gracz.p.copy(tmp); } }
+  gracz.predk = Math.hypot(mx, mz) * 5.2;
+  if (Math.hypot(mx, mz) > .05) {
+    const cel = Math.atan2(mx, mz);
+    let r = cel - gracz.kat; r = Math.atan2(Math.sin(r), Math.cos(r));
+    gracz.kat += r * Math.min(1, dt * 12);
+  }
+  damian.position.copy(gracz.p); damian.rotation.y = gracz.kat;
+}
+let blisko = null;
+function interakcja() {
+  if (performance.now() < blokadaE || !blisko || ekranOtwarty()) return;
+  rozmowa(blisko);
+}
+function szukajBliskich() {
+  blisko = null; let best = 3.2;
+  for (const id in NPC) { const q = NPC[id]; if (!q.visible) continue; const d = q.position.distanceTo(gracz.p); if (d < best) { best = d; blisko = id; } }
+  const el = $('podpowiedz-e');
+  if (blisko && !ekranOtwarty()) { el.classList.remove('ukryty'); el.innerHTML = `<kbd>E</kbd>Porozmawiaj: ${IMIONA[blisko]}`; }
+  else el.classList.add('ukryty');
+}
+
+/* ---------------- kamera ---------------- */
+const celKam = new THREE.Vector3(), kier = new THREE.Vector3();
+function aktualizujKamere(dt) {
+  celKam.set(gracz.p.x, gracz.p.y + 1.55, gracz.p.z);
+  kier.set(Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), Math.cos(yaw) * Math.cos(pitch));
+  let d = dyst;
+  for (let s = .4; s < dyst; s += .15) { tmp.copy(celKam).addScaledVector(kier, s); const t = get(Math.floor(tmp.x), Math.floor(tmp.y), Math.floor(tmp.z)); if (t && TYPY[t].staly) { d = Math.max(.7, s - .35); break; } }
+  dystAkt += (d - dystAkt) * Math.min(1, dt * (d < dystAkt ? 25 : 5));
+  kamera.position.copy(celKam).addScaledVector(kier, dystAkt);
+  kamera.lookAt(celKam);
+}
+
+/* ---------------- start ---------------- */
+$('imie').value = stan.imie || '';
+if (ileRozw() || stan.bossWygrany) $('postep-info').textContent = `Zapisany postęp: ${ileRozw()}/6 spraw · ${stan.xp} XP${stan.bossWygrany ? ' · Phisher pokonany 🏆' : ''}`;
+$('graj').onclick = start;
+function start() {
+  if (wGrze) return;
+  stan.imie = ($('imie').value || '').trim().slice(0, 20) || 'Asystent';
+  zapisz();
+  $('imie').blur();
+  $('start').classList.add('ukryty'); $('hud').classList.remove('ukryty');
+  wGrze = true; sfx('pick');
+  yaw = 0; pitch = .38;
+  odswiezHUD();
+  if (!ileRozw()) {
+    otworzDialog([
+      { kto: 'damian', t: 'Cześć, {imie}! Nazywam się <b>Damian Teacher</b>. W dzień uczę w szkole, a po lekcjach jestem cyberdetektywem.' },
+      { kto: 'damian', t: 'W naszym Cyber Miasteczku grasuje <b>Phisher</b> — mistrz internetowych oszustw. Mieszkańcy dostają podejrzane maile, SMS-y i wiadomości. Potrzebuję asystenta!' },
+      { kto: 'bit', t: 'A ja jestem <b>Bit</b>, robot-pomocnik! Szukaj postaci z żółtym <b>„!”</b> nad głową. Podejdź i naciśnij <b>E</b>, żeby porozmawiać. Strzałka u góry ekranu pokaże drogę.' },
+      { kto: 'damian', t: 'Rozwiążemy 6 spraw, zdobędziemy 6 odznak, a potem zmierzymy się z Phisherem na szczycie jego wieży. Ruszamy!' },
+    ], { naglowek: 'Prolog', koniec: () => bitMowi('Pierwsza sprawa czeka przy <b>Szkole</b>. Idź za żółtą strzałką! (WASD — chodzenie, mysz — kamera)', 9) });
+  } else bitMowi(`Witaj z powrotem, <b>${stan.imie}</b>! Strzałka u góry wskaże kolejny cel.`, 6);
+}
+
+/* ---------------- pętla gry ---------------- */
+const zegar = new THREE.Clock();
+let czas = 0;
+function petla() {
+  requestAnimationFrame(petla);
+  const dt = Math.min(zegar.getDelta(), .05); czas += dt;
+
+  if (wGrze) {
+    aktualizujGracza(dt);
+    aktualizujKamere(dt);
+    szukajBliskich();
+    // HUD celu
+    const c = aktualnyCel();
+    $('cel-tytul').textContent = c.tytul; $('cel-opis').textContent = c.opis;
+    if (c.cel) {
+      const dx = c.cel.x - gracz.p.x, dz = c.cel.z - gracz.p.z;
+      const fx = -Math.sin(yaw), fz = -Math.cos(yaw), rx = Math.cos(yaw), rz = -Math.sin(yaw);
+      const kat = Math.atan2(dx * rx + dz * rz, dx * fx + dz * fz);
+      $('kompas').style.display = ''; $('kompas').firstElementChild.style.transform = `rotate(${kat}rad)`;
+      $('kompas-dyst').textContent = `${Math.round(Math.hypot(dx, dz))} m`;
+    } else { $('kompas').style.display = 'none'; $('kompas-dyst').textContent = ''; }
+    if (bitTimer > 0) { bitTimer -= dt; if (bitTimer <= 0) $('bit').classList.add('schowany'); }
+  } else {
+    // ekran startowy: kamera krąży nad miasteczkiem
+    const a = czas * .06;
+    kamera.position.set(40 + Math.sin(a) * 46, 26, 40 + Math.cos(a) * 46);
+    kamera.lookAt(40, 4, 40);
+    damian.position.copy(gracz.p);
+  }
+
+  animujPostac(damian, wGrze ? gracz.predk : 0, czas);
+  // Bit lata przy Damianie
+  const bx = gracz.p.x + Math.cos(gracz.kat) * -.9 - Math.sin(gracz.kat) * .4, bz = gracz.p.z - Math.sin(gracz.kat) * -.9 - Math.cos(gracz.kat) * .4;
+  bit.position.x += (bx - bit.position.x) * Math.min(1, dt * 4);
+  bit.position.z += (bz - bit.position.z) * Math.min(1, dt * 4);
+  bit.position.y += (gracz.p.y + 2.1 + Math.sin(czas * 3) * .12 - bit.position.y) * Math.min(1, dt * 4);
+  bit.rotation.y = gracz.kat + Math.sin(czas * 1.3) * .3;
+
+  // NPC: oddychanie, patrzenie na gracza
+  for (const id in NPC) {
+    const q = NPC[id];
+    q.userData.machanie = id !== 'phisher' && blisko === id;
+    animujPostac(q, 0, czas);
+    const d = q.position.distanceTo(gracz.p);
+    const cel = d < 7 ? Math.atan2(gracz.p.x - q.position.x, gracz.p.z - q.position.z) : q.userData.katBaz;
+    let r = cel - q.rotation.y; r = Math.atan2(Math.sin(r), Math.cos(r)); q.rotation.y += r * Math.min(1, dt * 4);
+    const z = ZNACZNIKI[id]; if (z) z.position.y = 2.95 + Math.sin(czas * 3 + q.userData.faza) * .1;
+  }
+  if (boss.userData.koperta) boss.userData.koperta.rotation.y = czas * 2;
+
+  // kłódki
+  for (const k of klodki) {
+    if (stan.klodki.includes(k.userData.i)) { k.visible = false; continue; }
+    k.rotation.y = czas * 2; k.position.y = k.userData.y + Math.sin(czas * 2.5 + k.userData.i) * .12;
+    if (wGrze && Math.abs(k.position.x - gracz.p.x) < .9 && Math.abs(k.position.z - gracz.p.z) < .9 && Math.abs(k.position.y - (gracz.p.y + .9)) < 1.4) {
+      stan.klodki.push(k.userData.i); sfx('pick'); dodajXP(20);
+      toast(`🔒 Złota kłódka ${stan.klodki.length}/${KLODKI_POZ.length}!`);
+      bitMowi(`<b>Porada:</b> ${WSKAZOWKI[k.userData.i]}`, 9);
+    }
+  }
+  // konfetti
+  for (let i = czastki.length - 1; i >= 0; i--) {
+    const m = czastki[i]; m.userData.v.y -= 12 * dt; m.position.addScaledVector(m.userData.v, dt); m.rotation.x += dt * 5; m.userData.t -= dt;
+    if (m.userData.t <= 0) { scena.remove(m); m.material.dispose(); czastki.splice(i, 1); }
+  }
+  // chmury
+  for (const c of chmury.children) { c.position.x += dt * .8; if (c.position.x > 130) c.position.x = -50; }
+
+  renderer.render(scena, kamera);
+}
+odswiezHUD();
+petla();
+// uchwyt do testów automatycznych
+window.__cyberdetektyw = { gracz, stan: () => stan, NPC };
+
+// po wygranej pokaż certyfikat po zamknięciu dialogu
+let certPokazany = stan.bossWygrany;
+setInterval(() => { if (stan.bossWygrany && !certPokazany && !dlg.akt) { certPokazany = true; pokazCertyfikat(); } }, 400);
+</script>
+</body>
+</html>
