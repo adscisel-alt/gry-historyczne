@@ -12,6 +12,9 @@ https://adscisel-alt.github.io/gry-historyczne/
 - `cyberdetektyw.html` — „Damian Teacher: Cyberdetektyw”, klockowa gra RPG 3D o zasadach bezpieczeństwa
   w internecie dla klas VI–VIII (Szkoła Mentis): 9 spraw z quizami i słowniczkiem PL–EN (m.in. AI, deepfake,
   uzależnienie od ekranu), 12 złotych kłódek z poradami, finał z Phisherem i certyfikat do druku
+- `zawisza-czarny/` — „Zawisza Czarny: Mrok nad Krakowem”, strategiczna gra przygodowa dla 10–12 lat
+  w malowanym stylu: Kraków 1409, 5 rozdziałów, 7 lokacji, 6 postaci pobocznych, dialogi z wyborami, ekwipunek,
+  poczet, 5 minigier (waga kupiecka, gonitwa, oś czasu, hejnał, bitwa taktyczna) i Kronika z 35 kartami wiedzy
 
 Wszystkie strony są samowystarczalne (działają offline, bez zależności sieciowych).
 Deploy: `.github/workflows/pages.yml` publikuje główną gałąź przy każdym pushu.
