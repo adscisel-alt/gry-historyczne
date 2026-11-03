@@ -1,0 +1,5 @@
+build/
+dist/
+zrzuty/
+__pycache__/
+*.pyc

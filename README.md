@@ -12,6 +12,9 @@ https://adscisel-alt.github.io/gry-historyczne/
 - `cyberdetektyw.html` — „Damian Teacher: Cyberdetektyw”, klockowa gra RPG 3D o zasadach bezpieczeństwa
   w internecie dla klas VI–VIII (Szkoła Mentis): 9 spraw z quizami i słowniczkiem PL–EN (m.in. AI, deepfake,
   uzależnienie od ekranu), 12 złotych kłódek z poradami, finał z Phisherem i certyfikat do druku
+- `kroniki-tomka-turby/` — „Kroniki Tomka Turby”, turowa strategia (Python + Pygame, EXE na Windows) o Polsce
+  966–1410: 6 rozdziałów, 4 epoki, 20 technologii z zagadkami, bitwy kartami, 12 postaci; EXE buduje
+  `.github/workflows/kroniki-exe.yml`
 
 Wszystkie strony są samowystarczalne (działają offline, bez zależności sieciowych).
 Deploy: `.github/workflows/pages.yml` publikuje główną gałąź przy każdym pushu.

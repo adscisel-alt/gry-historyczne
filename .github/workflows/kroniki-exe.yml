@@ -1,0 +1,55 @@
+name: Kroniki Tomka Turby – Windows EXE
+
+# Buduje grę „Kroniki Tomka Turby” (Python + Pygame) do jednego pliku .exe na Windows.
+# Gotowy plik: zakładka Actions → ostatni przebieg → Artifacts → KronikiTomkaTurby-Windows.
+# Wypchnięcie tagu kroniki-v* dodatkowo publikuje wydanie (Release) z plikiem .exe.
+on:
+  push:
+    paths:
+      - "kroniki-tomka-turby/**"
+      - ".github/workflows/kroniki-exe.yml"
+    tags:
+      - "kroniki-v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows-exe:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: kroniki-tomka-turby
+    env:
+      SDL_VIDEODRIVER: dummy
+      SDL_AUDIODRIVER: dummy
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Zależności
+        run: python -m pip install -r requirements.txt
+      - name: Test – bot przechodzi całą kampanię
+        run: python tests/bot_kampania.py 1
+      - name: Kompilacja PyInstaller
+        run: python -m PyInstaller --noconfirm KronikiTomkaTurby.spec
+      - name: Uruchomienie EXE i zrzuty ekranu
+        shell: pwsh
+        run: |
+          $p = Start-Process -FilePath dist\KronikiTomkaTurby.exe -ArgumentList "--screenshots","zrzuty" -PassThru -Wait
+          if ($p.ExitCode -ne 0) { throw "EXE zakończył się kodem $($p.ExitCode)" }
+          Get-ChildItem zrzuty
+          if ((Get-ChildItem zrzuty -Filter *.png).Count -lt 10) { throw "Brak zrzutów ekranu" }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: KronikiTomkaTurby-Windows
+          path: |
+            kroniki-tomka-turby/dist/KronikiTomkaTurby.exe
+            kroniki-tomka-turby/zrzuty/*.png
+      - name: Wydanie (tylko dla tagów)
+        if: startsWith(github.ref, 'refs/tags/kroniki-v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: kroniki-tomka-turby/dist/KronikiTomkaTurby.exe
