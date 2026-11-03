@@ -95,5 +95,5 @@ for _ in range(60 * 90):
     if lion.state == 'flee':
         break
 assert lion.state == 'flee', "lew nie został przegoniony"
-print("OK – wszystkie testy przeszły")
+print("OK - all tests passed")
 pygame.quit()
