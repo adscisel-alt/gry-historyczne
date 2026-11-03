@@ -25,6 +25,8 @@ jobs:
     env:
       SDL_VIDEODRIVER: dummy
       SDL_AUDIODRIVER: dummy
+      PYTHONUTF8: "1"
+      PYTHONIOENCODING: utf-8
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

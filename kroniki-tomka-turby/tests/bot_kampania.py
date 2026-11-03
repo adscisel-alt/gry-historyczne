@@ -12,6 +12,10 @@ os.environ["SDL_VIDEODRIVER"] = "dummy"
 os.environ["SDL_AUDIODRIVER"] = "dummy"
 os.environ["APPDATA"] = tempfile.mkdtemp()
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+except Exception:
+    pass
 
 from kronika import data  # noqa: E402
 from kronika.app import App  # noqa: E402
