@@ -1,0 +1,51 @@
+name: Damian Jaskiniowiec – EXE dla Windows
+
+# Buduje grę jako jeden plik DamianJaskiniowiec.exe (Windows 10/11)
+# i publikuje go w wydaniu "jaskiniowiec-latest".
+on:
+  push:
+    branches: [main, 'claude/**']
+    paths:
+      - 'jaskiniowiec/**'
+      - '.github/workflows/jaskiniowiec-exe.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: jaskiniowiec-exe
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Zależności
+        run: python -m pip install --upgrade pip pygame-ce==2.5.2 pyinstaller==6.11.1
+      - name: Test dymny
+        run: python jaskiniowiec/test_gry.py
+      - name: Budowanie EXE
+        working-directory: jaskiniowiec
+        run: >
+          pyinstaller --noconfirm --onefile --windowed
+          --name DamianJaskiniowiec --icon ikona.ico
+          --distpath ../dist gra.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DamianJaskiniowiec-Windows
+          path: dist/DamianJaskiniowiec.exe
+      - name: Publikacja wydania
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete jaskiniowiec-latest --cleanup-tag --yes || true
+          gh release create jaskiniowiec-latest dist/DamianJaskiniowiec.exe \
+            --target "${{ github.sha }}" \
+            --title "Damian Jaskiniowiec: Ogień Pierwszy (Windows)" \
+            --notes "Pobierz DamianJaskiniowiec.exe i uruchom dwuklikiem (Windows 10/11, bez instalacji). Jeśli Windows SmartScreen pokaże ostrzeżenie: Więcej informacji → Uruchom mimo to. Zbudowano z ${GITHUB_SHA::7}."
