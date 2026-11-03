@@ -5,6 +5,7 @@ name: Kroniki Tomka Turby – Windows EXE
 # Wypchnięcie tagu kroniki-v* dodatkowo publikuje wydanie (Release) z plikiem .exe.
 on:
   push:
+    branches: ["**"]
     paths:
       - "kroniki-tomka-turby/**"
       - ".github/workflows/kroniki-exe.yml"
