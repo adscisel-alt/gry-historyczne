@@ -59,7 +59,7 @@ func wygraj() -> void:
 	_sukces.size = Vector2(1280, 720)
 	_sukces.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_sukces.add_child(Motyw.przyciemnienie(0.45))
-	_sukces.get_child(0).mouse_filter = Control.MOUSE_FILTER_IGNORE
+	(_sukces.get_child(0) as Control).mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var k := Motyw.karta(Rect2(390, 230, 500, 240))
 	k.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_sukces.add_child(k)

@@ -30,9 +30,9 @@ const MINIGRY := {
 const ZAPIS := "user://zapis.json"
 
 var logika = null
-var swiat: Node3D
+var swiat = null
 var warstwa_post: CanvasLayer
-var hud: Control
+var hud = null
 var warstwa_hud: CanvasLayer
 var korzen_nakladek: Control
 var toasty: VBoxContainer
@@ -482,7 +482,7 @@ func autotest_interfejsu(t) -> void:
 	await get_tree().physics_frame
 	await get_tree().physics_frame
 	var cel: Vector3 = swiat.ciala["mapa_sciana"].position
-	var ekran := swiat.kamera.unproject_position(cel)
+	var ekran: Vector2 = swiat.kamera.unproject_position(cel)
 	t.sprawdz(swiat.hotspot_pod(ekran) == "mapa_sciana", "raycast trafia w mapę na ścianie")
 	swiat.klik(ekran, null)
 	for _i in 400:

@@ -31,7 +31,7 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	super(delta)
-	var d := find_child("Dalej", true, false)
+	var d = find_child("Dalej", true, false)
 	if d:
 		d.modulate.a = 0.55 + 0.45 * sin(czas * 3.0)
 
