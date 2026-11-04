@@ -11,9 +11,14 @@ permissions:
 env:
   GODOT_VERSION: "4.3"
 
+concurrency:
+  group: listopad1918-3d-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   godot:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     container:
       image: barichello/godot-ci:4.3
     defaults:
@@ -27,11 +32,11 @@ jobs:
           mkdir -p ~/.local/share/godot/export_templates
           mv /root/.local/share/godot/export_templates/${GODOT_VERSION}.stable ~/.local/share/godot/export_templates/ || true
       - name: Import zasobów
-        run: godot --headless --import 2>&1 | tail -20 || true
+        run: godot --headless --import 2>&1 | grep -v -E '^\s*$' | tail -60 || true
       - name: Autotest (logika, sceny 3D, interfejs, minigry)
         run: |
           set +e
-          godot --headless --path . -- --autotest > log.txt 2>&1
+          timeout 300 godot --headless --path . -- --autotest > log.txt 2>&1
           kod=$?
           cat log.txt
           if grep -E "SCRIPT ERROR|Parse Error|Failed to load script|Invalid call|Invalid access" log.txt; then exit 1; fi
@@ -64,6 +69,7 @@ jobs:
   windows:
     needs: godot
     runs-on: windows-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/download-artifact@v4
         with:
