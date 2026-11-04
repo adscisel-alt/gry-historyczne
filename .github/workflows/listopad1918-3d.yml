@@ -38,7 +38,7 @@ jobs:
           set +e
           timeout 300 godot --headless --path . -- --autotest > log.txt 2>&1
           kod=$?
-          cat log.txt
+          grep -v -E 'Parameter "m" is null|mesh_get_surface_count|non-equal opposite anchors|If you want to set size|at: _set_size' log.txt | tail -120
           if grep -E "SCRIPT ERROR|Parse Error|Failed to load script|Invalid call|Invalid access" log.txt; then exit 1; fi
           exit $kod
       - name: Zrzuty ekranu (renderowanie programowe, xvfb)

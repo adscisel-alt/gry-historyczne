@@ -102,4 +102,6 @@ func uruchom(p_main) -> int:
 		print("AUTOTEST OK")
 		return 0
 	print("AUTOTEST: %d błędów" % bledy.size())
+	for b in bledy:
+		print("  - " + str(b))
 	return 1
