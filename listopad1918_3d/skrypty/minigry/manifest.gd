@@ -35,7 +35,7 @@ func buduj() -> void:
 	lista.add_theme_constant_override("separation", 6)
 	dodaj(lista, Rect2(40, 134, 560, 460), gra)
 	for i in M["manifest_sekcje"].size():
-		var nr := i
+		var nr: int = i
 		var b := Motyw.przycisk_tekst("", 15, func(): klik_slotu(nr), "maszyna")
 		dodaj(b, Rect2(650, 132 + i * 76, 590, 68), gra)
 		sloty_ui.append(b)

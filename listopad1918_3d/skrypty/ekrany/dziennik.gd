@@ -24,7 +24,7 @@ func _ready() -> void:
 	dodaj(kartka, Rect2(60, 80, 1160, 610))
 	dodaj(Motyw.etykieta("Dziennik Janka", 18, "reka", Color(0.93, 0.88, 0.78), false, HORIZONTAL_ALIGNMENT_CENTER), Rect2(0, 2, 1280, 30))
 	for i in ZAKLADKI.size():
-		var nr := i
+		var nr: int = i
 		var b := Motyw.przycisk(ZAKLADKI[i], 18, func(): pokaz(nr))
 		dodaj(b, Rect2(90 + i * 190, 30, 180, 44))
 		przyciski_zakl.append(b)

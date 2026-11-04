@@ -25,7 +25,7 @@ func _init(p_main) -> void:
 func buduj() -> void:
 	for i in M["panstwa"].size():
 		var p: String = M["panstwa"][i]
-		var x := 60 + i * 400
+		var x: float = 60 + i * 400
 		dodaj(Motyw.etykieta(p, 20, "plakat", Motyw.ATRAMENT, false), Rect2(x, 118, 300, 28), gra)
 		var tlo := ColorRect.new()
 		tlo.color = Color(0.66, 0.6, 0.5)
@@ -48,7 +48,7 @@ func buduj() -> void:
 	pytanie_l = Motyw.etykieta("", 26, "reka")
 	dodaj(pytanie_l, Rect2(320, 234, 900, 120), gra)
 	for i in 3:
-		var nr := i
+		var nr: int = i
 		var b := Motyw.przycisk_tekst("", 18, func(): odpowiedz(nr))
 		dodaj(b, Rect2(320, 380 + i * 74, 920, 66), gra)
 		odp_ui.append(b)

@@ -67,7 +67,7 @@ func _ready() -> void:
 		slot.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		slot.add_theme_constant_override("icon_max_width", 52)
 		slot.tooltip_text = ""
-		var nr := i
+		var nr: int = i
 		slot.gui_input.connect(func(e): _slot_input(nr, e))
 		panel.add_child(slot)
 		sloty.append(slot)

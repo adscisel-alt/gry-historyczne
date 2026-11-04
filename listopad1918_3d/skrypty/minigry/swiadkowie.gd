@@ -25,7 +25,7 @@ func buduj() -> void:
 	pytanie_l = Motyw.etykieta("", 22, "plakat", Motyw.ATRAMENT, false)
 	dodaj(pytanie_l, Rect2(40, 118, 1000, 30), gra)
 	for i in 3:
-		var nr := i
+		var nr: int = i
 		var b := Motyw.przycisk("", 18, func(): wskaz(nr))
 		dodaj(b, Rect2(40, 160 + i * 124, 820, 112), gra)
 		var por := Motyw.obraz(null, Rect2(8, 8, 80, 96))

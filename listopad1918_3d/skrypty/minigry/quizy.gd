@@ -27,7 +27,7 @@ func buduj() -> void:
 	pyt_l = Motyw.etykieta("", 28, "reka")
 	dodaj(pyt_l, Rect2(320, 170, 880, 130), gra)
 	for i in 3:
-		var nr := i
+		var nr: int = i
 		var b := Motyw.przycisk_tekst("", 21, func(): odpowiedz(nr), "plakat")
 		dodaj(b, Rect2(320, 320 + i * 78, 820, 64), gra)
 		odp_ui.append(b)

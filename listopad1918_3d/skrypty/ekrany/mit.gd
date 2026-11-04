@@ -23,12 +23,12 @@ func _ready() -> void:
 	karta_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(karta_panel)
 	karta_panel.draw.connect(_rysuj_stempel)
-	var nr := Dane.mity.keys().find(mid) + 1
+	var nr: int = Dane.mity.keys().find(mid) + 1
 	dodaj(Motyw.etykieta_fiolet("Damian sprawdza mit nr %d z 10" % nr, 16), Rect2(36, 28, 0, 0), karta_panel)
 	dodaj(Motyw.etykieta("MIT CZY FAKT?", 34, "plakat", Motyw.ATRAMENT, false, HORIZONTAL_ALIGNMENT_CENTER), Rect2(0, 70, 960, 46), karta_panel)
 	dodaj(Motyw.etykieta("„" + str(mit["mit"]) + "”", 24, "reka", Motyw.ATRAMENT, true, HORIZONTAL_ALIGNMENT_CENTER), Rect2(80, 124, 800, 110), karta_panel)
 	for i in 3:
-		var nr_i := i
+		var nr_i: int = i
 		var b := Motyw.przycisk_tekst("%d. %s" % [i + 1, mit["opcje"][i]], 17, func(): wybierz(nr_i))
 		dodaj(b, Rect2(70, 262 + i * 76, 820, 62), karta_panel)
 		przyciski.append(b)

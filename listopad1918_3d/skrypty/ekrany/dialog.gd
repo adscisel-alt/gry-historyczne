@@ -83,7 +83,7 @@ func _nowy_wezel() -> void:
 		b.add_theme_color_override("font_hover_color", Motyw.ATRAMENT)
 		b.add_theme_stylebox_override("hover", Motyw.styl_plaski(Color(0.83, 0.77, 0.64), Color(0, 0, 0, 0), 0, 4))
 		b.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
-		var nr := i
+		var nr: int = i
 		b.pressed.connect(func(): wybierz(nr))
 		opcje_box.add_child(b)
 

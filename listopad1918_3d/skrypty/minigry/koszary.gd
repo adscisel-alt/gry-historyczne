@@ -68,7 +68,7 @@ func buduj() -> void:
 		przyciski_p[p] = b
 	dodaj(Motyw.etykieta("Twój plan", 16, "plakat", Motyw.ATRAMENT_JASNY, false), Rect2(900, 110, 300, 24), gra)
 	for i in 5:
-		var nr := i
+		var nr: int = i
 		var b := Motyw.przycisk("%d." % (i + 1), 20, func(): usun(nr))
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		dodaj(b, Rect2(900, 140 + i * 60, 340, 50), gra)
