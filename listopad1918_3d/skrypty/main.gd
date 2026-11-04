@@ -263,6 +263,7 @@ func aktywuj(hid: String, przedmiot) -> void:
 func obsluz(zd: Array) -> void:
 	kolejka.append_array(zd)
 	przetworz_kolejke()
+	_odswiez_lokacje()
 
 
 func na_poczatek(zd: Array) -> void:
@@ -270,6 +271,14 @@ func na_poczatek(zd: Array) -> void:
 	nowa.append_array(kolejka)
 	kolejka = nowa
 	przetworz_kolejke()
+	_odswiez_lokacje()
+
+
+func _odswiez_lokacje() -> void:
+	## Stan gry mógł się zmienić (flagi, ekwipunek) — odśwież hotspoty i torbę.
+	if tryb == "lokacja" and swiat.janek != null:
+		swiat.odswiez()
+		hud.odswiez()
 
 
 func przetworz_kolejke() -> void:
@@ -485,8 +494,8 @@ func autotest_interfejsu(t) -> void:
 	var ekran: Vector2 = swiat.kamera.unproject_position(cel)
 	t.sprawdz(swiat.hotspot_pod(ekran) == "mapa_sciana", "raycast trafia w mapę na ścianie")
 	swiat.klik(ekran, null)
-	for _i in 400:
-		await get_tree().process_frame
+	for _i in 100:
+		await get_tree().create_timer(0.1).timeout
 		if "zabory" in logika.fakty:
 			break
 	t.sprawdz("zabory" in logika.fakty, "Janek doszedł do mapy i ją obejrzał")
