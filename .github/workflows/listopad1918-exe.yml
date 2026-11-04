@@ -6,6 +6,9 @@ on:
     paths: ["listopad1918/**", ".github/workflows/listopad1918-exe.yml"]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   windows-exe:
     runs-on: windows-latest
@@ -35,3 +38,14 @@ jobs:
         with:
           name: Listopad1918-Windows
           path: listopad1918/dist/Listopad1918.exe
+      - name: Publikacja jako Release (bezpośredni link do EXE)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: listopad1918-latest
+          name: Listopad 1918 — gra na Windows (najnowsza wersja)
+          target_commitish: ${{ github.sha }}
+          body: |
+            Przygodówka point-and-click „Listopad 1918 — Pocztówki z niepodległości” na Windows 11.
+            Pobierz Listopad1918.exe i uruchom (SmartScreen: „Więcej informacji” → „Uruchom mimo to”).
+          files: listopad1918/dist/Listopad1918.exe
+          make_latest: true
