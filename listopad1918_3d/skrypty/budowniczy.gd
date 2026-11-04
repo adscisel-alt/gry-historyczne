@@ -7,9 +7,9 @@ const Motyw = preload("res://skrypty/motyw.gd")
 
 var korzen: Node3D
 var miejsca: Dictionary = {}          # hid -> {typ, poz, rozmiar}
-var kamera := {"poz": Vector3(0, 2.5, 7.4), "cel": Vector3(0, 1.4, -2.0), "fov": 50.0}
-var granice := Rect2(-5.6, -2.6, 11.2, 3.4)   # x, z, szerokość, głębokość obszaru chodzenia
-var start_janka := Vector3(-4.2, 0, -0.4)
+var kamera := {"poz": Vector3(0, 2.6, 6.4), "cel": Vector3(0, 1.0, -2.5), "fov": 46.0}
+var granice := Rect2(-4.5, -2.6, 9.0, 2.8)   # x, z, szerokość, głębokość obszaru chodzenia
+var start_janka := Vector3(-3.8, 0, -0.4)
 var otoczenie := {"tlo": Color(0.6, 0.55, 0.48), "ambient": Color(0.75, 0.68, 0.58), "ambient_moc": 0.55,
 	"slonce_kat": Vector3(-50, -35, 0), "slonce_moc": 1.0, "slonce_kolor": Color(1.0, 0.93, 0.8), "mgla": 0.012}
 var kolysanie := false
@@ -278,8 +278,8 @@ func przedmiot(hid: String, poz: Vector3, rozmiar: Vector3 = Vector3(0.7, 0.7, 0
 
 
 func wyjscie(hid: String, prawa: bool = true) -> void:
-	var x := 5.25 if prawa else -5.25
-	miejsca[hid] = {"typ": "wyjscie", "poz": Vector3(x, 1.25, 0.1), "rozmiar": Vector3(1.4, 1.1, 0.6)}
+	var x := 4.35 if prawa else -4.35
+	miejsca[hid] = {"typ": "wyjscie", "poz": Vector3(x, 1.3, -0.7), "rozmiar": Vector3(1.4, 1.1, 0.6)}
 
 
 # =================================================================== elementy złożone
@@ -290,6 +290,9 @@ func pokoj(v_sciany: float = 150, v_podlogi: float = 110, tex_scian: Texture2D =
 	box(Vector3(13.6, wysokosc, 0.2), Vector3(0, wysokosc / 2, -glebokosc - 0.1), 255, Vector3.ZERO, t, Vector3(7, 2.5, 1))
 	for s in [-1, 1]:
 		box(Vector3(0.2, wysokosc, glebokosc + 2.0), Vector3(s * 6.8, wysokosc / 2, -glebokosc / 2 + 0.6), v_sciany - 25, Vector3.ZERO, t, Vector3(4, 2.5, 1))
+	# sufit (bez cienia, żeby słońce „wpadało” do dioramy)
+	var sufit := box(Vector3(13.8, 0.2, glebokosc + 2.0), Vector3(0, wysokosc + 0.1, -glebokosc / 2 + 0.6), v_sciany - 60)
+	sufit.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	# lamperia i listwy
 	box(Vector3(13.4, 1.1, 0.06), Vector3(0, 0.55, -glebokosc + 0.03), v_sciany - 55)
 	box(Vector3(13.4, 0.08, 0.1), Vector3(0, 1.12, -glebokosc + 0.06), v_sciany - 20)
@@ -298,6 +301,9 @@ func pokoj(v_sciany: float = 150, v_podlogi: float = 110, tex_scian: Texture2D =
 
 
 func plener(v_ziemi: float = 125, niebo_gora: float = 225, niebo_dol: float = 185, noc: bool = false) -> void:
+	otoczenie["slonce_moc"] = 0.75
+	otoczenie["ambient_moc"] = 0.42
+	otoczenie["mgla"] = 0.02
 	box(Vector3(40, 0.2, 26), Vector3(0, -0.1, -8), 255, Vector3.ZERO, tex_bruk(v_ziemi), Vector3(20, 13, 1))
 	obraz(tex_niebo(niebo_gora, niebo_dol, noc), Vector2(80, 30), Vector3(0, 12, -20), Vector3.ZERO, true)
 	box(Vector3(14.4, 0.6, 9.0), Vector3(0, -0.5, -2.0), 45, Vector3.ZERO, tex_deski(70), Vector3(6, 1, 1))
@@ -663,7 +669,6 @@ func lok_wagon() -> void:
 	swiatlo(Vector3(0, 2.9, -2.0), 1.0, 7.0)
 	postac("pilsudski", 1.3, -1.9)
 	wyjscie("wysiadka")
-	kamera["poz"] = Vector3(0, 2.3, 6.6)
 
 
 func lok_dworzec() -> void:
@@ -772,7 +777,7 @@ func lok_plac_saski() -> void:
 	postac("przekupka", -1.8, -2.4)
 	postac("student", 2.4, -1.8)
 	wyjscie("do_paryza")
-	start_janka = Vector3(-4.6, 0, -0.2)
+	start_janka = Vector3(-4.2, 0, -0.3)
 
 
 func lok_paryz_knp() -> void:

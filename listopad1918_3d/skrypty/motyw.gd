@@ -158,11 +158,11 @@ static func przyciemnienie(alfa: float = 0.55) -> ColorRect:
 
 static func obraz(tex: Texture2D, rect: Rect2) -> TextureRect:
 	var t := TextureRect.new()
+	t.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	t.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	t.texture = tex
 	t.position = rect.position
 	t.size = rect.size
-	t.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	t.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	t.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return t
 
