@@ -1,0 +1,4523 @@
+{
+ "rozdzialy": [
+  {
+   "id": "r1",
+   "stempel": "31 X 1918",
+   "numer": 1,
+   "tytul": "Pocztówka z archiwum",
+   "daty": "31 października – 1 listopada 1918",
+   "miejsce": "Archiwum • Kraków",
+   "start": "archiwum",
+   "intro": "Cześć, jestem Damian Ściseł, archiwista. Tak, kaptur jest fioletowy — w sepii łatwiej mnie znaleźć. Przez najbliższy miesiąc będziemy z Jankiem wskakiwać do starych pocztówek z 1918 roku. Każdą historię sprawdzimy w źródłach. Zaczynamy od Krakowa, bo tam Austriacy stracili władzę jako pierwsi.",
+   "podsumowanie": "Kraków jako pierwszy zrzucił władzę zaborcy — 31 października, bez wielkiej bitwy."
+  },
+  {
+   "id": "r2",
+   "stempel": "4 XI 1918",
+   "numer": 2,
+   "tytul": "Warszawa czeka",
+   "daty": "3–6 listopada 1918",
+   "miejsce": "Warszawa",
+   "start": "harcowka",
+   "intro": "Warszawa, początek listopada. W mieście wciąż stoją Niemcy, a Rada Regencyjna właśnie odwołała rząd. Kto tu rządzi? Dobre pytanie — dorośli też go sobie zadawali. Janek ma prostsze zadanie: dostarczyć meldunek.",
+   "podsumowanie": "Rada Regencyjna już 7 października ogłosiła wolę niepodległości — ale władza była krucha."
+  },
+  {
+   "id": "r3",
+   "stempel": "7 XI 1918",
+   "numer": 3,
+   "tytul": "Lubelska noc",
+   "daty": "6–7 listopada 1918",
+   "miejsce": "Lublin",
+   "start": "lublin_palac",
+   "intro": "Lublin był w strefie austriackiej, a Austria właśnie się rozpadała. W nocy z 6 na 7 listopada socjaliści i ludowcy tworzą tu własny rząd. Uwaga: w drukarni pachnie farbą i historią. Głównie farbą.",
+   "podsumowanie": "Rząd lubelski Daszyńskiego ogłosił program reform, które wkrótce weszły do prawa."
+  },
+  {
+   "id": "r4",
+   "stempel": "9 XI 1918",
+   "numer": 4,
+   "tytul": "Pociąg z Berlina",
+   "daty": "8–10 listopada 1918",
+   "miejsce": "Pociąg • Dworzec Wiedeński",
+   "start": "wagon",
+   "intro": "8 listopada Niemcy wypuszczają z Magdeburga więźnia, o którym mówi cała Polska. Nocny pociąg jedzie do Warszawy. Janek ma bilet — w pocztówce wszystko jest możliwe. Ale fakty zostawiamy w spokoju: przyjazd będzie 10 listopada, nie 11.",
+   "podsumowanie": "10 listopada rano Piłsudski wysiadł na Dworcu Wiedeńskim."
+  },
+  {
+   "id": "r5",
+   "stempel": "11 XI 1918",
+   "numer": 5,
+   "tytul": "Karabiny na bruku",
+   "daty": "10–14 listopada 1918",
+   "miejsce": "Warszawa",
+   "start": "koszary",
+   "intro": "W Warszawie jest około trzydziestu tysięcy niemieckich żołnierzy. Ich cesarz właśnie abdykował, a oni chcą do domu. Polacy chcą ich broni. Wystarczy jeden nerwowy strzał... Spokojnie, Janku. Oddychaj. Ja też oddycham.",
+   "podsumowanie": "Rozbrajanie obyło się bez wielkiej bitwy, a Rada Regencyjna przekazała władzę Piłsudskiemu."
+  },
+  {
+   "id": "r6",
+   "stempel": "13 XI 1918",
+   "numer": 6,
+   "tytul": "Paryż, aleja dyplomacji",
+   "daty": "13–16 listopada 1918",
+   "miejsce": "Paryż",
+   "start": "paryz_knp",
+   "intro": "Nowe państwo to nie tylko wojsko i urzędy. Trzeba jeszcze, żeby inni je uznali. W Paryżu działa Komitet Narodowy Polski Romana Dmowskiego. A Paderewski? Tu muszę się przyznać do małego oszustwa pocztówkowego — zobaczysz.",
+   "podsumowanie": "Dyplomacja z Paryża i Ameryki dała Polsce sojuszników przed konferencją pokojową."
+  },
+  {
+   "id": "r7",
+   "stempel": "28 XI 1918",
+   "numer": 7,
+   "tytul": "Głos każdego",
+   "daty": "14–28 listopada 1918",
+   "miejsce": "Poznań • Warszawa",
+   "start": "poznan_bazar",
+   "intro": "Ostatnia pocztówka, a właściwie dwie. Poznań wciąż jest w Niemczech i czeka na swój moment. A w Warszawie 28 listopada zapada decyzja, o której mówią wszystkie babcie, mamy i siostry. I słusznie.",
+   "podsumowanie": "Kobiety zyskały pełne prawa wyborcze — państwo miało należeć do wszystkich obywateli."
+  }
+ ],
+ "lokacje": {
+  "archiwum": {
+   "rozdzial": "r1",
+   "nazwa": "Archiwum Damiana",
+   "data": "dziś i zawsze",
+   "tlo": "archiwum",
+   "hotspoty": [
+    {
+     "id": "damian",
+     "nazwa": "Damian Ściseł",
+     "postac": "damian",
+     "x": 930,
+     "patrz": "Archiwista w fioletowym kapturze. Mówi, że to kolor „weryfikacji”.",
+     "akcje": [
+      {
+       "gdy": [
+        "!flag:rozmowa_damian"
+       ],
+       "efekty": [
+        "dialog:d_damian_start"
+       ]
+      },
+      {
+       "gdy": [
+        "!ma:pocztowka_krakow",
+        "!flag:w_krakowie"
+       ],
+       "mow": "Damian: Pocztówki są w szufladzie. Lupa na półce. Archiwista nie podaje — archiwista wskazuje!"
+      },
+      {
+       "mow": "Damian: Włóż pocztówkę do stereoskopu. I trzymaj się czapki."
+      }
+     ]
+    },
+    {
+     "id": "polka",
+     "nazwa": "Półka z lupą",
+     "przedmiot": "lupa",
+     "rect": [
+      300,
+      210,
+      90,
+      60
+     ],
+     "widoczny": [
+      "!ma:lupa",
+      "!flag:lupa_wzieta"
+     ],
+     "patrz": "Na półce leży mosiężna lupa.",
+     "akcje": [
+      {
+       "efekty": [
+        "daj:lupa",
+        "flag:lupa_wzieta"
+       ],
+       "mow": "Lupa! Każdy detektyw historii musi mieć lupę."
+      }
+     ]
+    },
+    {
+     "id": "szuflada",
+     "nazwa": "Szuflada z pocztówkami",
+     "rect": [
+      520,
+      330,
+      180,
+      90
+     ],
+     "patrz": "Szuflada opisana: „1918 — listopad”. Zamknięta na… nic. Po prostu ciężka.",
+     "akcje": [
+      {
+       "gdy": [
+        "!flag:rozmowa_damian"
+       ],
+       "mow": "Najpierw zapytam archiwistę, czy mogę tu grzebać."
+      },
+      {
+       "gdy": [
+        "!ma:lupa"
+       ],
+       "mow": "Pocztówki są wyblakłe. Bez lupy nie odczytam stempli."
+      },
+      {
+       "gdy": [
+        "!ma:pocztowka_krakow",
+        "!flag:w_krakowie"
+       ],
+       "efekty": [
+        "daj:pocztowka_krakow"
+       ],
+       "mow": "Przez lupę widać stempel: Kraków, 31 X 1918. Biorę!"
+      },
+      {
+       "mow": "Reszta pocztówek poczeka na swoją kolej."
+      }
+     ]
+    },
+    {
+     "id": "stereoskop",
+     "nazwa": "Stereoskop",
+     "rect": [
+      760,
+      250,
+      110,
+      120
+     ],
+     "patrz": "Drewniany stereoskop. Damian twierdzi, że działa „w obie strony”.",
+     "akcje": [
+      {
+       "mow": "Potrzebuję pocztówki, żeby coś w nim zobaczyć."
+      }
+     ],
+     "uzyj": {
+      "pocztowka_krakow": [
+       {
+        "efekty": [
+         "zabierz:pocztowka_krakow",
+         "flag:w_krakowie",
+         "idz:krakow_rynek",
+         "damian:Pocztówka wciąga Janka jak odkurzacz. Kraków, 31 października 1918. Rano jeszcze rządzą tu Austriacy. Wieczorem — już nie."
+        ]
+       }
+      ]
+     }
+    },
+    {
+     "id": "mapa_sciana",
+     "nazwa": "Mapa ziem polskich",
+     "rect": [
+      1040,
+      90,
+      200,
+      150
+     ],
+     "patrz": "Stara mapa z trzema kolorami… to znaczy z trzema odcieniami brązu.",
+     "akcje": [
+      {
+       "efekty": [
+        "fakt:zabory"
+       ],
+       "mow": "Trzy zabory: rosyjski, pruski i austriacki. 123 lata podziału."
+      }
+     ]
+    }
+   ]
+  },
+  "krakow_rynek": {
+   "rozdzial": "r1",
+   "nazwa": "Kraków — Rynek Główny",
+   "data": "31 X 1918",
+   "tlo": "krakow",
+   "hotspoty": [
+    {
+     "id": "witos",
+     "nazwa": "Wincenty Witos",
+     "postac": "witos",
+     "x": 820,
+     "patrz": "Krzepki mężczyzna w chłopskim kapeluszu. Rozmawia z oficerami jak równy z równymi.",
+     "akcje": [
+      {
+       "gdy": [
+        "!flag:rozmowa_witos"
+       ],
+       "efekty": [
+        "dialog:d_witos"
+       ]
+      },
+      {
+       "gdy": [
+        "!flag:mapa_ok"
+       ],
+       "mow": "Witos: Słup z mapą stoi tam, chłopcze. Pokaż, co wiesz o zaborach."
+      },
+      {
+       "mow": "Witos: Wracaj do Warszawy. I powiedz tam, że wieś też chce Polski!"
+      }
+     ]
+    },
+    {
+     "id": "slup",
+     "nazwa": "Słup ogłoszeniowy z mapą",
+     "rect": [
+      430,
+      150,
+      110,
+      330
+     ],
+     "patrz": "Na słupie wisi mapa zaborów z wyrwanymi nazwami miast.",
+     "akcje": [
+      {
+       "gdy": [
+        "!flag:rozmowa_witos"
+       ],
+       "mow": "Ktoś wyrwał nazwy miast z mapy. Może pan w kapeluszu wie, o co chodzi?"
+      },
+      {
+       "gdy": [
+        "!flag:mapa_ok"
+       ],
+       "efekty": [
+        "minigra:mapa_zaborow"
+       ]
+      },
+      {
+       "mow": "Mapa kompletna. Dziewięć miast, trzy zabory."
+      }
+     ]
+    },
+    {
+     "id": "sukiennice",
+     "nazwa": "Sukiennice",
+     "rect": [
+      40,
+      170,
+      330,
+      200
+     ],
+     "patrz": "Sukiennice. Kupcy handlowali tu suknem, kiedy jeszcze nikt nie słyszał o zaborach.",
+     "akcje": [
+      {
+       "mow": "Na arkadach wisi biało-czerwona flaga. Ktoś zawiesił ją dziś rano."
+      }
+     ]
+    },
+    {
+     "id": "mariacki",
+     "nazwa": "Kościół Mariacki",
+     "rect": [
+      980,
+      20,
+      260,
+      300
+     ],
+     "patrz": "Dwie nierówne wieże. Hejnał urywa się w pół nuty — od wieków.",
+     "akcje": [
+      {
+       "efekty": [
+        "fakt:krakow_rozbrojenie"
+       ],
+       "mow": "Żołnierze pod kościołem zrywają z czapek austriackie bączki!"
+      }
+     ]
+    },
+    {
+     "id": "gazeciarz",
+     "nazwa": "Gazeta na ławce",
+     "rect": [
+      600,
+      430,
+      90,
+      50
+     ],
+     "przedmiot": "gazeta",
+     "patrz": "Ktoś zostawił gazetę.",
+     "akcje": [
+      {
+       "efekty": [
+        "fakt:pkl_krakow",
+        "fakt:lwow_walki"
+       ],
+       "mow": "„Polska Komisja Likwidacyjna przejmuje władzę!” A z Lwowa złe wieści — walki."
+      }
+     ]
+    },
+    {
+     "id": "powrot",
+     "nazwa": "Pocztówka do Warszawy",
+     "wyjscie": true,
+     "rect": [
+      1150,
+      400,
+      120,
+      120
+     ],
+     "widoczny": [
+      "flag:mapa_ok"
+     ],
+     "patrz": "Pocztówka z widokiem Warszawy unosi się w powietrzu. Typowe.",
+     "akcje": [
+      {
+       "efekty": [
+        "mit:m_jeden_dzien",
+        "mit:m_swieto",
+        "koniec_rozdzialu"
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "harcowka": {
+   "rozdzial": "r2",
+   "nazwa": "Harcówka przy ul. Wspólnej",
+   "data": "4 XI 1918",
+   "tlo": "harcowka",
+   "hotspoty": [
+    {
+     "id": "staszek",
+     "nazwa": "druh Staszek",
+     "postac": "druh_staszek",
+     "x": 760,
+     "patrz": "Drużynowy. Ma siedemnaście lat i minę generała.",
+     "akcje": [
+      {
+       "gdy": [
+        "!flag:misja_rr"
+       ],
+       "efekty": [
+        "dialog:d_staszek"
+       ]
+      },
+      {
+       "gdy": [
+        "!ma:opaska",
+        "!flag:wpuszczony"
+       ],
+       "mow": "Staszek: Bez opaski nikt cię nie potraktuje poważnie. Wisi na haku!"
+      },
+      {
+       "mow": "Staszek: Czuwaj! I nie otwieraj koperty, nawet jak bardzo kusi."
+      }
+     ]
+    },
+    {
+     "id": "hak",
+     "nazwa": "Hak z opaską",
+     "przedmiot": "opaska",
+     "rect": [
+      330,
+      200,
+      70,
+      70
+     ],
+     "widoczny": [
+      "!flag:opaska_wzieta"
+     ],
+     "patrz": "Opaska łącznika wisi na haku.",
+     "akcje": [
+      {
+       "efekty": [
+        "daj:opaska",
+        "flag:opaska_wzieta"
+       ],
+       "mow": "Opaska łącznika. Od razu czuję się o trzy centymetry wyższy."
+      }
+     ]
+    },
+    {
+     "id": "stol",
+     "nazwa": "Stół z gazetami",
+     "rect": [
+      470,
+      360,
+      200,
+      90
+     ],
+     "patrz": "Gazety z ostatnich dni. Same sensacje.",
+     "akcje": [
+      {
+       "efekty": [
+        "fakt:swiezynski"
+       ],
+       "mow": "Rada Regencyjna odwołała rząd Świeżyńskiego! Kto tu właściwie rządzi?"
+      }
+     ]
+    },
+    {
+     "id": "lilijka",
+     "nazwa": "Proporzec drużyny",
+     "rect": [
+      1000,
+      80,
+      160,
+      180
+     ],
+     "patrz": "Proporzec z lilijką. Pierwsze drużyny harcerskie powstawały na ziemiach polskich od 1911 r.",
+     "akcje": [
+      {
+       "mow": "Harcerze w 1918 r. byli łącznikami, sanitariuszami i… rozbrajaczami. Ale to później."
+      }
+     ]
+    },
+    {
+     "id": "drzwi",
+     "nazwa": "Wyjście na miasto",
+     "wyjscie": true,
+     "rect": [
+      1150,
+      300,
+      120,
+      220
+     ],
+     "widoczny": [
+      "flag:misja_rr"
+     ],
+     "patrz": "Drzwi na ulicę. Do siedziby Rady Regencyjnej jest kawałek.",
+     "akcje": [
+      {
+       "efekty": [
+        "idz:rr_siedziba"
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "rr_siedziba": {
+   "rozdzial": "r2",
+   "nazwa": "Siedziba Rady Regencyjnej",
+   "data": "5 XI 1918",
+   "tlo": "palac_wnetrze",
+   "hotspoty": [
+    {
+     "id": "wozny",
+     "nazwa": "pan Feliks, woźny",
+     "postac": "wozny",
+     "x": 300,
+     "patrz": "Woźny o wąsach jak dwie szczotki do butów.",
+     "akcje": [
+      {
+       "gdy": [
+        "!flag:wpuszczony"
+       ],
+       "mow": "Woźny: Dzieci nie wpuszczam! Chyba że to dziecko w służbie. Ma dziecko dowód służby?"
+      },
+      {
+       "mow": "Woźny: Proszę, proszę. Tylko po dywanie nie biegać."
+      }
+     ],
+     "uzyj": {
+      "opaska": [
+       {
+        "efekty": [
+         "flag:wpuszczony",
+         "zabierz:opaska"
+        ],
+        "mow": "Woźny: Opaska łącznika! No proszę. Wejść, ale cicho. Regenci obradują."
+       }
+      ],
+      "meldunek": [
+       {
+        "mow": "Woźny: Meldunki dla Rady przyjmują regenci. Ja przyjmuję płaszcze."
+       }
+      ]
+     }
+    },
+    {
+     "id": "kakowski",
+     "nazwa": "abp Aleksander Kakowski",
+     "postac": "kakowski",
+     "x": 640,
+     "widoczny": [
+      "flag:wpuszczony"
+     ],
+     "patrz": "Arcybiskup warszawski. Spokojny, uważny, wszystko notuje w pamięci.",
+     "akcje": [
+      {
+       "efekty": [
+        "dialog:d_regenci"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "lubomirski",
+     "nazwa": "książę Zdzisław Lubomirski",
+     "postac": "lubomirski",
+     "x": 830,
+     "widoczny": [
+      "flag:wpuszczony"
+     ],
+     "patrz": "Wysoki, w cylindrze. Były prezydent Warszawy.",
+     "akcje": [
+      {
+       "gdy": [
+        "!flag:meldunek_oddany"
+       ],
+       "mow": "Lubomirski: Masz coś dla nas, młody człowieku? Widzę kopertę."
+      },
+      {
+       "efekty": [
+        "dialog:d_lubomirski_powt"
+       ]
+      }
+     ],
+     "uzyj": {
+      "meldunek": [
+       {
+        "efekty": [
+         "zabierz:meldunek",
+         "flag:meldunek_oddany",
+         "dialog:d_lubomirski"
+        ]
+       }
+      ]
+     }
+    },
+    {
+     "id": "ostrowski",
+     "nazwa": "Józef Ostrowski",
+     "postac": "ostrowski",
+     "x": 1010,
+     "widoczny": [
+      "flag:wpuszczony"
+     ],
+     "patrz": "Najstarszy z regentów. Przegląda stos dokumentów.",
+     "akcje": [
+      {
+       "efekty": [
+        "dialog:d_ostrowski"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "portret",
+     "nazwa": "Puste miejsce po portrecie",
+     "rect": [
+      560,
+      60,
+      160,
+      150
+     ],
+     "patrz": "Jaśniejszy prostokąt na tapecie. Ktoś niedawno zdjął portret cesarza.",
+     "akcje": [
+      {
+       "mow": "Portret cesarza zniknął. Tapeta pamięta dłużej niż ludzie."
+      }
+     ]
+    },
+    {
+     "id": "do_lublina",
+     "nazwa": "Pocztówka z Lublina",
+     "wyjscie": true,
+     "rect": [
+      1150,
+      380,
+      120,
+      130
+     ],
+     "widoczny": [
+      "flag:meldunek_oddany",
+      "ma:odpis_oredzia"
+     ],
+     "patrz": "Pocztówka z Lublina. Stempel: 6 XI 1918.",
+     "akcje": [
+      {
+       "efekty": [
+        "mit:m_rr_zdrajcy",
+        "koniec_rozdzialu"
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "lublin_palac": {
+   "rozdzial": "r3",
+   "nazwa": "Lublin — Pałac Lubomirskich",
+   "data": "noc 6/7 XI 1918",
+   "tlo": "lublin_palac",
+   "hotspoty": [
+    {
+     "id": "daszynski",
+     "nazwa": "Ignacy Daszyński",
+     "postac": "daszynski",
+     "x": 700,
+     "patrz": "Broda, kapelusz i głos, który słychać bez megafonu.",
+     "akcje": [
+      {
+       "gdy": [
+        "!flag:zlecenie_daszynski"
+       ],
+       "efekty": [
+        "dialog:d_daszynski"
+       ]
+      },
+      {
+       "gdy": [
+        "!ma:odbitka_manifestu"
+       ],
+       "mow": "Daszyński: Drukarnia jest za rogiem! Manifest musi być gotowy przed świtem."
+      },
+      {
+       "mow": "Daszyński: No, pokaż tę odbitkę!"
+      }
+     ],
+     "uzyj": {
+      "odbitka_manifestu": [
+       {
+        "efekty": [
+         "zabierz:odbitka_manifestu",
+         "fakt:trl_lublin",
+         "fakt:manifest_tresc",
+         "dialog:d_daszynski_koniec"
+        ]
+       }
+      ]
+     }
+    },
+    {
+     "id": "rydz",
+     "nazwa": "Edward Rydz-Śmigły",
+     "postac": "rydz",
+     "x": 950,
+     "patrz": "Młody komendant POW. Podobno umie też malować. I to nie tylko plany bitew.",
+     "akcje": [
+      {
+       "efekty": [
+        "dialog:d_rydz"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "okno",
+     "nazwa": "Okno na plac",
+     "rect": [
+      90,
+      70,
+      180,
+      230
+     ],
+     "patrz": "Za oknem ciemność i latarnie. Gdzieś daleko gra orkiestra.",
+     "akcje": [
+      {
+       "mow": "Lublin nie śpi. Nikt nie śpi, kiedy powstaje rząd."
+      }
+     ]
+    },
+    {
+     "id": "do_drukarni",
+     "nazwa": "Do drukarni",
+     "wyjscie": true,
+     "rect": [
+      1150,
+      320,
+      120,
+      200
+     ],
+     "widoczny": [
+      "flag:zlecenie_daszynski"
+     ],
+     "patrz": "Drzwi na ulicę. Drukarnia jest za rogiem.",
+     "akcje": [
+      {
+       "efekty": [
+        "idz:lublin_drukarnia"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "pocztowka_dalej",
+     "nazwa": "Pocztówka z pociągu",
+     "wyjscie": true,
+     "rect": [
+      20,
+      380,
+      120,
+      130
+     ],
+     "widoczny": [
+      "flag:manifest_oddany"
+     ],
+     "patrz": "Pocztówka z wagonem kolejowym. Stempel: Berlin, 9 XI 1918.",
+     "akcje": [
+      {
+       "efekty": [
+        "koniec_rozdzialu"
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "lublin_drukarnia": {
+   "rozdzial": "r3",
+   "nazwa": "Lublin — drukarnia",
+   "data": "7 XI 1918, 3.00 w nocy",
+   "tlo": "drukarnia",
+   "hotspoty": [
+    {
+     "id": "zecer",
+     "nazwa": "pan Lejb Gutman, zecer",
+     "postac": "zecer",
+     "x": 860,
+     "patrz": "Zecer w fartuchu. Czcionki układa szybciej, niż ja czytam.",
+     "akcje": [
+      {
+       "gdy": [
+        "!flag:rozmowa_zecer"
+       ],
+       "efekty": [
+        "dialog:d_zecer"
+       ]
+      },
+      {
+       "gdy": [
+        "!flag:manifest_ok"
+       ],
+       "mow": "Zecer: Kaszta czeka, panie redaktorze!"
+      },
+      {
+       "mow": "Zecer: Odbitka gotowa. Leć, zanim farba wyschnie!"
+      }
+     ]
+    },
+    {
+     "id": "kaszta",
+     "nazwa": "Kaszta zecerska",
+     "rect": [
+      300,
+      260,
+      260,
+      150
+     ],
+     "patrz": "Szuflady pełne ołowianych liter. Każda litera — lustrzane odbicie.",
+     "akcje": [
+      {
+       "gdy": [
+        "!flag:rozmowa_zecer"
+       ],
+       "mow": "Najpierw zapytam zecera, co tu się układa."
+      },
+      {
+       "gdy": [
+        "!flag:manifest_ok"
+       ],
+       "efekty": [
+        "minigra:manifest"
+       ]
+      },
+      {
+       "mow": "Manifest złożony. Teraz zostało go wydrukować."
+      }
+     ]
+    },
+    {
+     "id": "prasa",
+     "nazwa": "Prasa drukarska",
+     "rect": [
+      580,
+      170,
+      220,
+      300
+     ],
+     "patrz": "Żeliwna prasa. Stuka jak pociąg.",
+     "akcje": [
+      {
+       "gdy": [
+        "flag:manifest_ok",
+        "!flag:odbitka_wzieta"
+       ],
+       "efekty": [
+        "daj:odbitka_manifestu",
+        "flag:odbitka_wzieta"
+       ],
+       "mow": "Prasa stuka, papier szeleści… Jest odbitka manifestu!"
+      },
+      {
+       "mow": "Prasa czeka na złożony tekst."
+      }
+     ]
+    },
+    {
+     "id": "plakaty",
+     "nazwa": "Stare plakaty",
+     "rect": [
+      60,
+      80,
+      200,
+      160
+     ],
+     "patrz": "Ogłoszenia z czasów austriackiej okupacji. Mąka na kartki, nafta na kartki, wszystko na kartki.",
+     "akcje": [
+      {
+       "mow": "Wojna to nie tylko front. To też kolejki po chleb."
+      }
+     ]
+    },
+    {
+     "id": "do_palacu",
+     "nazwa": "Z powrotem do pałacu",
+     "wyjscie": true,
+     "rect": [
+      20,
+      330,
+      110,
+      190
+     ],
+     "patrz": "Drzwi do pałacu.",
+     "akcje": [
+      {
+       "efekty": [
+        "idz:lublin_palac"
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "wagon": {
+   "rozdzial": "r4",
+   "nazwa": "Pociąg specjalny Berlin – Warszawa",
+   "data": "noc 9/10 XI 1918",
+   "tlo": "wagon",
+   "hotspoty": [
+    {
+     "id": "pilsudski",
+     "nazwa": "Józef Piłsudski",
+     "postac": "pilsudski",
+     "x": 760,
+     "patrz": "Wąsy, maciejówka, zmęczone oczy. Patrzy w ciemne okno.",
+     "akcje": [
+      {
+       "gdy": [
+        "!flag:rozmowa_pilsudski"
+       ],
+       "efekty": [
+        "dialog:d_pilsudski"
+       ]
+      },
+      {
+       "mow": "Piłsudski: Zdrzemnij się, chłopcze. W Warszawie nikt nie da nam spać."
+      }
+     ]
+    },
+    {
+     "id": "siedzenie",
+     "nazwa": "Rozkład jazdy na siedzeniu",
+     "przedmiot": "rozklad_jazdy",
+     "rect": [
+      380,
+      380,
+      90,
+      55
+     ],
+     "widoczny": [
+      "!flag:rozklad_wziety"
+     ],
+     "patrz": "Na siedzeniu leży kartka z rozkładem.",
+     "akcje": [
+      {
+       "efekty": [
+        "daj:rozklad_jazdy",
+        "flag:rozklad_wziety"
+       ],
+       "mow": "Przyjazd: Warszawa, 10 XI 1918, 7.00. Zapamiętam — przyda się."
+      }
+     ]
+    },
+    {
+     "id": "okno_wagon",
+     "nazwa": "Okno",
+     "rect": [
+      540,
+      90,
+      190,
+      170
+     ],
+     "patrz": "Za oknem nocny krajobraz. Granica, potem polskie wioski.",
+     "akcje": [
+      {
+       "efekty": [
+        "fakt:magdeburg"
+       ],
+       "mow": "Ile lat on nie widział tych pól? Ponad rok w twierdzy w Magdeburgu."
+      }
+     ]
+    },
+    {
+     "id": "wysiadka",
+     "nazwa": "Drzwi wagonu: Warszawa!",
+     "wyjscie": true,
+     "rect": [
+      1150,
+      160,
+      120,
+      320
+     ],
+     "widoczny": [
+      "flag:rozmowa_pilsudski",
+      "ma:rozklad_jazdy"
+     ],
+     "patrz": "Pociąg zwalnia. Za szybą tablica: WARSZAWA.",
+     "akcje": [
+      {
+       "efekty": [
+        "idz:dworzec",
+        "damian:Dworzec Wiedeński, 10 listopada, wcześnie rano. Zimno, szaro i trochę mgły. Idealne warunki na historię."
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "dworzec": {
+   "rozdzial": "r4",
+   "nazwa": "Warszawa — Dworzec Wiedeński",
+   "data": "10 XI 1918, 7.00",
+   "tlo": "dworzec",
+   "hotspoty": [
+    {
+     "id": "koc",
+     "nazwa": "Adam Koc",
+     "postac": "koc",
+     "x": 820,
+     "patrz": "Komendant POW. Rozgląda się, jakby liczył każdego człowieka na peronie.",
+     "akcje": [
+      {
+       "gdy": [
+        "!flag:rozmowa_koc"
+       ],
+       "efekty": [
+        "dialog:d_koc"
+       ]
+      },
+      {
+       "gdy": [
+        "!flag:przepustki_ok"
+       ],
+       "mow": "Koc: Bramka na peron! Sprawdzaj przepustki, szybko!"
+      },
+      {
+       "mow": "Koc: Dobra robota. Na peronie są tylko ci, którzy mieli tam być."
+      }
+     ]
+    },
+    {
+     "id": "bramka",
+     "nazwa": "Bramka na peron",
+     "rect": [
+      330,
+      200,
+      180,
+      300
+     ],
+     "patrz": "Bramka z napisem „Perron”. Przed nią tłoczą się ludzie z przepustkami.",
+     "akcje": [
+      {
+       "gdy": [
+        "!flag:rozmowa_koc"
+       ],
+       "mow": "Tłum przy bramce. Zapytam komendanta, co robić."
+      },
+      {
+       "gdy": [
+        "!flag:przepustki_ok"
+       ],
+       "efekty": [
+        "minigra:przepustki"
+       ]
+      },
+      {
+       "mow": "Bramka spokojna. Zmiana warty."
+      }
+     ]
+    },
+    {
+     "id": "lubomirski_dw",
+     "nazwa": "książę Zdzisław Lubomirski",
+     "postac": "lubomirski",
+     "x": 1010,
+     "widoczny": [
+      "flag:przepustki_ok"
+     ],
+     "patrz": "Regent przyszedł przywitać Komendanta.",
+     "akcje": [
+      {
+       "efekty": [
+        "dialog:d_lubomirski_dworzec"
+       ]
+      }
+     ]
+    },
+    {
+     "id": "zegar",
+     "nazwa": "Zegar dworcowy",
+     "rect": [
+      600,
+      20,
+      120,
+      120
+     ],
+     "patrz": "Zegar wskazuje siódmą. Data na kalendarzu kasy: 10 XI 1918.",
+     "akcje": [
+      {
+       "mow": "Godzina 7.00, 10 listopada. Zapamiętaj, Janku. Ktoś na pewno będzie twierdził inaczej."
+      }
+     ]
+    },
+    {
+     "id": "dalej_dworzec",
+     "nazwa": "Pocztówka: koszary",
+     "wyjscie": true,
+     "rect": [
+      1150,
+      400,
+      120,
+      120
+     ],
+     "widoczny": [
+      "flag:powitanie_ok"
+     ],
+     "patrz": "Pocztówka z widokiem koszar. Stempel: 10 XI 1918, wieczór.",
+     "akcje": [
+      {
+       "efekty": [
+        "fakt:powrot_10xi",
+        "mit:m_przyjazd_11",
+        "koniec_rozdzialu"
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "koszary": {
+   "rozdzial": "r5",
+   "nazwa": "Koszary Mirowskie",
+   "data": "10/11 XI 1918, noc",
+   "tlo": "koszary",
+   "hotspoty": [
+    {
+     "id": "koc_k",
+     "nazwa": "Adam Koc",
+     "postac": "koc",
+     "x": 300,
+     "patrz": "Komendant ma przed sobą plan miasta i kubek zimnej kawy.",
+     "akcje": [
+      {
+       "gdy": [
+        "!flag:plan_dany"
+       ],
+       "efekty": [
+        "daj:plan_koszar",
+        "flag:plan_dany",
+        "dialog:d_koc_plan"
+       ]
+      },
+      {
+       "gdy": [
+        "!flag:kolejnosc_ok"
+       ],
+       "mow": "Koc: Rozłóż plan na stole i ustal kolejność. Pięć punktów, zero ofiar — taki jest cel."
+      },
+      {
+       "gdy": [
+        "!flag:rozbrojenie_ok"
+       ],
+       "mow": "Koc: Plan jest. Teraz najtrudniejsze — rozmowa z wartownikiem."
+      },
+      {
+       "mow": "Koc: Koszary nasze. Bez jednego strzału. Pamiętaj tę noc, Janku."
+      }
+     ]
+    },
+    {
+     "id": "stol_plan",
+     "nazwa": "Stół sztabowy",
+     "rect": [
+      430,
+      330,
+      230,
+      120
+     ],
+     "patrz": "Stół z mapą Warszawy i ołówkami.",
+     "akcje": [
+      {
+       "gdy": [
+        "!ma:plan_koszar",
+        "!flag:kolejnosc_ok"
+       ],
+       "mow": "Na stole nic nie ma. Komendant trzyma plan przy sobie."
+      },
+      {
+       "gdy": [
+        "!flag:kolejnosc_ok"
+       ],
+       "efekty": [
+        "minigra:kolejnosc_koszar"
+       ]
+      },
+      {
+       "mow": "Plan ułożony: telegraf, magazyn, dworzec, koszary, Cytadela."
+      }
+     ]
+    },
+    {
+     "id": "otto",
+     "nazwa": "Otto, wartownik",
+     "postac": "otto",
+     "x": 930,
+     "patrz": "Niemiecki wartownik z czerwoną kokardą Rady Żołnierskiej. Karabin trzyma niepewnie.",
+     "akcje": [
+      {
+       "gdy": [
+        "!flag:kolejnosc_ok"
+       ],
+       "mow": "Wartownik patrzy podejrzliwie. Bez planu lepiej nie podchodzić."
+      },
+      {
+       "gdy": [
+        "!flag:rozbrojenie_ok"
+       ],
+       "efekty": [
+        "napiecie:0",
+        "dialog:d_otto"
+       ]
+      },
+      {
+       "mow": "Otto: Danke, junge. Jadę do domu. Do Lipska. Do mamy."
+      }
+     ]
+    },
+    {
+     "id": "brama",
+     "nazwa": "Brama koszar",
+     "rect": [
+      620,
+      60,
+      220,
+      260
+     ],
+     "patrz": "Ciężka brama z niemieckim orłem. Ktoś już przykleił nad nim kartkę „Wojsko Polskie”.",
+     "akcje": [
+      {
+       "mow": "Za bramą kilkuset żołnierzy. Lepiej, żeby wszyscy wyszli stąd żywi."
+      }
+     ]
+    },
+    {
+     "id": "na_plac",
+     "nazwa": "Na Plac Saski",
+     "wyjscie": true,
+     "rect": [
+      1150,
+      330,
+      120,
+      190
+     ],
+     "widoczny": [
+      "flag:rozbrojenie_ok"
+     ],
+     "patrz": "Ulica prowadzi na Plac Saski.",
+     "akcje": [
+      {
+       "efekty": [
+        "fakt:rozbrajanie",
+        "idz:plac_saski"
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "plac_saski": {
+   "rozdzial": "r5",
+   "nazwa": "Warszawa — Plac Saski",
+   "data": "12 XI 1918",
+   "tlo": "plac_saski",
+   "hotspoty": [
+    {
+     "id": "zawadzka",
+     "nazwa": "red. Helena Zawadzka",
+     "postac": "zawadzka",
+     "x": 640,
+     "patrz": "Reporterka z notesem. Ołówek ma zatemperowany jak bagnet.",
+     "akcje": [
+      {
+       "gdy": [
+        "!flag:rozmowa_zawadzka"
+       ],
+       "efekty": [
+        "dialog:d_zawadzka"
+       ]
+      },
+      {
+       "gdy": [
+        "!flag:swiadkowie_ok"
+       ],
+       "efekty": [
+        "minigra:swiadkowie"
+       ]
+      },
+      {
+       "mow": "Zawadzka: Artykuł gotowy. Prawdziwy, sprawdzony, nudny jak flaki z olejem. Czyli idealny!"
+      }
+     ]
+    },
+    {
+     "id": "dorozkarz",
+     "nazwa": "dorożkarz Wincenty",
+     "postac": "dorozkarz",
+     "x": 280,
+     "patrz": "Dorożkarz. Zna każdą plotkę od Pragi po Wolę.",
+     "akcje": [
+      {
+       "mow": "Dorożkarz: Panie, ja wszystko widziałem! No, prawie wszystko. Proszę pytać redaktorkę."
+      }
+     ]
+    },
+    {
+     "id": "przekupka",
+     "nazwa": "przekupka Bronisława",
+     "postac": "przekupka",
+     "x": 450,
+     "patrz": "Sprzedaje obwarzanki i opowieści. Opowieści taniej.",
+     "akcje": [
+      {
+       "mow": "Przekupka: Obwarzanki! A do obwarzanka historia gratis!"
+      }
+     ]
+    },
+    {
+     "id": "student",
+     "nazwa": "student Leon",
+     "postac": "student",
+     "x": 860,
+     "patrz": "Student w czapce akademickiej, z opaską straży.",
+     "akcje": [
+      {
+       "mow": "Student: Rozbrajałem Niemców przy Krakowskim Przedmieściu. Oddawali karabiny i pytali o pociąg."
+      }
+     ]
+    },
+    {
+     "id": "palac_saski",
+     "nazwa": "Pałac Saski",
+     "rect": [
+      60,
+      40,
+      620,
+      200
+     ],
+     "patrz": "Pałac Saski z kolumnadą. Do niedawna siedziba niemieckich władz.",
+     "akcje": [
+      {
+       "mow": "Na pałacu łopocze biało-czerwona flaga. Jeszcze wczoraj była inna."
+      }
+     ]
+    },
+    {
+     "id": "do_paryza",
+     "nazwa": "Pocztówka z Paryża",
+     "wyjscie": true,
+     "rect": [
+      1150,
+      400,
+      120,
+      120
+     ],
+     "widoczny": [
+      "flag:swiadkowie_ok"
+     ],
+     "patrz": "Pocztówka z wieżą Eiffla. Stempel: Paris, 13 XI 1918.",
+     "akcje": [
+      {
+       "efekty": [
+        "fakt:rr_11xi",
+        "fakt:rr_14xi",
+        "mit:m_rozbrojenie_krwawe",
+        "koniec_rozdzialu"
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "paryz_knp": {
+   "rozdzial": "r6",
+   "nazwa": "Paryż — biuro Komitetu Narodowego Polskiego",
+   "data": "13 XI 1918",
+   "tlo": "paryz_biuro",
+   "hotspoty": [
+    {
+     "id": "dmowski",
+     "nazwa": "Roman Dmowski",
+     "postac": "dmowski",
+     "x": 500,
+     "patrz": "Binokle, melonik na wieszaku, stos map na biurku.",
+     "akcje": [
+      {
+       "gdy": [
+        "!flag:rozmowa_dmowski"
+       ],
+       "efekty": [
+        "dialog:d_dmowski"
+       ]
+      },
+      {
+       "mow": "Dmowski: Salon dyplomatów jest obok. Nie spóźnij się — Anglicy liczą minuty."
+      }
+     ]
+    },
+    {
+     "id": "paderewski",
+     "nazwa": "Ignacy Jan Paderewski (pocztówka z Nowego Jorku)",
+     "postac": "paderewski",
+     "x": 940,
+     "ramka": true,
+     "patrz": "Wielka pocztówka na sztaludze: „New York, November 1918”. Paderewski macha z niej ręką.",
+     "akcje": [
+      {
+       "gdy": [
+        "!flag:rozmowa_paderewski"
+       ],
+       "efekty": [
+        "dialog:d_paderewski"
+       ]
+      },
+      {
+       "mow": "Paderewski: Graj im fakty, chłopcze, nie fałszuj. Publiczność to słyszy."
+      }
+     ]
+    },
+    {
+     "id": "telegraf",
+     "nazwa": "Aparat telegraficzny",
+     "rect": [
+      650,
+      300,
+      140,
+      120
+     ],
+     "patrz": "Telegraf stuka bez przerwy. Depesze z Warszawy, Londynu, Nowego Jorku.",
+     "akcje": [
+      {
+       "efekty": [
+        "fakt:telegram_16xi"
+       ],
+       "mow": "Depesza z Warszawy: Piłsudski zawiadamia świat o istnieniu Państwa Polskiego! (16 XI)"
+      }
+     ]
+    },
+    {
+     "id": "wieza",
+     "nazwa": "Widok na wieżę Eiffla",
+     "rect": [
+      80,
+      40,
+      230,
+      260
+     ],
+     "patrz": "Za oknem wieża Eiffla. W 1918 r. miała dopiero 29 lat.",
+     "akcje": [
+      {
+       "mow": "Paryż świętuje rozejm. Na ulicach tańczą, a tu wszyscy pracują."
+      }
+     ]
+    },
+    {
+     "id": "do_salonu",
+     "nazwa": "Do salonu dyplomatycznego",
+     "wyjscie": true,
+     "rect": [
+      1150,
+      300,
+      120,
+      220
+     ],
+     "widoczny": [
+      "flag:rozmowa_dmowski",
+      "ma:depesza"
+     ],
+     "patrz": "Złocone drzwi do salonu.",
+     "akcje": [
+      {
+       "efekty": [
+        "idz:paryz_salon"
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "paryz_salon": {
+   "rozdzial": "r6",
+   "nazwa": "Paryż — salon dyplomatyczny",
+   "data": "15 XI 1918",
+   "tlo": "salon",
+   "hotspoty": [
+    {
+     "id": "laroche",
+     "nazwa": "monsieur Laroche (Francja)",
+     "postac": "laroche",
+     "x": 380,
+     "patrz": "Dyplomata francuski. Pachnie wodą kolońską i ostrożnością.",
+     "akcje": [
+      {
+       "gdy": [
+        "!flag:dyplomacja_ok"
+       ],
+       "efekty": [
+        "minigra:dyplomacja"
+       ]
+      },
+      {
+       "mow": "Laroche: Francja pamięta o swoich sojusznikach. Au revoir, mon petit!"
+      }
+     ]
+    },
+    {
+     "id": "whitby",
+     "nazwa": "Mr. Whitby (Wielka Brytania)",
+     "postac": "whitby",
+     "x": 640,
+     "patrz": "Dyplomata brytyjski. Herbata, parasol, wątpliwości.",
+     "akcje": [
+      {
+       "gdy": [
+        "!flag:dyplomacja_ok"
+       ],
+       "efekty": [
+        "minigra:dyplomacja"
+       ]
+      },
+      {
+       "mow": "Whitby: Granice ustali konferencja. Spokojnie i według reguł."
+      }
+     ]
+    },
+    {
+     "id": "carter",
+     "nazwa": "Mr. Carter (USA)",
+     "postac": "carter",
+     "x": 900,
+     "patrz": "Dyplomata amerykański. Uśmiecha się szeroko, notuje szybko.",
+     "akcje": [
+      {
+       "gdy": [
+        "!flag:dyplomacja_ok"
+       ],
+       "efekty": [
+        "minigra:dyplomacja"
+       ]
+      },
+      {
+       "mow": "Carter: Point Thirteen, kid. Remember it!"
+      }
+     ]
+    },
+    {
+     "id": "flagi",
+     "nazwa": "Flagi aliantów",
+     "rect": [
+      40,
+      30,
+      230,
+      220
+     ],
+     "patrz": "Flagi Francji, Wielkiej Brytanii i USA. W sepii wszystkie są brązowe — sprawiedliwie.",
+     "akcje": [
+      {
+       "mow": "Trzy flagi, trzy państwa, trzy różne interesy."
+      }
+     ]
+    },
+    {
+     "id": "do_poznania",
+     "nazwa": "Pocztówka z Poznania",
+     "wyjscie": true,
+     "rect": [
+      1150,
+      400,
+      120,
+      120
+     ],
+     "widoczny": [
+      "flag:dyplomacja_ok"
+     ],
+     "patrz": "Pocztówka: Poznań, Hotel Bazar. Stempel: 17 XI 1918.",
+     "akcje": [
+      {
+       "efekty": [
+        "fakt:knp_uznanie",
+        "fakt:wilson_13",
+        "fakt:kompromis_1919",
+        "mit:m_dmowski_przeciw",
+        "koniec_rozdzialu"
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "poznan_bazar": {
+   "rozdzial": "r7",
+   "nazwa": "Poznań — Hotel Bazar",
+   "data": "17 XI 1918",
+   "tlo": "poznan",
+   "hotspoty": [
+    {
+     "id": "korfanty",
+     "nazwa": "Wojciech Korfanty",
+     "postac": "korfanty",
+     "x": 760,
+     "patrz": "Ślązak z sumiastym wąsem i teczką pełną przemówień.",
+     "akcje": [
+      {
+       "gdy": [
+        "!flag:rozmowa_korfanty"
+       ],
+       "efekty": [
+        "dialog:d_korfanty"
+       ]
+      },
+      {
+       "mow": "Korfanty: Poznań jeszcze poczeka. Ale nie za długo!"
+      }
+     ]
+    },
+    {
+     "id": "konduktorka",
+     "nazwa": "pani Jadwiga, konduktorka",
+     "postac": "konduktorka",
+     "x": 320,
+     "patrz": "Konduktorka tramwaju. W czasie wojny kobiety zastąpiły mężczyzn w wielu zawodach.",
+     "akcje": [
+      {
+       "mow": "Konduktorka: Bilety, proszę! Tramwaj niemiecki, pasażerowie polscy, a ja — punktualna."
+      }
+     ]
+    },
+    {
+     "id": "kiosk",
+     "nazwa": "Kiosk z gazetami",
+     "rect": [
+      470,
+      260,
+      140,
+      220
+     ],
+     "przedmiot": "gazeta",
+     "widoczny": [
+      "!ma:kurier"
+     ],
+     "patrz": "Kiosk z „Kurierem Poznańskim”.",
+     "akcje": [
+      {
+       "efekty": [
+        "daj:kurier",
+        "fakt:nrl"
+       ],
+       "mow": "„Kurier Poznański”: odezwa Naczelnej Rady Ludowej!"
+      }
+     ]
+    },
+    {
+     "id": "szyld",
+     "nazwa": "Niemiecki szyld",
+     "rect": [
+      900,
+      40,
+      300,
+      90
+     ],
+     "patrz": "Szyld po niemiecku: „Königliche Polizei”. Ktoś dopisał kredą: „jeszcze”.",
+     "akcje": [
+      {
+       "mow": "Poznań wciąż jest w Niemczech. Ale polskie flagi już wiszą w oknach."
+      }
+     ]
+    },
+    {
+     "id": "do_warszawy",
+     "nazwa": "Pocztówka: Warszawa, 28 XI",
+     "wyjscie": true,
+     "rect": [
+      1150,
+      400,
+      120,
+      120
+     ],
+     "widoczny": [
+      "flag:rozmowa_korfanty"
+     ],
+     "patrz": "Pocztówka z Warszawy. Stempel: 28 XI 1918.",
+     "akcje": [
+      {
+       "efekty": [
+        "fakt:korfanty_reichstag",
+        "fakt:wielkopolska",
+        "mit:m_wielkopolska",
+        "idz:warszawa_lokal",
+        "damian:Ostatni przystanek: Warszawa, 28 listopada. Lokal Ligi Kobiet. Tu właśnie przyniesiono gorący dekret."
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "warszawa_lokal": {
+   "rozdzial": "r7",
+   "nazwa": "Warszawa — lokal Ligi Kobiet",
+   "data": "28 XI 1918",
+   "tlo": "lokal",
+   "hotspoty": [
+    {
+     "id": "moraczewska",
+     "nazwa": "Zofia Moraczewska",
+     "postac": "moraczewska",
+     "x": 700,
+     "patrz": "Działaczka Ligi Kobiet. W ręku trzyma dekret jak bilet do przyszłości.",
+     "akcje": [
+      {
+       "gdy": [
+        "!flag:rozmowa_moraczewska"
+       ],
+       "efekty": [
+        "dialog:d_moraczewska"
+       ]
+      },
+      {
+       "gdy": [
+        "!flag:quiz_kobiet_ok"
+       ],
+       "efekty": [
+        "minigra:prawa_kobiet"
+       ]
+      },
+      {
+       "mow": "Moraczewska: Za dwa miesiące wybory. Będziemy w nich i jako wyborczynie, i jako kandydatki."
+      }
+     ]
+    },
+    {
+     "id": "damian_final",
+     "nazwa": "Damian Ściseł",
+     "postac": "damian",
+     "x": 1000,
+     "widoczny": [
+      "flag:quiz_kobiet_ok"
+     ],
+     "patrz": "Damian wyszedł z pocztówki. Ma pod pachą album.",
+     "akcje": [
+      {
+       "gdy": [
+        "!flag:wklady_ok"
+       ],
+       "efekty": [
+        "minigra:wklady"
+       ]
+      },
+      {
+       "mow": "Damian: Album pełny. Każda pocztówka na swoim miejscu."
+      }
+     ]
+    },
+    {
+     "id": "plakat",
+     "nazwa": "Plakat wyborczy",
+     "rect": [
+      150,
+      70,
+      220,
+      280
+     ],
+     "patrz": "Plakat: „Obywatelki! Wasz głos ma wagę!”",
+     "akcje": [
+      {
+       "efekty": [
+        "fakt:moraczewski",
+        "fakt:naczelnik"
+       ],
+       "mow": "Pod plakatem przypięte dekrety: o 8-godzinnym dniu pracy i o Naczelniku Państwa."
+      }
+     ]
+    },
+    {
+     "id": "urna",
+     "nazwa": "Wzór urny wyborczej",
+     "rect": [
+      430,
+      330,
+      130,
+      140
+     ],
+     "patrz": "Drewniana skrzynka ze szczeliną. Na razie ćwiczebna.",
+     "akcje": [
+      {
+       "mow": "Wrzucam kartkę z napisem „Czuwaj!”. Zawsze to jakiś głos."
+      }
+     ]
+    }
+   ]
+  }
+ },
+ "przedmioty": {
+  "lupa": {
+   "nazwa": "Lupa archiwisty",
+   "opis": "Mosiężna lupa Damiana. Powiększa drobny druk i drobne kłamstwa."
+  },
+  "pocztowka_krakow": {
+   "nazwa": "Pocztówka z Krakowa",
+   "opis": "Rynek Główny, stempel: 31 X 1918. Lekko pachnie kawą."
+  },
+  "orzelek": {
+   "nazwa": "Orzełek z blachy",
+   "opis": "Taki sam, jakie krakowscy żołnierze przypinali zamiast austriackich bączków."
+  },
+  "opaska": {
+   "nazwa": "Opaska łącznika",
+   "opis": "Biało-czerwona opaska harcerskiej służby łączności."
+  },
+  "meldunek": {
+   "nazwa": "Zalakowany meldunek",
+   "opis": "Koperta dla Rady Regencyjnej. Nie wolno otwierać. Bardzo kusi."
+  },
+  "odpis_oredzia": {
+   "nazwa": "Odpis orędzia z 7 X",
+   "opis": "„Do Narodu Polskiego” — orędzie Rady Regencyjnej o niepodległej Polsce."
+  },
+  "odbitka_manifestu": {
+   "nazwa": "Odbitka manifestu",
+   "opis": "Świeżo wydrukowany manifest Tymczasowego Rządu Ludowego. Farba jeszcze się maże."
+  },
+  "rozklad_jazdy": {
+   "nazwa": "Rozkład jazdy",
+   "opis": "Pociąg specjalny Berlin – Warszawa. Przyjazd: 10 XI 1918, godz. 7.00 rano."
+  },
+  "plan_koszar": {
+   "nazwa": "Plan akcji POW",
+   "opis": "Szkic: pięć punktów w mieście do przejęcia. Kolejność — tajemnica."
+  },
+  "depesza": {
+   "nazwa": "Depesza od Paderewskiego",
+   "opis": "Z Nowego Jorku: argumenty dla Amerykanów i pozdrowienia dla Dmowskiego."
+  },
+  "kurier": {
+   "nazwa": "„Kurier Poznański”",
+   "opis": "Gazeta z odezwą Naczelnej Rady Ludowej."
+  },
+  "dekret": {
+   "nazwa": "Dekret z 28 XI 1918",
+   "opis": "Ordynacja wyborcza: głosuje każdy obywatel bez różnicy płci od 21 lat."
+  }
+ },
+ "dialogi": {
+  "d_damian_start": {
+   "start": "a",
+   "wezly": {
+    "a": {
+     "kto": "damian",
+     "tekst": "O, jesteś! Janek, prawda? Harcerz, łącznik, 14 lat, z Warszawy. Tak napisano w twojej teczce. Ja jestem Damian Ściseł. Pilnuję tu pocztówek z 1918 roku.",
+     "opcje": [
+      {
+       "tekst": "Dlaczego ma pan fioletowy kaptur?",
+       "dalej": "kaptur"
+      },
+      {
+       "tekst": "Jakich pocztówek?",
+       "dalej": "pocztowki"
+      }
+     ]
+    },
+    "kaptur": {
+     "kto": "damian",
+     "tekst": "Bo w archiwum wszystko jest brązowe. Gdybym nosił brąz, pomyliłbyś mnie z szafą. A poważnie: fiolet to kolor weryfikacji. Ja sprawdzam, co jest faktem, a co mitem.",
+     "dalej": "pocztowki"
+    },
+    "pocztowki": {
+     "kto": "damian",
+     "tekst": "Każda pocztówka to jeden dzień jesieni 1918 roku. Jak włożysz ją do stereoskopu, trafisz do środka. Zobaczysz, jak rodzi się państwo — nie w jeden dzień, tylko w cały miesiąc.",
+     "opcje": [
+      {
+       "tekst": "Jak to „nie w jeden dzień”? Przecież 11 listopada…",
+       "dalej": "mit"
+      },
+      {
+       "tekst": "Brzmi jak przygoda. Gdzie zaczynamy?",
+       "dalej": "start"
+      }
+     ]
+    },
+    "mit": {
+     "kto": "damian",
+     "tekst": "Ha! Pierwszy mit złapany. Wrócimy do niego na końcu rozdziału. Na razie zapamiętaj: historia rzadko trzyma się kalendarza ze szkolnej akademii.",
+     "dalej": "start"
+    },
+    "start": {
+     "kto": "damian",
+     "tekst": "Zaczynamy od Krakowa. Weź lupę z półki, wyjmij pocztówkę z szuflady i włóż ją do stereoskopu. Instrukcja obsługi historii, wersja 1918.",
+     "efekty": [
+      "flag:rozmowa_damian"
+     ],
+     "dalej": "koniec"
+    }
+   }
+  },
+  "d_witos": {
+   "start": "a",
+   "wezly": {
+    "a": {
+     "kto": "witos",
+     "tekst": "A ty skąd, chłopcze? Z Warszawy? Kawał drogi. Tu, w Krakowie, Austriacy właśnie się pakują. Jestem Witos, z Wierzchosławic. Przewodniczę Polskiej Komisji Likwidacyjnej.",
+     "opcje": [
+      {
+       "tekst": "Likwidacyjnej? Co pan likwiduje?",
+       "dalej": "likw"
+      },
+      {
+       "tekst": "Pan jest chłopem i rządzi Krakowem?",
+       "dalej": "chlop"
+      }
+     ]
+    },
+    "likw": {
+     "kto": "witos",
+     "tekst": "Władzę austriacką! Przejmujemy urzędy, pocztę, kolej, żeby ludzie mieli co jeść i żeby był porządek. Nie każda rewolucja musi mieć barykady. Czasem wystarczy pieczątka.",
+     "efekty": [
+      "fakt:pkl_krakow"
+     ],
+     "dalej": "zabory"
+    },
+    "chlop": {
+     "kto": "witos",
+     "tekst": "Chłopów jest w Polsce najwięcej. Jak wieś nie uwierzy, że to jej państwo, to nic z tego nie będzie. Ja uczyłem się sam, przy lampie naftowej. Da się.",
+     "dalej": "zabory"
+    },
+    "zabory": {
+     "kto": "witos",
+     "tekst": "Ale powiedz mi, warszawiaku: czy ty w ogóle wiesz, gdzie leżą nasze ziemie? Ktoś zerwał nazwy miast z mapy na słupie. Popraw ją, to pogadamy dalej.",
+     "efekty": [
+      "flag:rozmowa_witos"
+     ],
+     "dalej": "koniec"
+    }
+   }
+  },
+  "d_witos_mapa": {
+   "start": "a",
+   "wezly": {
+    "a": {
+     "kto": "witos",
+     "tekst": "No proszę! Kraków, Lwów i Przemyśl u Austriaków, Poznań i Gdańsk u Prusaków, Warszawa, Lublin i Wilno u Rosjan. Trzy różne prawa, trzy waluty, trzy armie. A teraz trzeba z tego zszyć jedno państwo.",
+     "dalej": "b"
+    },
+    "b": {
+     "kto": "witos",
+     "tekst": "Masz, weź orzełka. Żołnierze przypinają je zamiast austriackich bączków. I wracaj do Warszawy — tam się dopiero zacznie.",
+     "efekty": [
+      "daj:orzelek"
+     ],
+     "dalej": "koniec"
+    }
+   }
+  },
+  "d_staszek": {
+   "start": "a",
+   "wezly": {
+    "a": {
+     "kto": "druh_staszek",
+     "tekst": "Czuwaj, Janek! Mam zadanie. Ten meldunek musi trafić do Rady Regencyjnej. Do rąk własnych regentów, nie woźnego.",
+     "opcje": [
+      {
+       "tekst": "Czuwaj! A kto w ogóle jest w tej Radzie?",
+       "dalej": "rr"
+      },
+      {
+       "tekst": "Co jest w kopercie?",
+       "dalej": "koperta"
+      }
+     ]
+    },
+    "rr": {
+     "kto": "druh_staszek",
+     "tekst": "Arcybiskup Kakowski, książę Lubomirski i pan Ostrowski. Jedni mówią, że to ludzie Niemców, inni, że budują nam państwo. Sam ich zapytaj — po to jesteś łącznikiem.",
+     "dalej": "zadanie"
+    },
+    "koperta": {
+     "kto": "druh_staszek",
+     "tekst": "Gdybym wiedział, to nie byłaby tajemnica. Łącznik nie czyta, łącznik doręcza.",
+     "dalej": "zadanie"
+    },
+    "zadanie": {
+     "kto": "druh_staszek",
+     "tekst": "Weź opaskę z haka. Bez niej woźny cię nie wpuści. Powodzenia!",
+     "efekty": [
+      "daj:meldunek",
+      "flag:misja_rr"
+     ],
+     "dalej": "koniec"
+    }
+   }
+  },
+  "d_regenci": {
+   "start": "a",
+   "wezly": {
+    "a": {
+     "kto": "kakowski",
+     "tekst": "Witaj, synu. Rada Regencyjna obraduje, ale łącznika zawsze wysłuchamy. Czego chcesz się dowiedzieć?",
+     "opcje": [
+      {
+       "tekst": "Czy Rada Regencyjna chce niepodległej Polski?",
+       "dalej": "niep"
+      },
+      {
+       "tekst": "Ludzie mówią, że słuchacie Niemców. To prawda?",
+       "dalej": "niemcy"
+      },
+      {
+       "tekst": "Co będzie, gdy przyjdzie Piłsudski?",
+       "dalej": "pilsudski"
+      },
+      {
+       "tekst": "Dziękuję, nie przeszkadzam.",
+       "dalej": "koniec"
+      }
+     ]
+    },
+    "niep": {
+     "kto": "kakowski",
+     "tekst": "7 października ogłosiliśmy orędzie do Narodu Polskiego: chcemy niepodległego państwa ze wszystkich ziem polskich i z dostępem do morza. Mamy już sądy, szkoły i urzędników.",
+     "efekty": [
+      "fakt:rr_oredzie",
+      "fakt:rr_sklad"
+     ],
+     "dalej": "a"
+    },
+    "niemcy": {
+     "kto": "kakowski",
+     "tekst": "Powołali nas okupanci, to prawda. Krytycy mają tu rację. Ale my używamy tej władzy, żeby przygotować polskie urzędy. Oceni nas historia — i pewnie oceni różnie.",
+     "dalej": "a"
+    },
+    "pilsudski": {
+     "kto": "kakowski",
+     "tekst": "Jeśli wróci, a Bóg da, że wróci, trzeba będzie mądrze przekazać władzę. Bez rozlewu krwi i bez wojny między Polakami. Książę Lubomirski myśli podobnie.",
+     "dalej": "a"
+    }
+   }
+  },
+  "d_lubomirski": {
+   "start": "a",
+   "wezly": {
+    "a": {
+     "kto": "lubomirski",
+     "tekst": "Meldunek od harcerzy… Patrzcie państwo: POW donosi, że Niemcy w Warszawie tracą ducha, a ich żołnierze zakładają rady jak w Rosji. Ciekawe czasy, młody człowieku.",
+     "opcje": [
+      {
+       "tekst": "Czy to dobrze, że Niemcy tracą ducha?",
+       "dalej": "b"
+      },
+      {
+       "tekst": "Czy mogę dostać coś na pamiątkę?",
+       "dalej": "c"
+      }
+     ]
+    },
+    "b": {
+     "kto": "lubomirski",
+     "tekst": "Dobrze — jeśli nie zaczną strzelać ze strachu. Wojsko bez rozkazów to jak dorożka bez woźnicy. Dlatego potrzebujemy kogoś, kogo żołnierze posłuchają.",
+     "dalej": "c"
+    },
+    "c": {
+     "kto": "lubomirski",
+     "tekst": "Weź odpis naszego orędzia z 7 października. Pokazuj go tym, którzy mówią, że Rada nic nie zrobiła. A potem jedź do Lublina — tam podobno powstaje jakiś rząd. Kolejny! W tym tygodniu rządów jest więcej niż tramwajów.",
+     "efekty": [
+      "daj:odpis_oredzia",
+      "fakt:rr_oredzie"
+     ],
+     "dalej": "koniec"
+    }
+   }
+  },
+  "d_lubomirski_powt": {
+   "start": "a",
+   "wezly": {
+    "a": {
+     "kto": "lubomirski",
+     "tekst": "Pozdrów Lublin. I pamiętaj: każdy obóz uważa, że to on ma rację. Czasem wszyscy trochę mają.",
+     "dalej": "koniec"
+    }
+   }
+  },
+  "d_ostrowski": {
+   "start": "a",
+   "wezly": {
+    "a": {
+     "kto": "ostrowski",
+     "tekst": "Państwo, chłopcze, to nie tylko flagi. To urzędnik, który rano otworzy biuro, sędzia, który wyda wyrok, i nauczyciel, który zacznie lekcję po polsku.",
+     "opcje": [
+      {
+       "tekst": "A to wszystko już działa?",
+       "dalej": "b"
+      },
+      {
+       "tekst": "Brzmi nudno.",
+       "dalej": "c"
+      }
+     ]
+    },
+    "b": {
+     "kto": "ostrowski",
+     "tekst": "Od roku tworzymy polskie sądy i szkoły. Gdy przyjdzie dzień przekazania władzy, nowy rząd nie zacznie od zera.",
+     "efekty": [
+      "fakt:rr_sklad"
+     ],
+     "dalej": "koniec"
+    },
+    "c": {
+     "kto": "ostrowski",
+     "tekst": "Nudne rzeczy trzymają świat w całości. Spróbuj żyć bez poczty przez tydzień.",
+     "dalej": "koniec"
+    }
+   }
+  },
+  "d_daszynski": {
+   "start": "a",
+   "wezly": {
+    "a": {
+     "kto": "daszynski",
+     "tekst": "Kto to? Harcerz z Warszawy? Świetnie, potrzebuję szybkich nóg! Jestem Daszyński. Dziś w nocy ogłaszamy Tymczasowy Rząd Ludowy Republiki Polskiej.",
+     "opcje": [
+      {
+       "tekst": "Republiki? A nie królestwa?",
+       "dalej": "rep"
+      },
+      {
+       "tekst": "Co chcecie zmienić?",
+       "dalej": "program"
+      }
+     ]
+    },
+    "rep": {
+     "kto": "daszynski",
+     "tekst": "Żadnych królów! Państwo ma należeć do ludu — do robotników, chłopów, inteligencji. Rada Regencyjna w Warszawie? Szanujemy ich pracę, ale ich władza pochodzi od okupantów.",
+     "dalej": "program"
+    },
+    "program": {
+     "kto": "daszynski",
+     "tekst": "Osiem godzin pracy zamiast dwunastu. Ziemia dla tych, którzy na niej pracują. I prawa wyborcze dla wszystkich — także dla kobiet! Konserwatyści mówią, że za szybko. My mówimy: i tak za późno.",
+     "opcje": [
+      {
+       "tekst": "Dlaczego jedni mówią „za szybko”?",
+       "dalej": "szybko"
+      },
+      {
+       "tekst": "W czym mogę pomóc?",
+       "dalej": "zlecenie"
+      }
+     ]
+    },
+    "szybko": {
+     "kto": "daszynski",
+     "tekst": "Bo boją się chaosu i rewolucji jak w Rosji. Mają do tego prawo — w Rosji bolszewicy właśnie pokazali, jak to może się skończyć. My chcemy reform, nie terroru.",
+     "dalej": "zlecenie"
+    },
+    "zlecenie": {
+     "kto": "daszynski",
+     "tekst": "Leć do drukarni za rogiem. Zecer ma rozsypany tekst manifestu. Pomóż mu go złożyć — i przynieś mi pierwszą odbitkę!",
+     "efekty": [
+      "flag:zlecenie_daszynski"
+     ],
+     "dalej": "koniec"
+    }
+   }
+  },
+  "d_daszynski_koniec": {
+   "start": "a",
+   "wezly": {
+    "a": {
+     "kto": "daszynski",
+     "tekst": "Jest! „Lud polski!” — tak zaczynamy. Republika, równe prawa bez różnicy płci, osiem godzin pracy, reforma rolna, Sejm Ustawodawczy. Pięknie złożone, chłopcze.",
+     "dalej": "b"
+    },
+    "b": {
+     "kto": "daszynski",
+     "tekst": "Zobaczysz — kiedy przyjedzie Piłsudski, oddamy mu władzę. Nie chodzi o to, kto rządzi, tylko żeby Polska była sprawiedliwa. Jak to mówią w Galicji: lepszy wspólny rząd niż trzy osobne kłótnie.",
+     "efekty": [
+      "flag:manifest_oddany"
+     ],
+     "dalej": "koniec"
+    }
+   }
+  },
+  "d_rydz": {
+   "start": "a",
+   "wezly": {
+    "a": {
+     "kto": "rydz",
+     "tekst": "Rydz-Śmigły, komendant POW. W tym rządzie jestem ministrem wojny. Wojny, której nikt nie chce, ale na którą trzeba być gotowym.",
+     "opcje": [
+      {
+       "tekst": "Co to jest POW?",
+       "dalej": "pow"
+      },
+      {
+       "tekst": "Podobno pan maluje?",
+       "dalej": "maluje"
+      }
+     ]
+    },
+    "pow": {
+     "kto": "rydz",
+     "tekst": "Polska Organizacja Wojskowa. Tajna armia Piłsudskiego. Nauczyciele, studenci, robotnicy, harcerze. W dzień zwykli ludzie, w nocy — żołnierze. Wkrótce będziemy rozbrajać okupantów.",
+     "dalej": "koniec"
+    },
+    "maluje": {
+     "kto": "rydz",
+     "tekst": "Studiowałem malarstwo w Krakowie. Wolę pędzel od karabinu, ale pędzlem Niemców nie rozbroisz. Chociaż… gdyby pomalować im koszary na biało-czerwono?",
+     "dalej": "pow"
+    }
+   }
+  },
+  "d_zecer": {
+   "start": "a",
+   "wezly": {
+    "a": {
+     "kto": "zecer",
+     "tekst": "Oj, panie harcerzu, katastrofa! Mówcy dyktowali, kartki pofrunęły, a ja mam rozsypany manifest. Do tego ktoś podrzucił dwa fałszywe zdania. Trzeba to złożyć po kolei.",
+     "opcje": [
+      {
+       "tekst": "Pomogę! Jak się składa manifest?",
+       "dalej": "jak"
+      },
+      {
+       "tekst": "A jaki hymn wydrukować na dole?",
+       "dalej": "hymn"
+      }
+     ]
+    },
+    "hymn": {
+     "kto": "zecer",
+     "tekst": "Hymn? Jedni śpiewają „Mazurka”, drudzy „Rotę”, trzeci „Boże, coś Polskę”. Nikt jeszcze nie zdecydował, który jest oficjalny. Zostawmy miejsce na później.",
+     "efekty": [
+      "fakt:hymn_1927"
+     ],
+     "dalej": "jak"
+    },
+    "jak": {
+     "kto": "zecer",
+     "tekst": "Zasada stara jak druk: najpierw kto mówi, potem czym jest państwo, potem prawa ludzi, praca, ziemia, a na końcu wezwanie. Fałszywki — do pieca! Kaszta jest tam.",
+     "efekty": [
+      "flag:rozmowa_zecer"
+     ],
+     "dalej": "koniec"
+    }
+   }
+  },
+  "d_pilsudski": {
+   "start": "a",
+   "wezly": {
+    "a": {
+     "kto": "pilsudski",
+     "tekst": "Harcerz w pociągu z Berlina? Niemcy wypuszczają ze swoich więzień dziwnych ludzi. Siadaj, chłopcze. Herbaty nie mam. Kawy też nie. Mam tylko czas do Warszawy.",
+     "opcje": [
+      {
+       "tekst": "Jak było w Magdeburgu?",
+       "dalej": "magd"
+      },
+      {
+       "tekst": "Co pan zrobi w Warszawie?",
+       "dalej": "plan"
+      },
+      {
+       "tekst": "Czy pan się zgadza z Dmowskim?",
+       "dalej": "dmowski"
+      }
+     ]
+    },
+    "magd": {
+     "kto": "pilsudski",
+     "tekst": "Nudno. Ponad rok w twierdzy, z Sosnkowskim i szachami. Niemcy zamknęli mnie, bo moi legioniści nie chcieli przysięgać wierności cesarzowi. Wypuścili 8 listopada, bo im się cesarstwo rozpada.",
+     "efekty": [
+      "fakt:magdeburg"
+     ],
+     "dalej": "a2"
+    },
+    "plan": {
+     "kto": "pilsudski",
+     "tekst": "Najpierw wojsko. Państwo bez armii to obietnica, nie państwo. Potem rząd, w którym zmieszczą się różni ludzie. I żeby Niemcy wyjechali do domu bez wojny w mieście.",
+     "dalej": "a2"
+    },
+    "dmowski": {
+     "kto": "pilsudski",
+     "tekst": "Dmowski uważa, że głównym wrogiem są Niemcy, ja — że Rosja. Obaj chcemy Polski, tylko inaczej liczymy na mapie. Może i dobrze, że jest nas dwóch: on w Paryżu, ja tutaj.",
+     "dalej": "a2"
+    },
+    "a2": {
+     "kto": "pilsudski",
+     "tekst": "Coś jeszcze, chłopcze? Za oknem już polskie pola.",
+     "opcje": [
+      {
+       "tekst": "Jak było w Magdeburgu?",
+       "dalej": "magd",
+       "gdy": [
+        "!fakt:magdeburg"
+       ]
+      },
+      {
+       "tekst": "Co pan zrobi w Warszawie?",
+       "dalej": "plan"
+      },
+      {
+       "tekst": "Czy pan się zgadza z Dmowskim?",
+       "dalej": "dmowski"
+      },
+      {
+       "tekst": "Nie, dziękuję. Niech pan odpocznie.",
+       "dalej": "koniec_r"
+      }
+     ]
+    },
+    "koniec_r": {
+     "kto": "pilsudski",
+     "tekst": "Ty też. Jutro… to znaczy dziś… będzie długi dzień. Sprawdź rozkład — o której będziemy?",
+     "efekty": [
+      "flag:rozmowa_pilsudski"
+     ],
+     "dalej": "koniec"
+    }
+   }
+  },
+  "d_koc": {
+   "start": "a",
+   "wezly": {
+    "a": {
+     "kto": "koc",
+     "tekst": "Harcerz! Doskonale. Jestem Koc, komendant POW w Warszawie. Komendant zaraz wysiądzie, a przy bramce na peron tłum. Wpuszczamy tylko tych, którzy mają prawo tam być.",
+     "dalej": "b"
+    },
+    "b": {
+     "kto": "koc",
+     "tekst": "Zasady: data 10 XI 1918, pieczęć POW albo Rady Regencyjnej, nazwisko z listy powitalnej, podpis. Niemieckie przepustki dziś nie działają. Fałszerzy zatrzymuj — grzecznie!",
+     "efekty": [
+      "flag:rozmowa_koc"
+     ],
+     "dalej": "koniec"
+    }
+   }
+  },
+  "d_lubomirski_dworzec": {
+   "start": "a",
+   "wezly": {
+    "a": {
+     "kto": "lubomirski",
+     "tekst": "Znowu ty! Łącznik od orędzia. Właśnie przywitałem Komendanta w imieniu Rady Regencyjnej. Mróz, mgła, a on mówi jakby nic: „Dzień dobry, panowie”.",
+     "dalej": "b"
+    },
+    "b": {
+     "kto": "lubomirski",
+     "tekst": "Jutro Rada przekaże mu dowództwo nad wojskiem. Wiem, że niektórzy w Radzie się wahają. Ale lepiej oddać władzę mądrze, niż czekać, aż ktoś ją wyrwie.",
+     "efekty": [
+      "flag:powitanie_ok",
+      "fakt:powrot_10xi"
+     ],
+     "dalej": "koniec"
+    }
+   }
+  },
+  "d_koc_plan": {
+   "start": "a",
+   "wezly": {
+    "a": {
+     "kto": "koc",
+     "tekst": "Janek, dziś w nocy rozbrajamy Niemców. Pięć punktów w mieście. Kolejność jest kluczowa — jeden błąd i ktoś zacznie strzelać. Ułóż plan na stole. Wskazówki masz na marginesie.",
+     "dalej": "koniec"
+    }
+   }
+  },
+  "d_otto": {
+   "start": "a",
+   "wezly": {
+    "a": {
+     "kto": "otto",
+     "tekst": "Halt! Stój! Kto idzie? …Kind? Dziecko? Was willst du? Czego chcesz?",
+     "opcje": [
+      {
+       "tekst": "(spokojnie) Dobry wieczór. Chcę tylko porozmawiać.",
+       "dalej": "b"
+      },
+      {
+       "tekst": "(krzyk) Ręce do góry, jesteś otoczony!",
+       "dalej": "b_zle",
+       "efekty": [
+        "napiecie:+1"
+       ]
+      }
+     ]
+    },
+    "b_zle": {
+     "kto": "otto",
+     "tekst": "Was?! Otoczony?! (Karabin drży mu w rękach. Z okna koszar wychyla się ktoś drugi.)",
+     "jesli": [
+      {
+       "gdy": [
+        "napiecie>=2"
+       ],
+       "dalej": "przewin"
+      }
+     ],
+     "opcje": [
+      {
+       "tekst": "Przepraszam! Żart. Głupi żart. Chcę tylko porozmawiać.",
+       "dalej": "b"
+      },
+      {
+       "tekst": "(jeszcze głośniej) Polacy, naprzód!",
+       "dalej": "b_zle",
+       "efekty": [
+        "napiecie:+1"
+       ]
+      }
+     ]
+    },
+    "b": {
+     "kto": "otto",
+     "tekst": "Rozmawiać… Gut. Jestem Otto. Z Lipska. Cztery lata wojny. Nasza Rada Żołnierska mówi: cesarz uciekł, wojna skończona. Ale oficer mówi: broni nie oddawać.",
+     "opcje": [
+      {
+       "tekst": "Nasz Komendant umówił się z waszą Radą Żołnierską. Wyjedziecie bezpiecznie.",
+       "dalej": "c"
+      },
+      {
+       "tekst": "Jak nie oddasz broni, będzie źle.",
+       "dalej": "c_zle",
+       "efekty": [
+        "napiecie:+1"
+       ]
+      }
+     ]
+    },
+    "c_zle": {
+     "kto": "otto",
+     "tekst": "Grozisz mi? Mnie? Ja przeżyłem Verdun! (Słychać szczęk zamka karabinu za bramą.)",
+     "jesli": [
+      {
+       "gdy": [
+        "napiecie>=2"
+       ],
+       "dalej": "przewin"
+      }
+     ],
+     "opcje": [
+      {
+       "tekst": "Nie grożę. Chcę, żebyś wrócił do Lipska żywy.",
+       "dalej": "c"
+      },
+      {
+       "tekst": "Tak, grożę!",
+       "dalej": "c_zle",
+       "efekty": [
+        "napiecie:+1"
+       ]
+      }
+     ]
+    },
+    "c": {
+     "kto": "otto",
+     "tekst": "Do domu… Pociągiem? A jak oddam karabin, kto mi zagwarantuje, że nikt nie strzeli mi w plecy?",
+     "opcje": [
+      {
+       "tekst": "Dworzec już jest pod naszą opieką. Pociągi do Niemiec odjeżdżają co kilka godzin.",
+       "dalej": "d"
+      },
+      {
+       "tekst": "Nikt. Musisz zaryzykować.",
+       "dalej": "d_zle",
+       "efekty": [
+        "napiecie:+1"
+       ]
+      }
+     ]
+    },
+    "d_zle": {
+     "kto": "otto",
+     "tekst": "Zaryzykować… Ryzykowałem cztery lata! (Otto cofa się pod bramę. Napięcie rośnie.)",
+     "jesli": [
+      {
+       "gdy": [
+        "napiecie>=2"
+       ],
+       "dalej": "przewin"
+      }
+     ],
+     "opcje": [
+      {
+       "tekst": "Przepraszam. Dworzec jest nasz, pociągi czekają. Słowo harcerza.",
+       "dalej": "d"
+      }
+     ]
+    },
+    "d": {
+     "kto": "otto",
+     "tekst": "Słowo harcerza… Mój młodszy brat też jest w Wandervogel. To jak wasi harcerze. (Długa cisza.) Gut. Bitte. Proszę. Weź go. Tylko powiedz swoim, żeby nie strzelali.",
+     "dalej": "e"
+    },
+    "e": {
+     "kto": "koc",
+     "tekst": "Spokojnie, panowie, spokojnie! Broń na wóz, żołnierze na dworzec. Janek — ani jednego strzału. Wiesz, ilu ludzi dziś przeżyło, bo ktoś mówił, a nie krzyczał?",
+     "efekty": [
+      "flag:rozbrojenie_ok",
+      "napiecie:0"
+     ],
+     "dalej": "koniec"
+    },
+    "przewin": {
+     "kto": "damian",
+     "tekst": "STOP! Przewijam pocztówkę. Uff. W prawdziwej historii zdarzały się strzelaniny z powodu jednego nerwowego krzyku. Spróbujmy jeszcze raz — tym razem spokojniej.",
+     "efekty": [
+      "napiecie:0"
+     ],
+     "dalej": "a"
+    }
+   }
+  },
+  "d_zawadzka": {
+   "start": "a",
+   "wezly": {
+    "a": {
+     "kto": "zawadzka",
+     "tekst": "Harcerz! Ty byłeś na dworcu, prawda? Piszę artykuł o ostatnich dniach, a moi świadkowie opowiadają cuda. Pomóż mi oddzielić fakty od bajek.",
+     "dalej": "b"
+    },
+    "b": {
+     "kto": "zawadzka",
+     "tekst": "Wysłucham ich jeszcze raz. Ty wskaż, kto mówi nieprawdę, i pokaż dowód z twojej torby. Bez dowodu to tylko słowo przeciw słowu.",
+     "efekty": [
+      "flag:rozmowa_zawadzka"
+     ],
+     "dalej": "koniec"
+    }
+   }
+  },
+  "d_dmowski": {
+   "start": "a",
+   "wezly": {
+    "a": {
+     "kto": "dmowski",
+     "tekst": "Polski harcerz w Paryżu? To się nazywa propaganda wizualna. Roman Dmowski, Komitet Narodowy Polski. Siadaj, ale niczego nie ruszaj — to mapy na konferencję pokojową.",
+     "opcje": [
+      {
+       "tekst": "Dlaczego pan działa w Paryżu, a nie w Polsce?",
+       "dalej": "paryz"
+      },
+      {
+       "tekst": "Co pan myśli o Piłsudskim?",
+       "dalej": "pilsudski"
+      },
+      {
+       "tekst": "Na czym polega pana plan?",
+       "dalej": "plan"
+      }
+     ]
+    },
+    "paryz": {
+     "kto": "dmowski",
+     "tekst": "Bo tu zapadną decyzje o granicach. Wojnę wygrała Ententa: Francja, Anglia i Ameryka. Kto chce mieć granice, musi mieć przyjaciół przy stole. Francja, Anglia, Włochy i USA uznały nasz Komitet. Mamy też własną armię we Francji — Błękitną Armię.",
+     "efekty": [
+      "fakt:knp_uznanie",
+      "fakt:haller"
+     ],
+     "dalej": "a2"
+    },
+    "pilsudski": {
+     "kto": "dmowski",
+     "tekst": "Piłsudski walczył u boku Austrii, a ja zawsze uważałem, że największe zagrożenie to Niemcy. Mamy różne drogi. Ale jeśli Polska ma przetrwać, Warszawa i Paryż muszą się dogadać. Powtórz mu to, jeśli go spotkasz.",
+     "dalej": "a2"
+    },
+    "plan": {
+     "kto": "dmowski",
+     "tekst": "Przekonać aliantów, że silna Polska to zapora między Niemcami a Rosją. I że należą się nam ziemie, gdzie mieszkają Polacy — także Wielkopolska, Pomorze z Gdańskiem i Śląsk.",
+     "dalej": "a2"
+    },
+    "a2": {
+     "kto": "dmowski",
+     "tekst": "Masz jeszcze pytania? Mam mało czasu i dużo map.",
+     "opcje": [
+      {
+       "tekst": "Dlaczego pan działa w Paryżu?",
+       "dalej": "paryz",
+       "gdy": [
+        "!fakt:knp_uznanie"
+       ]
+      },
+      {
+       "tekst": "Co pan myśli o Piłsudskim?",
+       "dalej": "pilsudski"
+      },
+      {
+       "tekst": "Na czym polega pana plan?",
+       "dalej": "plan"
+      },
+      {
+       "tekst": "Pomogę w salonie dyplomatów!",
+       "dalej": "salon"
+      }
+     ]
+    },
+    "salon": {
+     "kto": "dmowski",
+     "tekst": "Dobrze. Ale najpierw porozmawiaj z Paderewskim — on zna Amerykanów lepiej niż ja. Tylko nie mów mu, że pochwaliłem jego koncerty. Zrobi się nieznośny.",
+     "efekty": [
+      "flag:rozmowa_dmowski"
+     ],
+     "dalej": "koniec"
+    }
+   }
+  },
+  "d_paderewski": {
+   "start": "a",
+   "wezly": {
+    "a": {
+     "kto": "damian",
+     "tekst": "Uwaga, wtrącam się! Paderewski w listopadzie 1918 r. był jeszcze w Ameryce. Z Dmowskim spotka się w Paryżu dopiero na konferencji pokojowej w 1919 r. Dlatego rozmawiasz z nim przez pocztówkę z Nowego Jorku. Archiwista wszystko widzi.",
+     "dalej": "b"
+    },
+    "b": {
+     "kto": "paderewski",
+     "tekst": "Halo? Słychać mnie? Ach, harcerz! Ignacy Jan Paderewski. Gram Chopina dla Amerykanów, a między koncertami przekonuję ich, że Polska musi być wolna.",
+     "opcje": [
+      {
+       "tekst": "Muzyką można zrobić politykę?",
+       "dalej": "muzyka"
+      },
+      {
+       "tekst": "Zna pan prezydenta Wilsona?",
+       "dalej": "wilson"
+      }
+     ]
+    },
+    "muzyka": {
+     "kto": "paderewski",
+     "tekst": "Muzyka otwiera drzwi. Kiedy sala wstaje po koncercie, mogę powiedzieć dwa zdania o Polsce i nikt nie wychodzi. Zebrałem też pieniądze dla głodujących w kraju.",
+     "dalej": "wilson"
+    },
+    "wilson": {
+     "kto": "paderewski",
+     "tekst": "Rozmawiałem z nim wiele razy. W styczniu ogłosił swoje 14 punktów — trzynasty mówi o niepodległej Polsce z wolnym dostępem do morza. Ładniejszej melodii nie słyszałem.",
+     "efekty": [
+      "fakt:wilson_13"
+     ],
+     "dalej": "c"
+    },
+    "c": {
+     "kto": "paderewski",
+     "tekst": "Weź tę depeszę z argumentami dla Amerykanów. I pozdrów Dmowskiego. Kłócimy się czasem, ale to jak duet — dwóch pianistów przy jednym fortepianie. Ciasno, ale da się grać.",
+     "efekty": [
+      "daj:depesza",
+      "flag:rozmowa_paderewski"
+     ],
+     "dalej": "koniec"
+    }
+   }
+  },
+  "d_korfanty": {
+   "start": "a",
+   "wezly": {
+    "a": {
+     "kto": "korfanty",
+     "tekst": "Szczęść Boże! Wojciech Korfanty, Ślązak, a teraz trochę poznaniak. 25 października powiedziałem w Reichstagu w Berlinie, że ziemie polskie zaboru pruskiego mają wrócić do Polski.",
+     "opcje": [
+      {
+       "tekst": "I co na to Niemcy?",
+       "dalej": "niemcy"
+      },
+      {
+       "tekst": "Czyli Poznań już jest w Polsce?",
+       "dalej": "poznan"
+      }
+     ]
+    },
+    "niemcy": {
+     "kto": "korfanty",
+     "tekst": "Krzyczeli! Ktoś wołał, że jestem zdrajcą. A ja tylko przypomniałem im 13. punkt Wilsona, który sami przyjęli. Poseł musi mówić prawdę, nawet gdy sala gwiżdże.",
+     "efekty": [
+      "fakt:korfanty_reichstag"
+     ],
+     "dalej": "poznan"
+    },
+    "poznan": {
+     "kto": "korfanty",
+     "tekst": "Jeszcze nie! Rozejm zakończył walki, ale nie zmienił granic. Tu wciąż rządzą Niemcy. Naczelna Rada Ludowa przygotowuje Wielkopolskę — sejm dzielnicowy, straż ludową, szkoły.",
+     "opcje": [
+      {
+       "tekst": "Dlaczego nie zrobicie tego od razu, jak w Warszawie?",
+       "dalej": "czekanie"
+      },
+      {
+       "tekst": "Co mam przekazać do Warszawy?",
+       "dalej": "przekaz"
+      }
+     ]
+    },
+    "czekanie": {
+     "kto": "korfanty",
+     "tekst": "Bo tu Niemców jest dużo, a ich państwo wciąż działa. Jedni mówią: czekajmy na konferencję pokojową. Inni: chwyćmy za broń. Za miesiąc się okaże, kto miał rację.",
+     "dalej": "przekaz"
+    },
+    "przekaz": {
+     "kto": "korfanty",
+     "tekst": "Powiedz, że Wielkopolska, Pomorze i Śląsk też chcą być w Polsce. I żeby o nas nie zapomnieli przy stole w Paryżu. A teraz leć — w Warszawie dzieje się coś ważnego dla połowy ludzkości.",
+     "efekty": [
+      "flag:rozmowa_korfanty",
+      "fakt:nrl"
+     ],
+     "dalej": "koniec"
+    }
+   }
+  },
+  "d_moraczewska": {
+   "start": "a",
+   "wezly": {
+    "a": {
+     "kto": "moraczewska",
+     "tekst": "Harcerz! Wchodź, wchodź. Zofia Moraczewska, Liga Kobiet. Właśnie przynieśli dekret o ordynacji wyborczej. Przeczytaj artykuł pierwszy. Na głos!",
+     "dalej": "b"
+    },
+    "b": {
+     "kto": "janek",
+     "tekst": "„Wyborcą do Sejmu jest każdy obywatel Państwa bez różnicy płci, który do dnia ogłoszenia wyborów ukończył 21 lat”. Bez różnicy płci… czyli moja mama też będzie głosować?",
+     "dalej": "c"
+    },
+    "c": {
+     "kto": "moraczewska",
+     "tekst": "Mama, babcia, siostra, kiedy skończy 21 lat. I mogą kandydować do Sejmu! Walczyłyśmy o to latami. Niektórzy panowie wciąż kręcą nosem, ale dekret podpisał Naczelnik i premier — mój mąż, nawiasem mówiąc. W domu mieliśmy długie rozmowy.",
+     "opcje": [
+      {
+       "tekst": "Dlaczego niektórzy byli przeciw?",
+       "dalej": "przeciw"
+      },
+      {
+       "tekst": "Czy w innych krajach kobiety już głosują?",
+       "dalej": "swiat"
+      }
+     ]
+    },
+    "przeciw": {
+     "kto": "moraczewska",
+     "tekst": "Mówili, że kobiety nie znają się na polityce. A kto prowadził sklepy, szpitale i tramwaje przez cztery lata wojny? Kto szył mundury i ukrywał broń POW?",
+     "dalej": "quiz"
+    },
+    "swiat": {
+     "kto": "moraczewska",
+     "tekst": "W Nowej Zelandii od 1893, w Finlandii od 1906. Ale Francuzki, Szwajcarki — jeszcze nie. Jesteśmy przed wieloma starymi demokracjami!",
+     "dalej": "quiz"
+    },
+    "quiz": {
+     "kto": "moraczewska",
+     "tekst": "Sprawdzę, czy uważałeś. Zadam ci kilka pytań — jak na zebraniu Ligi. Kliknij mnie, gdy będziesz gotów.",
+     "efekty": [
+      "flag:rozmowa_moraczewska",
+      "daj:dekret",
+      "fakt:dekret_wyborczy"
+     ],
+     "dalej": "koniec"
+    }
+   }
+  }
+ },
+ "postacie": {
+  "pilsudski": {
+   "imie": "Józef Piłsudski",
+   "lata": "1867–1935",
+   "rola": "Komendant, od 11 XI 1918 Naczelny Wódz, od 22 XI Tymczasowy Naczelnik Państwa",
+   "biogram": "Urodził się w Zułowie na Wileńszczyźnie. Działacz PPS, zesłaniec syberyjski, twórca Związku Strzeleckiego i Legionów Polskich (1914). Gdy w 1917 r. legioniści odmówili przysięgi na wierność Niemcom (kryzys przysięgowy), został uwięziony w Magdeburgu. Zwolniony 8 XI 1918, przyjechał do Warszawy 10 XI. Rada Regencyjna przekazała mu 11 XI dowództwo wojska, a 14 XI całą władzę. Stawiał na własną armię i czyn zbrojny.",
+   "wklad": "zbudował armię i przejął władzę w Warszawie bez wojny domowej",
+   "wyglad": {
+    "plaszcz": 70,
+    "czapka": "maciejowka",
+    "zarost": "sumiaste",
+    "wzrost": 1.0,
+    "szabla": true
+   }
+  },
+  "dmowski": {
+   "imie": "Roman Dmowski",
+   "lata": "1864–1939",
+   "rola": "Przewodniczący Komitetu Narodowego Polskiego w Paryżu",
+   "biogram": "Przywódca Narodowej Demokracji, autor „Myśli nowoczesnego Polaka” (1903). Uważał, że największym zagrożeniem dla Polski są Niemcy, dlatego postawił na współpracę z państwami Ententy. Komitet Narodowy Polski, któremu przewodniczył od 1917 r., Francja, Wielka Brytania, Włochy i USA uznały za przedstawicielstwo Polaków. W 1919 r. razem z Paderewskim podpisał traktat wersalski.",
+   "wklad": "zdobył dla sprawy polskiej uznanie Ententy i przygotował argumenty na konferencję pokojową",
+   "wyglad": {
+    "plaszcz": 45,
+    "czapka": "melonik",
+    "zarost": "wasik",
+    "binokle": true,
+    "wzrost": 0.96,
+    "teczka": true
+   }
+  },
+  "paderewski": {
+   "imie": "Ignacy Jan Paderewski",
+   "lata": "1860–1941",
+   "rola": "Pianista światowej sławy, przedstawiciel KNP w Stanach Zjednoczonych",
+   "biogram": "Jeden z najsłynniejszych pianistów świata. W czasie wojny jeździł po Ameryce, grał koncerty i przemawiał za niepodległą Polską. Miał wpływ na prezydenta Wilsona, którego 13. punkt (8 I 1918) zapowiadał niepodległą Polskę z dostępem do morza. Jego przyjazd do Poznania 26 XII 1918 poprzedził wybuch powstania wielkopolskiego. W 1919 r. premier i minister spraw zagranicznych.",
+   "wklad": "zjednał dla Polski Amerykę i prezydenta Wilsona",
+   "wyglad": {
+    "plaszcz": 60,
+    "czapka": null,
+    "fryzura": "grzywa",
+    "zarost": "broda_mala",
+    "wzrost": 1.02
+   }
+  },
+  "daszynski": {
+   "imie": "Ignacy Daszyński",
+   "lata": "1866–1936",
+   "rola": "Premier Tymczasowego Rządu Ludowego Republiki Polskiej (Lublin)",
+   "biogram": "Przywódca socjalistów w Galicji, poseł do parlamentu w Wiedniu, znakomity mówca. W nocy z 6 na 7 XI 1918 r. stanął na czele rządu w Lublinie, który ogłosił Polskę republiką ludową i zapowiedział m.in. 8-godzinny dzień pracy, reformę rolną i prawa wyborcze dla kobiet. Po przyjeździe Piłsudskiego rząd lubelski podporządkował mu się. Później m.in. marszałek Sejmu (1928–1930).",
+   "wklad": "ogłosił program reform społecznych: 8 godzin pracy, prawa wyborcze kobiet, reforma rolna",
+   "wyglad": {
+    "plaszcz": 55,
+    "czapka": "kapelusz",
+    "zarost": "broda",
+    "wzrost": 1.04
+   }
+  },
+  "korfanty": {
+   "imie": "Wojciech Korfanty",
+   "lata": "1873–1939",
+   "rola": "Poseł do Reichstagu, członek Komisariatu Naczelnej Rady Ludowej w Poznaniu",
+   "biogram": "Ślązak z Sadzawki (dziś Siemianowice Śląskie), syn górnika. Jako poseł do parlamentu niemieckiego 25 X 1918 r. zażądał w Reichstagu przyłączenia do Polski ziem zaboru pruskiego z polską ludnością. W listopadzie 1918 r. współtworzył Naczelną Radę Ludową, która przygotowywała Wielkopolskę do połączenia z Polską. W 1921 r. dyktator III powstania śląskiego.",
+   "wklad": "upomniał się o Wielkopolskę, Pomorze i Śląsk w samym parlamencie niemieckim",
+   "wyglad": {
+    "plaszcz": 40,
+    "czapka": "melonik",
+    "zarost": "sumiaste",
+    "wzrost": 1.0,
+    "teczka": true
+   }
+  },
+  "witos": {
+   "imie": "Wincenty Witos",
+   "lata": "1874–1945",
+   "rola": "Przewodniczący Polskiej Komisji Likwidacyjnej w Krakowie",
+   "biogram": "Chłop z Wierzchosławic koło Tarnowa, samouk, wójt swojej gminy i przywódca PSL „Piast”. 28 X 1918 r. stanął na czele Polskiej Komisji Likwidacyjnej, która przejęła władzę w Galicji od Austriaków. Trzykrotnie był premierem, m.in. w czasie wojny z bolszewikami w 1920 r. Przekonywał, że bez chłopów nie będzie niepodległej Polski.",
+   "wklad": "przejął Galicję od Austriaków i przekonał wieś, że to także jej państwo",
+   "wyglad": {
+    "plaszcz": 95,
+    "czapka": "chlopski",
+    "zarost": "sumiaste",
+    "wzrost": 0.98,
+    "sukmana": true
+   }
+  },
+  "kakowski": {
+   "imie": "abp Aleksander Kakowski",
+   "lata": "1862–1938",
+   "rola": "Arcybiskup warszawski, członek Rady Regencyjnej",
+   "biogram": "Od 1913 r. arcybiskup warszawski. W 1917 r. wszedł do Rady Regencyjnej — trzyosobowego organu powołanego pod okupacją niemiecką i austriacką. 7 X 1918 r. Rada ogłosiła orędzie o niepodległej Polsce, a w listopadzie przekazała władzę Piłsudskiemu. W 1919 r. został kardynałem.",
+   "wklad": "z Radą Regencyjną przygotował urzędy i spokojnie przekazał władzę",
+   "wyglad": {
+    "plaszcz": 30,
+    "czapka": "biretta",
+    "sutanna": true,
+    "krzyz": true,
+    "wzrost": 0.97
+   }
+  },
+  "lubomirski": {
+   "imie": "książę Zdzisław Lubomirski",
+   "lata": "1865–1943",
+   "rola": "Członek Rady Regencyjnej, wcześniej prezydent Warszawy",
+   "biogram": "Ziemianin i społecznik, w czasie wojny prezes Komitetu Obywatelskiego, a w latach 1916–1917 prezydent Warszawy. Jako członek Rady Regencyjnej 10 XI 1918 r. witał Piłsudskiego na Dworcu Wiedeńskim. Opowiadał się za szybkim przekazaniem władzy Komendantowi.",
+   "wklad": "jako regent przywitał Piłsudskiego i poparł przekazanie mu władzy",
+   "wyglad": {
+    "plaszcz": 50,
+    "czapka": "cylinder",
+    "zarost": "broda_mala",
+    "wzrost": 1.05,
+    "laska": true
+   }
+  },
+  "ostrowski": {
+   "imie": "Józef Ostrowski",
+   "lata": "1850–1923",
+   "rola": "Członek Rady Regencyjnej",
+   "biogram": "Ziemianin, polityk konserwatywny, przed wojną poseł do rosyjskiej Dumy i jeden z przywódców Koła Polskiego. W Radzie Regencyjnej odpowiadał za sprawy rządu i administracji. Najstarszy z regentów, znany z ostrożności.",
+   "wklad": "pilnował, by urzędy i sądy działały od pierwszego dnia państwa",
+   "wyglad": {
+    "plaszcz": 65,
+    "czapka": null,
+    "fryzura": "lysy",
+    "zarost": "broda",
+    "wzrost": 0.95,
+    "laska": true
+   }
+  },
+  "rydz": {
+   "imie": "Edward Rydz-Śmigły",
+   "lata": "1886–1941",
+   "rola": "Komendant Główny POW, minister wojny w rządzie lubelskim",
+   "biogram": "Malarz z wykształcenia (studiował w Akademii Sztuk Pięknych w Krakowie), legionista. W 1918 r. kierował Polską Organizacją Wojskową, a w rządzie Daszyńskiego objął resort wojny. W 1936 r. został marszałkiem Polski.",
+   "wklad": "przygotował oddziały POW, które przejmowały koszary i posterunki",
+   "wyglad": {
+    "plaszcz": 75,
+    "czapka": "wojskowa",
+    "zarost": null,
+    "wzrost": 1.03,
+    "szabla": true
+   }
+  },
+  "koc": {
+   "imie": "Adam Koc",
+   "lata": "1891–1969",
+   "rola": "Komendant POW w Warszawie",
+   "biogram": "Legionista i oficer Polskiej Organizacji Wojskowej. 10 XI 1918 r. razem z księciem Lubomirskim powitał Piłsudskiego na dworcu. W listopadowych dniach kierował akcją rozbrajania Niemców w Warszawie. Później m.in. polityk i minister skarbu.",
+   "wklad": "poprowadził rozbrajanie Niemców w Warszawie",
+   "wyglad": {
+    "plaszcz": 85,
+    "czapka": "wojskowa",
+    "zarost": "wasik",
+    "wzrost": 1.0
+   }
+  },
+  "moraczewska": {
+   "imie": "Zofia Moraczewska",
+   "lata": "1873–1958",
+   "rola": "Działaczka na rzecz praw kobiet, posłanka Sejmu Ustawodawczego",
+   "biogram": "Współtwórczyni Ligi Kobiet, organizacji, która w czasie wojny wspierała legionistów i walczyła o prawa kobiet. Żona premiera Jędrzeja Moraczewskiego. W styczniu 1919 r. jako jedna z ośmiu pierwszych kobiet została wybrana do Sejmu Ustawodawczego.",
+   "wklad": "walczyła o to, by kobiety współdecydowały o państwie",
+   "wyglad": {
+    "plaszcz": 80,
+    "czapka": "damski",
+    "suknia": true,
+    "wzrost": 0.92
+   }
+  },
+  "janek": {
+   "imie": "Janek",
+   "rola": "14-letni harcerz-łącznik z Warszawy (postać fikcyjna)",
+   "wyglad": {
+    "plaszcz": 110,
+    "czapka": "harcerski",
+    "wzrost": 0.78,
+    "chusta": true
+   }
+  },
+  "damian": {
+   "imie": "Damian Ściseł",
+   "rola": "archiwista w fioletowym kapturze, narrator i weryfikator mitów",
+   "wyglad": {
+    "plaszcz": 0,
+    "czapka": "kaptur",
+    "wzrost": 1.0,
+    "fiolet": true
+   }
+  },
+  "druh_staszek": {
+   "imie": "druh Staszek",
+   "rola": "drużynowy Janka (postać fikcyjna)",
+   "wyglad": {
+    "plaszcz": 120,
+    "czapka": "harcerski",
+    "wzrost": 0.9,
+    "chusta": true
+   }
+  },
+  "wozny": {
+   "imie": "pan Feliks, woźny",
+   "rola": "strażnik drzwi Rady Regencyjnej (postać fikcyjna)",
+   "wyglad": {
+    "plaszcz": 35,
+    "czapka": "wojskowa",
+    "zarost": "sumiaste",
+    "wzrost": 0.98
+   }
+  },
+  "zecer": {
+   "imie": "pan Lejb Gutman, zecer",
+   "rola": "zecer w lubelskiej drukarni (postać fikcyjna)",
+   "wyglad": {
+    "plaszcz": 100,
+    "czapka": "kaszkiet",
+    "zarost": "broda",
+    "wzrost": 0.96,
+    "fartuch": true
+   }
+  },
+  "otto": {
+   "imie": "Otto, żołnierz niemiecki",
+   "rola": "członek Rady Żołnierskiej, chce wrócić do domu (postać fikcyjna)",
+   "wyglad": {
+    "plaszcz": 90,
+    "czapka": "pikielhauba",
+    "zarost": "wasik",
+    "wzrost": 1.0
+   }
+  },
+  "zawadzka": {
+   "imie": "red. Helena Zawadzka",
+   "rola": "reporterka „Kuriera” zbierająca relacje (postać fikcyjna)",
+   "wyglad": {
+    "plaszcz": 140,
+    "czapka": "damski",
+    "suknia": true,
+    "wzrost": 0.93,
+    "teczka": true
+   }
+  },
+  "laroche": {
+   "imie": "monsieur Laroche",
+   "rola": "dyplomata francuski (postać fikcyjna)",
+   "wyglad": {
+    "plaszcz": 40,
+    "czapka": null,
+    "zarost": "broda_mala",
+    "wzrost": 0.97
+   }
+  },
+  "whitby": {
+   "imie": "Mr. Whitby",
+   "rola": "dyplomata brytyjski (postać fikcyjna)",
+   "wyglad": {
+    "plaszcz": 60,
+    "czapka": "melonik",
+    "zarost": "sumiaste",
+    "wzrost": 1.06,
+    "laska": true
+   }
+  },
+  "carter": {
+   "imie": "Mr. Carter",
+   "rola": "dyplomata amerykański (postać fikcyjna)",
+   "wyglad": {
+    "plaszcz": 105,
+    "czapka": "kapelusz",
+    "zarost": null,
+    "wzrost": 1.04
+   }
+  },
+  "dorozkarz": {
+   "imie": "dorożkarz Wincenty",
+   "rola": "świadek (postać fikcyjna)",
+   "wyglad": {
+    "plaszcz": 50,
+    "czapka": "kaszkiet",
+    "zarost": "sumiaste",
+    "wzrost": 0.97
+   }
+  },
+  "przekupka": {
+   "imie": "przekupka Bronisława",
+   "rola": "świadek (postać fikcyjna)",
+   "wyglad": {
+    "plaszcz": 120,
+    "czapka": "chusta_glowa",
+    "suknia": true,
+    "wzrost": 0.88
+   }
+  },
+  "student": {
+   "imie": "student Leon",
+   "rola": "świadek, członek straży akademickiej (postać fikcyjna)",
+   "wyglad": {
+    "plaszcz": 70,
+    "czapka": "studencka",
+    "wzrost": 0.98
+   }
+  },
+  "konduktorka": {
+   "imie": "pani Jadwiga",
+   "rola": "konduktorka tramwaju w Poznaniu (postać fikcyjna)",
+   "wyglad": {
+    "plaszcz": 60,
+    "czapka": "kaszkiet",
+    "suknia": true,
+    "wzrost": 0.9
+   }
+  }
+ },
+ "historyczne": [
+  "pilsudski",
+  "dmowski",
+  "paderewski",
+  "daszynski",
+  "korfanty",
+  "witos",
+  "kakowski",
+  "lubomirski",
+  "ostrowski",
+  "rydz",
+  "koc",
+  "moraczewska"
+ ],
+ "fakty": {
+  "pkl_krakow": {
+   "data": "28 X 1918",
+   "tekst": "W Krakowie powstała Polska Komisja Likwidacyjna z Wincentym Witosem na czele. Miała „zlikwidować” władzę austriacką w Galicji i przejąć urzędy.",
+   "zrodlo": "Protokoły posiedzeń PKL (Kraków 1918); W. Witos, „Moje wspomnienia”."
+  },
+  "krakow_rozbrojenie": {
+   "data": "31 X 1918",
+   "tekst": "Polscy oficerowie i żołnierze rozbroili w Krakowie austriacką komendę garnizonu. Żołnierze zrywali z czapek austriackie „bączki” i przypinali orzełki.",
+   "zrodlo": "Relacje uczestników akcji ppor. Antoniego Stawarza; prasa krakowska z 1 XI 1918."
+  },
+  "lwow_walki": {
+   "data": "1 XI 1918",
+   "tekst": "We Lwowie wybuchły walki polsko-ukraińskie. Miasta broniła m.in. młodzież — nazwana później „Orlętami Lwowskimi”.",
+   "zrodlo": "Prasa lwowska z listopada 1918; opracowania dziejów obrony Lwowa."
+  },
+  "rr_oredzie": {
+   "data": "7 X 1918",
+   "tekst": "Rada Regencyjna wydała orędzie „Do Narodu Polskiego”, ogłaszając wolę utworzenia niepodległego państwa obejmującego wszystkie ziemie polskie.",
+   "zrodlo": "Orędzie Rady Regencyjnej z 7 X 1918, „Monitor Polski” 1918."
+  },
+  "rr_sklad": {
+   "data": "1917–1918",
+   "tekst": "Radę Regencyjną tworzyli: abp Aleksander Kakowski, książę Zdzisław Lubomirski i Józef Ostrowski. Powołano ją pod okupacją niemiecką i austriacką.",
+   "zrodlo": "Patent o ustanowieniu Rady Regencyjnej, 12 IX 1917."
+  },
+  "swiezynski": {
+   "data": "23 X – 3 XI 1918",
+   "tekst": "Rada Regencyjna powołała rząd Józefa Świeżyńskiego, a 3 XI go odwołała, bo działał bez jej zgody. Władza w Warszawie była wtedy bardzo niepewna.",
+   "zrodlo": "„Monitor Polski”, listopad 1918."
+  },
+  "trl_lublin": {
+   "data": "7 XI 1918",
+   "tekst": "W Lublinie powstał Tymczasowy Rząd Ludowy Republiki Polskiej z Ignacym Daszyńskim jako premierem i Edwardem Rydzem-Śmigłym jako ministrem wojny.",
+   "zrodlo": "Manifest Tymczasowego Rządu Ludowego Republiki Polskiej, Lublin 7 XI 1918."
+  },
+  "manifest_tresc": {
+   "data": "7 XI 1918",
+   "tekst": "Manifest lubelski zapowiadał: republikę, równe prawa obywateli bez różnicy płci, 8-godzinny dzień pracy, reformę rolną i zwołanie Sejmu Ustawodawczego.",
+   "zrodlo": "Manifest TRL RP, druk ulotny, Lublin 1918."
+  },
+  "magdeburg": {
+   "data": "8 XI 1918",
+   "tekst": "Niemcy zwolnili Józefa Piłsudskiego i Kazimierza Sosnkowskiego z twierdzy w Magdeburgu, gdzie byli więzieni od lipca 1917 r.",
+   "zrodlo": "K. Sosnkowski, wspomnienia; dokumenty Ministerstwa Wojny Rzeszy."
+  },
+  "powrot_10xi": {
+   "data": "10 XI 1918",
+   "tekst": "Piłsudski przyjechał pociągiem z Berlina na Dworzec Wiedeński w Warszawie rano 10 XI. Witali go m.in. książę Zdzisław Lubomirski i Adam Koc.",
+   "zrodlo": "„Kurier Warszawski”, wydanie z 10–11 XI 1918."
+  },
+  "rozbrajanie": {
+   "data": "10–12 XI 1918",
+   "tekst": "Członkowie POW, harcerze, studenci i byli legioniści rozbrajali Niemców w Warszawie. Wielu niemieckich żołnierzy, zrzeszonych w Radzie Żołnierskiej, chciało już tylko wrócić do domu.",
+   "zrodlo": "Wspomnienia uczestników; prasa warszawska z 11–12 XI 1918."
+  },
+  "rr_11xi": {
+   "data": "11 XI 1918",
+   "tekst": "Rada Regencyjna przekazała Piłsudskiemu naczelne dowództwo nad wojskiem. Tego samego dnia w Compiègne podpisano rozejm kończący walki I wojny światowej.",
+   "zrodlo": "Orędzie Rady Regencyjnej z 11 XI 1918; rozejm w Compiègne, 11 XI 1918."
+  },
+  "rr_14xi": {
+   "data": "14 XI 1918",
+   "tekst": "Rada Regencyjna rozwiązała się i przekazała Piłsudskiemu pełnię władzy cywilnej.",
+   "zrodlo": "Orędzie Rady Regencyjnej z 14 XI 1918, „Monitor Polski”."
+  },
+  "telegram_16xi": {
+   "data": "16 XI 1918",
+   "tekst": "Piłsudski wysłał telegram do państw świata zawiadamiający o istnieniu niepodległego Państwa Polskiego.",
+   "zrodlo": "Depesza notyfikacyjna J. Piłsudskiego z 16 XI 1918."
+  },
+  "knp_uznanie": {
+   "data": "1917",
+   "tekst": "Komitet Narodowy Polski w Paryżu (od sierpnia 1917) uznały Francja, Wielka Brytania, Włochy i Stany Zjednoczone. KNP stworzył też Armię Polską we Francji.",
+   "zrodlo": "Noty rządów Ententy do KNP, IX–XII 1917."
+  },
+  "wilson_13": {
+   "data": "8 I 1918",
+   "tekst": "Prezydent USA Woodrow Wilson w 13. punkcie swojego orędzia zapowiedział niepodległą Polskę z ludnością bezsprzecznie polską i wolnym dostępem do morza.",
+   "zrodlo": "Orędzie W. Wilsona do Kongresu USA („14 punktów”), 8 I 1918."
+  },
+  "haller": {
+   "data": "1917–1919",
+   "tekst": "Armia Polska we Francji, zwana „Błękitną Armią” od koloru mundurów, walczyła po stronie Ententy. Od października 1918 dowodził nią gen. Józef Haller.",
+   "zrodlo": "Dokumenty KNP; opracowania dziejów Armii Polskiej we Francji."
+  },
+  "kompromis_1919": {
+   "data": "I 1919",
+   "tekst": "Na początku 1919 r. obozy z Warszawy i Paryża porozumiały się: Paderewski został premierem, a Dmowski i Paderewski reprezentowali Polskę na konferencji pokojowej.",
+   "zrodlo": "Akta konferencji pokojowej w Paryżu 1919."
+  },
+  "korfanty_reichstag": {
+   "data": "25 X 1918",
+   "tekst": "Wojciech Korfanty w Reichstagu w Berlinie zażądał przyłączenia do Polski ziem zaboru pruskiego zamieszkanych przez Polaków, także Górnego Śląska i Gdańska.",
+   "zrodlo": "Stenogram posiedzenia Reichstagu z 25 X 1918."
+  },
+  "nrl": {
+   "data": "XI 1918",
+   "tekst": "W Poznaniu ujawniła się Naczelna Rada Ludowa. Jej Komisariat tworzyli: ks. Stanisław Adamski, Wojciech Korfanty i Adam Poszwiński.",
+   "zrodlo": "Odezwy NRL, „Kurier Poznański”, listopad 1918."
+  },
+  "wielkopolska": {
+   "data": "27 XII 1918",
+   "tekst": "Wielkopolska wciąż należała do Niemiec. Dopiero powstanie wielkopolskie (27 XII 1918 – 16 II 1919) i traktat wersalski przyłączyły ją do Polski.",
+   "zrodlo": "Traktat wersalski, 28 VI 1919; opracowania dziejów powstania wielkopolskiego."
+  },
+  "naczelnik": {
+   "data": "22 XI 1918",
+   "tekst": "Dekret o najwyższej władzy reprezentacyjnej uczynił Piłsudskiego Tymczasowym Naczelnikiem Państwa do czasu zebrania się Sejmu.",
+   "zrodlo": "Dekret z 22 XI 1918, Dziennik Praw Państwa Polskiego nr 17, poz. 41."
+  },
+  "moraczewski": {
+   "data": "18 XI 1918",
+   "tekst": "Powstał rząd Jędrzeja Moraczewskiego. 23 XI wprowadził 8-godzinny dzień pracy.",
+   "zrodlo": "Dekret z 23 XI 1918 o 8-godzinnym dniu pracy, Dz.P.P.P. 1918."
+  },
+  "dekret_wyborczy": {
+   "data": "28 XI 1918",
+   "tekst": "Dekret o ordynacji wyborczej: „Wyborcą do Sejmu jest każdy obywatel Państwa bez różnicy płci, który do dnia ogłoszenia wyborów ukończył 21 lat”.",
+   "zrodlo": "Dekret z 28 XI 1918, Dziennik Praw Państwa Polskiego nr 18, poz. 46, art. 1."
+  },
+  "wybory_1919": {
+   "data": "26 I 1919",
+   "tekst": "W wyborach do Sejmu Ustawodawczego po raz pierwszy głosowały kobiety. Do Sejmu weszło 8 posłanek.",
+   "zrodlo": "Sprawozdania Sejmu Ustawodawczego 1919."
+  },
+  "swieto_1937": {
+   "data": "23 IV 1937",
+   "tekst": "11 listopada stał się oficjalnym świętem państwowym dopiero na mocy ustawy z 1937 r. Po wojnie zniesiony, przywrócony w 1989 r.",
+   "zrodlo": "Ustawa o Święcie Niepodległości, Dz.U. 1937 nr 33, poz. 255; ustawa z 15 II 1989."
+  },
+  "hymn_1927": {
+   "data": "1927",
+   "tekst": "„Mazurek Dąbrowskiego” został oficjalnie hymnem państwowym dopiero w 1927 r.",
+   "zrodlo": "Okólnik Ministerstwa Wyznań Religijnych i Oświecenia Publicznego, 1927."
+  },
+  "granice": {
+   "data": "1918–1922",
+   "tekst": "Granice II Rzeczypospolitej kształtowały się przez kilka lat: powstania, wojna z bolszewikami, plebiscyty i traktaty.",
+   "zrodlo": "Traktat wersalski (1919), traktat ryski (1921), podział Górnego Śląska (1922)."
+  },
+  "zabory": {
+   "data": "1772–1795",
+   "tekst": "W trzech rozbiorach Rosja, Prusy i Austria podzieliły ziemie Rzeczypospolitej. Przez 123 lata Polacy żyli w trzech różnych państwach, z innymi prawami i walutą.",
+   "zrodlo": "Traktaty rozbiorowe 1772, 1793, 1795."
+  }
+ },
+ "mity": {
+  "m_jeden_dzien": {
+   "mit": "Polska odzyskała niepodległość jednego dnia — 11 listopada 1918 r.",
+   "opcje": [
+    "Tak, 11 listopada o 11:00 ogłoszono to z balkonu Zamku.",
+    "Nie — to był proces trwający tygodnie, a granice ustalały się do 1922 r.",
+    "Nie — stało się to dopiero w 1920 r. po Bitwie Warszawskiej."
+   ],
+   "dobra": 1,
+   "wyjasnienie": "Od orędzia Rady Regencyjnej (7 X), przez Kraków (31 X), Lublin (7 XI), Warszawę (10–14 XI) aż po dekrety z końca listopada — państwo rodziło się krok po kroku. 11 XI to symboliczna data.",
+   "fakt": "granice"
+  },
+  "m_swieto": {
+   "mit": "11 listopada świętowano od samego 1918 roku.",
+   "opcje": [
+    "Tak, od 1918 r. był to dzień wolny.",
+    "Nie — oficjalne święto ustanowiono ustawą w 1937 r.",
+    "Nie — święto wymyślono dopiero w 1989 r."
+   ],
+   "dobra": 1,
+   "wyjasnienie": "Rocznice obchodzono wcześniej, ale ustawowe Święto Niepodległości wprowadzono w 1937 r. Po II wojnie je zniesiono i przywrócono w 1989 r.",
+   "fakt": "swieto_1937"
+  },
+  "m_sam_pilsudski": {
+   "mit": "Niepodległość wywalczył jeden człowiek — Józef Piłsudski.",
+   "opcje": [
+    "Tak, inni politycy tylko mu przeszkadzali.",
+    "Nie — złożyła się na nią praca wielu ludzi z różnych obozów i z trzech zaborów.",
+    "Nie — niepodległość podarowała Polsce Francja."
+   ],
+   "dobra": 1,
+   "wyjasnienie": "Piłsudski był kluczowy w Warszawie, ale bez dyplomacji Dmowskiego i Paderewskiego, programu Daszyńskiego, pracy Korfantego czy Witosa i decyzji Rady Regencyjnej byłoby znacznie trudniej.",
+   "fakt": null
+  },
+  "m_przyjazd_11": {
+   "mit": "Piłsudski przyjechał do Warszawy 11 listopada.",
+   "opcje": [
+    "Przyjechał 10 listopada rano pociągiem z Berlina.",
+    "Przyjechał 11 listopada samochodem z Krakowa.",
+    "Przyleciał samolotem 9 listopada."
+   ],
+   "dobra": 0,
+   "wyjasnienie": "Pociąg z Berlina dotarł na Dworzec Wiedeński rano 10 listopada. 11 listopada Rada Regencyjna przekazała mu dowództwo wojska.",
+   "fakt": "powrot_10xi"
+  },
+  "m_rr_zdrajcy": {
+   "mit": "Rada Regencyjna była tylko marionetką okupantów i nic nie zrobiła dla niepodległości.",
+   "opcje": [
+    "Prawda — nigdy nie mówiła o niepodległości.",
+    "To uproszczenie — powstała z woli okupantów, ale ogłosiła niepodległość 7 X i pokojowo oddała władzę.",
+    "Rada Regencyjna nie istniała, to wymysł powieściopisarzy."
+   ],
+   "dobra": 1,
+   "wyjasnienie": "Krytycy wskazywali, że regentów powołali Niemcy i Austriacy. Obrońcy — że Rada zbudowała urzędy, sądy i szkolnictwo, a potem bez konfliktu przekazała władzę. Obie oceny opierają się na faktach.",
+   "fakt": "rr_oredzie"
+  },
+  "m_kobiety": {
+   "mit": "Kobiety w Polsce dostały prawo głosu dopiero po II wojnie światowej.",
+   "opcje": [
+    "Prawda — pierwszy raz głosowały w 1946 r.",
+    "Nie — dekret z 28 XI 1918 dał im pełne prawa wyborcze, wcześniej niż np. we Francji.",
+    "Nie — głosowały już w XVIII wieku na sejmikach."
+   ],
+   "dobra": 1,
+   "wyjasnienie": "Polki głosowały w wyborach 26 I 1919. Francuzki — dopiero w 1945 r., Amerykanki w całym kraju od 1920 r., Brytyjki na równi z mężczyznami od 1928 r.",
+   "fakt": "dekret_wyborczy"
+  },
+  "m_rozbrojenie_krwawe": {
+   "mit": "Niemców wypędzono z Warszawy w wielkiej, krwawej bitwie.",
+   "opcje": [
+    "Tak, walki trwały miesiąc i zniszczyły miasto.",
+    "Nie — było kilka starć, ale większość Niemców oddała broń i wyjechała na podstawie porozumienia.",
+    "Nie — Niemcy wyjechali jeszcze w 1917 r."
+   ],
+   "dobra": 1,
+   "wyjasnienie": "Zdarzały się strzelaniny i ofiary, ale Piłsudski porozumiał się z niemiecką Radą Żołnierską. Garnizon został ewakuowany w ciągu kilku dni.",
+   "fakt": "rozbrajanie"
+  },
+  "m_dmowski_przeciw": {
+   "mit": "Dmowski i Piłsudski chcieli zupełnie innych rzeczy — jeden był za niepodległością, drugi przeciw.",
+   "opcje": [
+    "Obaj chcieli niepodległości, ale wybrali inne drogi i innych sojuszników.",
+    "Dmowski chciał, by Polska została częścią Rosji na zawsze.",
+    "Piłsudski chciał, by Polska była częścią Niemiec."
+   ],
+   "dobra": 0,
+   "wyjasnienie": "Dmowski uważał za głównego wroga Niemcy i stawiał na Ententę. Piłsudski najpierw walczył u boku Austrii przeciw Rosji, a potem zerwał z państwami centralnymi. Cel był wspólny, strategie — różne.",
+   "fakt": "knp_uznanie"
+  },
+  "m_wielkopolska": {
+   "mit": "W listopadzie 1918 r. Poznań i Wielkopolska od razu stały się częścią Polski.",
+   "opcje": [
+    "Tak, Niemcy oddali je 11 listopada.",
+    "Nie — należały do Niemiec do powstania wielkopolskiego i traktatu wersalskiego.",
+    "Nie — Wielkopolska nigdy nie wróciła do Polski."
+   ],
+   "dobra": 1,
+   "wyjasnienie": "Rozejm z 11 XI nie zmienił granic Niemiec. Powstanie wybuchło 27 XII 1918, a ostatecznie granicę potwierdził traktat wersalski z 28 VI 1919.",
+   "fakt": "wielkopolska"
+  },
+  "m_hymn": {
+   "mit": "„Mazurek Dąbrowskiego” był oficjalnym hymnem od pierwszego dnia niepodległości.",
+   "opcje": [
+    "Tak, ustawa z 11 XI 1918 to ustaliła.",
+    "Nie — był popularny, ale oficjalnym hymnem został w 1927 r.",
+    "Nie — hymnem była „Rota” aż do 1989 r."
+   ],
+   "dobra": 1,
+   "wyjasnienie": "W 1918 r. śpiewano „Mazurka”, „Rotę”, „Boże coś Polskę” i „Pierwszą Brygadę”. Spór o hymn rozstrzygnięto w 1927 r.",
+   "fakt": "hymn_1927"
+  }
+ },
+ "prawa_kobiet": {
+  "tytul": "Prawa wyborcze kobiet w 1918 r.",
+  "akapity": [
+   "28 listopada 1918 r. Józef Piłsudski i premier Jędrzej Moraczewski podpisali dekret o ordynacji wyborczej. Art. 1: „Wyborcą do Sejmu jest każdy obywatel Państwa bez różnicy płci, który do dnia ogłoszenia wyborów ukończył 21 lat”.",
+   "Kobiety mogły nie tylko głosować (czynne prawo wyborcze), ale też kandydować (bierne prawo wyborcze).",
+   "Wybory do Sejmu Ustawodawczego odbyły się 26 stycznia 1919 r. Wybrano 8 posłanek, m.in. Gabrielę Balicką, Irenę Kosmowską, Zofię Moraczewską i Franciszkę Wilczkowiakową.",
+   "Do tej chwili prowadziły długie starania m.in. Ligi Kobiet oraz zjazdów kobiet polskich. Postulat praw wyborczych dla kobiet znalazł się też w manifeście lubelskim z 7 XI 1918."
+  ],
+  "porownanie": [
+   [
+    "Nowa Zelandia",
+    1893
+   ],
+   [
+    "Finlandia",
+    1906
+   ],
+   [
+    "Polska",
+    1918
+   ],
+   [
+    "USA (cały kraj)",
+    1920
+   ],
+   [
+    "Wielka Brytania (na równi z mężczyznami)",
+    1928
+   ],
+   [
+    "Francja",
+    1944
+   ],
+   [
+    "Szwajcaria",
+    1971
+   ]
+  ],
+  "zrodlo": "Dekret z 28 XI 1918 o ordynacji wyborczej do Sejmu Ustawodawczego, Dz.P.P.P. nr 18, poz. 46."
+ },
+ "zabory": {
+  "rosyjski": {
+   "nazwa": "zabór rosyjski",
+   "ton": 175,
+   "punkty": [
+    [
+     22.8,
+     54.4
+    ],
+    [
+     26.5,
+     55.2
+    ],
+    [
+     27.0,
+     52.0
+    ],
+    [
+     24.2,
+     50.7
+    ],
+    [
+     23.0,
+     50.4
+    ],
+    [
+     21.7,
+     50.6
+    ],
+    [
+     20.4,
+     50.2
+    ],
+    [
+     19.2,
+     50.3
+    ],
+    [
+     18.3,
+     51.3
+    ],
+    [
+     17.9,
+     51.6
+    ],
+    [
+     18.2,
+     52.4
+    ],
+    [
+     18.8,
+     52.9
+    ],
+    [
+     19.3,
+     53.0
+    ],
+    [
+     20.0,
+     53.2
+    ],
+    [
+     21.0,
+     53.2
+    ],
+    [
+     22.8,
+     53.9
+    ]
+   ]
+  },
+  "pruski": {
+   "nazwa": "zabór pruski",
+   "ton": 120,
+   "punkty": [
+    [
+     14.3,
+     53.9
+    ],
+    [
+     16.0,
+     54.5
+    ],
+    [
+     18.5,
+     54.8
+    ],
+    [
+     20.0,
+     54.9
+    ],
+    [
+     22.8,
+     54.4
+    ],
+    [
+     22.8,
+     53.9
+    ],
+    [
+     21.0,
+     53.2
+    ],
+    [
+     20.0,
+     53.2
+    ],
+    [
+     19.3,
+     53.0
+    ],
+    [
+     18.8,
+     52.9
+    ],
+    [
+     18.2,
+     52.4
+    ],
+    [
+     17.9,
+     51.6
+    ],
+    [
+     18.3,
+     51.3
+    ],
+    [
+     19.2,
+     50.3
+    ],
+    [
+     18.9,
+     50.0
+    ],
+    [
+     18.3,
+     50.0
+    ],
+    [
+     17.5,
+     50.3
+    ],
+    [
+     16.5,
+     50.2
+    ],
+    [
+     15.0,
+     50.9
+    ],
+    [
+     14.6,
+     51.5
+    ],
+    [
+     14.6,
+     52.6
+    ]
+   ]
+  },
+  "austriacki": {
+   "nazwa": "zabór austriacki",
+   "ton": 210,
+   "punkty": [
+    [
+     19.2,
+     50.3
+    ],
+    [
+     20.4,
+     50.2
+    ],
+    [
+     21.7,
+     50.6
+    ],
+    [
+     23.0,
+     50.4
+    ],
+    [
+     24.2,
+     50.7
+    ],
+    [
+     26.2,
+     49.6
+    ],
+    [
+     25.9,
+     48.3
+    ],
+    [
+     24.5,
+     48.6
+    ],
+    [
+     23.0,
+     49.0
+    ],
+    [
+     22.0,
+     49.2
+    ],
+    [
+     20.5,
+     49.2
+    ],
+    [
+     19.5,
+     49.4
+    ],
+    [
+     18.8,
+     49.5
+    ],
+    [
+     18.3,
+     49.9
+    ],
+    [
+     18.9,
+     50.0
+    ]
+   ]
+  }
+ },
+ "miasta": {
+  "Warszawa": [
+   [
+    21.01,
+    52.23
+   ],
+   "rosyjski"
+  ],
+  "Lublin": [
+   [
+    22.57,
+    51.25
+   ],
+   "rosyjski"
+  ],
+  "Wilno": [
+   [
+    25.28,
+    54.69
+   ],
+   "rosyjski"
+  ],
+  "Poznań": [
+   [
+    16.93,
+    52.41
+   ],
+   "pruski"
+  ],
+  "Gdańsk": [
+   [
+    18.65,
+    54.35
+   ],
+   "pruski"
+  ],
+  "Bydgoszcz": [
+   [
+    18.0,
+    53.12
+   ],
+   "pruski"
+  ],
+  "Kraków": [
+   [
+    19.94,
+    50.06
+   ],
+   "austriacki"
+  ],
+  "Lwów": [
+   [
+    24.03,
+    49.84
+   ],
+   "austriacki"
+  ],
+  "Przemyśl": [
+   [
+    22.77,
+    49.78
+   ],
+   "austriacki"
+  ]
+ },
+ "minigry": {
+  "wygrana": {
+   "mapa_zaborow": [
+    "flag:mapa_ok",
+    "fakt:zabory",
+    "dialog:d_witos_mapa"
+   ],
+   "manifest": [
+    "flag:manifest_ok",
+    "fakt:manifest_tresc",
+    "damian:Zwróć uwagę na prawa wyborcze kobiet w manifeście. Za trzy tygodnie wrócimy do tego tematu — tym razem w prawie, nie tylko w obietnicy."
+   ],
+   "przepustki": [
+    "flag:przepustki_ok",
+    "damian:Peron gotowy. Za chwilę wysiądzie Komendant. Książę Lubomirski już poprawia cylinder."
+   ],
+   "kolejnosc_koszar": [
+    "flag:kolejnosc_ok",
+    "zabierz:plan_koszar",
+    "damian:Ta kolejność to zagadka, nie dokładna kronika — ale logika jest prawdziwa: najpierw łączność, potem broń, a dopiero na końcu największy garnizon."
+   ],
+   "swiadkowie": [
+    "flag:swiadkowie_ok"
+   ],
+   "dyplomacja": [
+    "flag:dyplomacja_ok",
+    "damian:Brawo, dyplomato! W prawdziwej historii nie poszło tak szybko: Polska musiała czekać na konferencję pokojową w 1919 r. i spór o to, kto ją reprezentuje."
+   ],
+   "prawa_kobiet": [
+    "flag:quiz_kobiet_ok",
+    "fakt:wybory_1919",
+    "damian:Zajrzyj do dziennika — jest tam strona o prawach wyborczych kobiet i porównanie z innymi krajami. A teraz chodź do mnie, czas złożyć album."
+   ],
+   "wklady": [
+    "flag:wklady_ok",
+    "mit:m_kobiety",
+    "mit:m_hymn",
+    "mit:m_sam_pilsudski",
+    "koniec_rozdzialu"
+   ]
+  },
+  "manifest_sekcje": [
+   "Kto ogłasza",
+   "Ustrój państwa",
+   "Prawa obywateli",
+   "Praca",
+   "Ziemia",
+   "Wezwanie"
+  ],
+  "manifest_fragmenty": [
+   [
+    "Lud polski! Ogłaszamy powstanie Tymczasowego Rządu Ludowego Republiki Polskiej.",
+    0
+   ],
+   [
+    "Państwo Polskie, obejmujące wszystkie ziemie zamieszkałe przez lud polski, będzie republiką ludową.",
+    1
+   ],
+   [
+    "Wszyscy obywatele, bez różnicy płci, mają równe prawa polityczne i prawo wyborcze od 21 lat.",
+    2
+   ],
+   [
+    "Wprowadzamy 8-godzinny dzień pracy w przemyśle, rzemiośle i handlu.",
+    3
+   ],
+   [
+    "Wielka własność ziemska zostanie przejęta i przekazana ludowi pracującemu.",
+    4
+   ],
+   [
+    "Wzywamy lud do zwołania Sejmu Ustawodawczego jeszcze w tym roku. Niech żyje Polska!",
+    5
+   ],
+   [
+    "Przywracamy władzę króla i przywileje szlachty.",
+    null
+   ],
+   [
+    "Prawo wyborcze przysługuje tylko właścicielom kamienic.",
+    null
+   ]
+  ],
+  "koszary_punkty": [
+   "Telegraf",
+   "Magazyn broni",
+   "Dworzec",
+   "Koszary Mirowskie",
+   "Cytadela"
+  ],
+  "koszary_wskazowki": [
+   "1. Najpierw łączność: zajmij telegraf, zanim ktoś wezwie posiłki.",
+   "2. Magazyn broni — zaraz po telegrafie. Z bronią łatwiej przekonywać.",
+   "3. Dworzec przed Koszarami Mirowskimi — Niemcy muszą mieć jak wyjechać, zanim oddadzą broń.",
+   "4. Cytadela na samym końcu — to największy garnizon."
+  ],
+  "koszary_rozwiazanie": [
+   "Telegraf",
+   "Magazyn broni",
+   "Dworzec",
+   "Koszary Mirowskie",
+   "Cytadela"
+  ],
+  "lista_powitalna": [
+   "Lubomirski",
+   "Koc",
+   "Sosnkowski",
+   "Stamirowski",
+   "Walewska",
+   "Kowalska",
+   "Zawadzka",
+   "Wiśniewski"
+  ],
+  "zasady_przepustek": [
+   "Data: 10 XI 1918",
+   "Pieczęć: POW lub Rada Regencyjna",
+   "Nazwisko z listy powitalnej",
+   "Podpis musi być"
+  ],
+  "przepustki": [
+   [
+    "Zawadzka",
+    "10 XI 1918",
+    "POW",
+    true
+   ],
+   [
+    "Kowalska",
+    "10 XI 1918",
+    "Rada Regencyjna",
+    true
+   ],
+   [
+    "Müller",
+    "10 XI 1918",
+    "Generalgouvernement",
+    true
+   ],
+   [
+    "Wiśniewski",
+    "9 XI 1918",
+    "POW",
+    true
+   ],
+   [
+    "Stamirowski",
+    "10 XI 1918",
+    "POW",
+    true
+   ],
+   [
+    "Walewska",
+    "10 XI 1918",
+    "Rada Regencyjna",
+    false
+   ],
+   [
+    "Kwiatkowski",
+    "10 XI 1918",
+    "POW",
+    true
+   ],
+   [
+    "Kowalska",
+    "10 XI 1918",
+    "POW",
+    true
+   ]
+  ],
+  "przepustki_prog": 6,
+  "swiadkowie": [
+   {
+    "pytanie": "O przyjeździe Komendanta do Warszawy:",
+    "zeznania": [
+     [
+      "dorozkarz",
+      "Widziałem tłum na Dworcu Wiedeńskim. Komendant miał maciejówkę i szary płaszcz."
+     ],
+     [
+      "przekupka",
+      "Przyjechał 11 listopada wieczorem, wszyscy wiedzą! Od razu wyszedł na balkon i ogłosił niepodległość."
+     ],
+     [
+      "student",
+      "Witał go książę Lubomirski z Rady Regencyjnej i komendant Koc z POW."
+     ]
+    ],
+    "falszywe": 1,
+    "dowod": "rozklad_jazdy",
+    "wyjasnienie": "Rozkład jazdy: przyjazd 10 XI 1918 o 7.00. Żadnego balkonu — niepodległość nie miała jednego ogłoszenia."
+   },
+   {
+    "pytanie": "O Radzie Regencyjnej:",
+    "zeznania": [
+     [
+      "student",
+      "Rada Regencyjna przekazała Komendantowi dowództwo nad wojskiem 11 listopada."
+     ],
+     [
+      "dorozkarz",
+      "Ci regenci nigdy nawet słowem nie wspomnieli o niepodległej Polsce. Siedzieli cicho jak myszy."
+     ],
+     [
+      "przekupka",
+      "Arcybiskup Kakowski był jednym z regentów, sama go widziałam w karecie."
+     ]
+    ],
+    "falszywe": 1,
+    "dowod": "odpis_oredzia",
+    "wyjasnienie": "Orędzie z 7 X 1918: Rada Regencyjna ogłosiła wolę utworzenia niepodległego państwa."
+   },
+   {
+    "pytanie": "O rozbrajaniu Niemców:",
+    "zeznania": [
+     [
+      "przekupka",
+      "Niemcy oddawali karabiny za bochenek chleba, jeden to nawet za obwarzanek."
+     ],
+     [
+      "student",
+      "W Krakowie Austriaków rozbrojono już 31 października, przed Warszawą."
+     ],
+     [
+      "dorozkarz",
+      "Polska władza zaczęła się w Krakowie dopiero w grudniu, po Warszawie."
+     ]
+    ],
+    "falszywe": 2,
+    "dowod": "orzelek",
+    "wyjasnienie": "Orzełek z Krakowa, 31 X 1918 — Kraków był pierwszy. (A obwarzanek? Barwna plotka, ale ich nie da się sprawdzić — dobry reporter zaznaczy to jako „podobno”.)"
+   }
+  ],
+  "panstwa": [
+   "Francja",
+   "Anglia",
+   "USA"
+  ],
+  "dyplomacja_start": {
+   "Francja": 35,
+   "Anglia": 30,
+   "USA": 30
+  },
+  "dyplomacja_prog": 50,
+  "dyplomacja_rundy": [
+   {
+    "kto": "laroche",
+    "pytanie": "Dlaczego Francja ma wspierać Polskę?",
+    "odpowiedzi": [
+     [
+      "Silna Polska na wschód od Niemiec to wasz sojusznik i zapora przed niemieckim odwetem. (argument Dmowskiego)",
+      {
+       "Francja": 20,
+       "Anglia": 0,
+       "USA": 5
+      }
+     ],
+     [
+      "Polacy walczą u waszego boku w Błękitnej Armii we Francji.",
+      {
+       "Francja": 15,
+       "Anglia": 5,
+       "USA": 5
+      }
+     ],
+     [
+      "Bo i tak weźmiemy, co chcemy, z wami albo bez was!",
+      {
+       "Francja": -10,
+       "Anglia": -15,
+       "USA": -10
+      }
+     ]
+    ]
+   },
+   {
+    "kto": "whitby",
+    "pytanie": "Londyn obawia się zbyt wielkiej Polski i chaosu na wschodzie. Co pan na to?",
+    "odpowiedzi": [
+     [
+      "Granice ustali konferencja pokojowa — według tego, gdzie mieszkają Polacy.",
+      {
+       "Francja": 0,
+       "Anglia": 20,
+       "USA": 10
+      }
+     ],
+     [
+      "Polska musi być ogromna, od morza do morza, i już!",
+      {
+       "Francja": 5,
+       "Anglia": -15,
+       "USA": -10
+      }
+     ],
+     [
+      "W Warszawie jest już władza i wojsko, które pilnuje porządku. (telegram Piłsudskiego z 16 XI)",
+      {
+       "Francja": -5,
+       "Anglia": 10,
+       "USA": 5
+      }
+     ]
+    ]
+   },
+   {
+    "kto": "carter",
+    "pytanie": "President Wilson mówił o 13. punkcie. Co on właściwie znaczy?",
+    "odpowiedzi": [
+     [
+      "Niepodległa Polska z ludnością bezsprzecznie polską i wolnym dostępem do morza. (depesza Paderewskiego)",
+      {
+       "Francja": 5,
+       "Anglia": 5,
+       "USA": 20
+      }
+     ],
+     [
+      "Że Polska dostanie wszystkie ziemie sprzed rozbiorów z 1772 roku.",
+      {
+       "Francja": 0,
+       "Anglia": -10,
+       "USA": -10
+      }
+     ],
+     [
+      "Że Paderewski zagra w Białym Domu Chopina.",
+      {
+       "Francja": 0,
+       "Anglia": 0,
+       "USA": 5
+      }
+     ]
+    ]
+   },
+   {
+    "kto": "laroche",
+    "pytanie": "Kto mówi w imieniu Polski: Komitet w Paryżu czy rząd w Warszawie?",
+    "odpowiedzi": [
+     [
+      "Tylko Komitet Narodowy Polski — to jego uznaliście.",
+      {
+       "Francja": 10,
+       "Anglia": -5,
+       "USA": 0
+      }
+     ],
+     [
+      "Tylko rząd w Warszawie — tam jest wojsko.",
+      {
+       "Francja": -10,
+       "Anglia": 5,
+       "USA": 0
+      }
+     ],
+     [
+      "Paryż i Warszawa muszą się porozumieć. Wspólna delegacja będzie silniejsza.",
+      {
+       "Francja": 10,
+       "Anglia": 10,
+       "USA": 10
+      }
+     ]
+    ]
+   },
+   {
+    "kto": "whitby",
+    "pytanie": "Czy nowa Polska zadba o prawa mniejszości — Żydów, Ukraińców, Niemców?",
+    "odpowiedzi": [
+     [
+      "Tak. Wszyscy obywatele mają być równi wobec prawa.",
+      {
+       "Francja": 10,
+       "Anglia": 10,
+       "USA": 10
+      }
+     ],
+     [
+      "To nie wasza sprawa.",
+      {
+       "Francja": -10,
+       "Anglia": -10,
+       "USA": -10
+      }
+     ],
+     [
+      "Pomyślimy o tym później.",
+      {
+       "Francja": 0,
+       "Anglia": -5,
+       "USA": -5
+      }
+     ]
+    ]
+   }
+  ],
+  "quiz_kobiet": [
+   [
+    "Od ilu lat można było głosować według dekretu z 28 XI 1918?",
+    [
+     "18 lat",
+     "21 lat",
+     "30 lat"
+    ],
+    1
+   ],
+   [
+    "Czy kobiety mogły też kandydować do Sejmu?",
+    [
+     "Tak, miały bierne prawo wyborcze",
+     "Nie, tylko głosować",
+     "Tylko wdowy"
+    ],
+    0
+   ],
+   [
+    "Ile kobiet weszło do Sejmu Ustawodawczego w 1919 r.?",
+    [
+     "Żadna",
+     "8",
+     "100"
+    ],
+    1
+   ],
+   [
+    "W którym kraju kobiety uzyskały prawa wyborcze PÓŹNIEJ niż w Polsce?",
+    [
+     "Nowa Zelandia (1893)",
+     "Finlandia (1906)",
+     "Francja (1944)"
+    ],
+    2
+   ],
+   [
+    "Kiedy Polki po raz pierwszy głosowały w wyborach do Sejmu?",
+    [
+     "26 I 1919",
+     "11 XI 1918",
+     "3 V 1791"
+    ],
+    0
+   ]
+  ],
+  "quiz_kobiet_prog": 4,
+  "wklady": [
+   [
+    "pilsudski",
+    "Wojsko i przejęcie władzy w Warszawie"
+   ],
+   [
+    "dmowski",
+    "Uznanie Ententy i Komitet Narodowy w Paryżu"
+   ],
+   [
+    "paderewski",
+    "Poparcie Ameryki i prezydenta Wilsona"
+   ],
+   [
+    "daszynski",
+    "Program reform: 8 godzin pracy, prawa kobiet"
+   ],
+   [
+    "korfanty",
+    "Upomnienie się o ziemie zaboru pruskiego w Reichstagu"
+   ],
+   [
+    "witos",
+    "Przejęcie Galicji i głos polskiej wsi"
+   ],
+   [
+    "rada",
+    "Orędzie z 7 X i pokojowe przekazanie władzy"
+   ],
+   [
+    "moraczewska",
+    "Walka o prawa wyborcze kobiet"
+   ]
+  ]
+ },
+ "solucja": [
+  [
+   "klik",
+   "damian"
+  ],
+  [
+   "klik",
+   "mapa_sciana"
+  ],
+  [
+   "klik",
+   "polka"
+  ],
+  [
+   "klik",
+   "szuflada"
+  ],
+  [
+   "uzyj",
+   "pocztowka_krakow",
+   "stereoskop"
+  ],
+  [
+   "klik",
+   "witos"
+  ],
+  [
+   "klik",
+   "mariacki"
+  ],
+  [
+   "klik",
+   "gazeciarz"
+  ],
+  [
+   "klik",
+   "slup"
+  ],
+  [
+   "klik",
+   "powrot"
+  ],
+  [
+   "klik",
+   "staszek"
+  ],
+  [
+   "klik",
+   "hak"
+  ],
+  [
+   "klik",
+   "stol"
+  ],
+  [
+   "klik",
+   "drzwi"
+  ],
+  [
+   "klik",
+   "wozny"
+  ],
+  [
+   "uzyj",
+   "opaska",
+   "wozny"
+  ],
+  [
+   "klik",
+   "kakowski"
+  ],
+  [
+   "klik",
+   "ostrowski"
+  ],
+  [
+   "uzyj",
+   "meldunek",
+   "lubomirski"
+  ],
+  [
+   "klik",
+   "do_lublina"
+  ],
+  [
+   "klik",
+   "daszynski"
+  ],
+  [
+   "klik",
+   "rydz"
+  ],
+  [
+   "klik",
+   "do_drukarni"
+  ],
+  [
+   "klik",
+   "zecer"
+  ],
+  [
+   "klik",
+   "kaszta"
+  ],
+  [
+   "klik",
+   "prasa"
+  ],
+  [
+   "klik",
+   "do_palacu"
+  ],
+  [
+   "uzyj",
+   "odbitka_manifestu",
+   "daszynski"
+  ],
+  [
+   "klik",
+   "pocztowka_dalej"
+  ],
+  [
+   "klik",
+   "okno_wagon"
+  ],
+  [
+   "klik",
+   "siedzenie"
+  ],
+  [
+   "klik",
+   "pilsudski"
+  ],
+  [
+   "klik",
+   "wysiadka"
+  ],
+  [
+   "klik",
+   "koc"
+  ],
+  [
+   "klik",
+   "bramka"
+  ],
+  [
+   "klik",
+   "lubomirski_dw"
+  ],
+  [
+   "klik",
+   "dalej_dworzec"
+  ],
+  [
+   "klik",
+   "koc_k"
+  ],
+  [
+   "klik",
+   "stol_plan"
+  ],
+  [
+   "klik",
+   "otto"
+  ],
+  [
+   "klik",
+   "na_plac"
+  ],
+  [
+   "klik",
+   "zawadzka"
+  ],
+  [
+   "klik",
+   "zawadzka"
+  ],
+  [
+   "klik",
+   "do_paryza"
+  ],
+  [
+   "klik",
+   "telegraf"
+  ],
+  [
+   "klik",
+   "dmowski"
+  ],
+  [
+   "klik",
+   "paderewski"
+  ],
+  [
+   "klik",
+   "do_salonu"
+  ],
+  [
+   "klik",
+   "carter"
+  ],
+  [
+   "klik",
+   "do_poznania"
+  ],
+  [
+   "klik",
+   "kiosk"
+  ],
+  [
+   "klik",
+   "korfanty"
+  ],
+  [
+   "klik",
+   "do_warszawy"
+  ],
+  [
+   "klik",
+   "plakat"
+  ],
+  [
+   "klik",
+   "moraczewska"
+  ],
+  [
+   "klik",
+   "moraczewska"
+  ],
+  [
+   "klik",
+   "damian_final"
+  ]
+ ],
+ "grafika": {
+  "skala_postaci": 1.6,
+  "postacie": {
+   "pilsudski": {
+    "w": 288,
+    "h": 544,
+    "stopa_px": 16,
+    "wzrost_px": 480
+   },
+   "dmowski": {
+    "w": 277,
+    "h": 524,
+    "stopa_px": 16,
+    "wzrost_px": 460
+   },
+   "paderewski": {
+    "w": 292,
+    "h": 553,
+    "stopa_px": 16,
+    "wzrost_px": 489
+   },
+   "daszynski": {
+    "w": 298,
+    "h": 563,
+    "stopa_px": 16,
+    "wzrost_px": 499
+   },
+   "korfanty": {
+    "w": 288,
+    "h": 544,
+    "stopa_px": 16,
+    "wzrost_px": 480
+   },
+   "witos": {
+    "w": 282,
+    "h": 534,
+    "stopa_px": 16,
+    "wzrost_px": 470
+   },
+   "kakowski": {
+    "w": 279,
+    "h": 529,
+    "stopa_px": 16,
+    "wzrost_px": 465
+   },
+   "lubomirski": {
+    "w": 301,
+    "h": 568,
+    "stopa_px": 16,
+    "wzrost_px": 504
+   },
+   "ostrowski": {
+    "w": 274,
+    "h": 520,
+    "stopa_px": 16,
+    "wzrost_px": 456
+   },
+   "rydz": {
+    "w": 295,
+    "h": 558,
+    "stopa_px": 16,
+    "wzrost_px": 494
+   },
+   "koc": {
+    "w": 288,
+    "h": 544,
+    "stopa_px": 16,
+    "wzrost_px": 480
+   },
+   "moraczewska": {
+    "w": 266,
+    "h": 505,
+    "stopa_px": 16,
+    "wzrost_px": 441
+   },
+   "janek": {
+    "w": 229,
+    "h": 438,
+    "stopa_px": 16,
+    "wzrost_px": 374
+   },
+   "damian": {
+    "w": 288,
+    "h": 544,
+    "stopa_px": 16,
+    "wzrost_px": 480
+   },
+   "druh_staszek": {
+    "w": 261,
+    "h": 496,
+    "stopa_px": 16,
+    "wzrost_px": 432
+   },
+   "wozny": {
+    "w": 282,
+    "h": 534,
+    "stopa_px": 16,
+    "wzrost_px": 470
+   },
+   "zecer": {
+    "w": 277,
+    "h": 524,
+    "stopa_px": 16,
+    "wzrost_px": 460
+   },
+   "otto": {
+    "w": 288,
+    "h": 544,
+    "stopa_px": 16,
+    "wzrost_px": 480
+   },
+   "zawadzka": {
+    "w": 269,
+    "h": 510,
+    "stopa_px": 16,
+    "wzrost_px": 446
+   },
+   "laroche": {
+    "w": 279,
+    "h": 529,
+    "stopa_px": 16,
+    "wzrost_px": 465
+   },
+   "whitby": {
+    "w": 303,
+    "h": 572,
+    "stopa_px": 16,
+    "wzrost_px": 508
+   },
+   "carter": {
+    "w": 298,
+    "h": 563,
+    "stopa_px": 16,
+    "wzrost_px": 499
+   },
+   "dorozkarz": {
+    "w": 279,
+    "h": 529,
+    "stopa_px": 16,
+    "wzrost_px": 465
+   },
+   "przekupka": {
+    "w": 256,
+    "h": 486,
+    "stopa_px": 16,
+    "wzrost_px": 422
+   },
+   "student": {
+    "w": 282,
+    "h": 534,
+    "stopa_px": 16,
+    "wzrost_px": 470
+   },
+   "konduktorka": {
+    "w": 261,
+    "h": 496,
+    "stopa_px": 16,
+    "wzrost_px": 432
+   }
+  }
+ }
+}

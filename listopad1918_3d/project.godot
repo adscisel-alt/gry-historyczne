@@ -1,0 +1,28 @@
+; Listopad 1918 — Pocztówki z niepodległości (wersja 3D, Godot 4.3+)
+
+config_version=5
+
+[application]
+
+config/name="Listopad 1918 3D"
+config/description="Przygodówka point-and-click 3D: diorama z wycinanek, 31 X – 28 XI 1918."
+run/main_scene="res://main.tscn"
+config/features=PackedStringArray("4.3", "GL Compatibility")
+config/icon="res://zasoby/ikony/orzelek.png"
+
+[autoload]
+
+Dane="*res://skrypty/dane.gd"
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=720
+window/stretch/mode="canvas_items"
+window/stretch/aspect="keep"
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+anti_aliasing/quality/msaa_3d=2

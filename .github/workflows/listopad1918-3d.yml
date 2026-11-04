@@ -1,0 +1,73 @@
+name: Listopad 1918 3D — Godot (test + EXE)
+
+on:
+  push:
+    paths: ["listopad1918_3d/**", ".github/workflows/listopad1918-3d.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  GODOT_VERSION: "4.3"
+
+jobs:
+  godot:
+    runs-on: ubuntu-latest
+    container:
+      image: barichello/godot-ci:4.3
+    defaults:
+      run:
+        shell: bash
+        working-directory: listopad1918_3d
+    steps:
+      - uses: actions/checkout@v4
+      - name: Szablony eksportu
+        run: |
+          mkdir -p ~/.local/share/godot/export_templates
+          mv /root/.local/share/godot/export_templates/${GODOT_VERSION}.stable ~/.local/share/godot/export_templates/ || true
+      - name: Import zasobów
+        run: godot --headless --import 2>&1 | tail -20 || true
+      - name: Autotest (logika, sceny 3D, interfejs, minigry)
+        run: |
+          set +e
+          godot --headless --path . -- --autotest > log.txt 2>&1
+          kod=$?
+          cat log.txt
+          if grep -E "SCRIPT ERROR|Parse Error|Failed to load script|Invalid call|Invalid access" log.txt; then exit 1; fi
+          exit $kod
+      - name: Eksport EXE (Windows)
+        run: |
+          mkdir -p build
+          godot --headless --export-release "Windows Desktop" build/Listopad1918_3D.exe 2>&1 | tail -20
+          ls -la build
+          test -f build/Listopad1918_3D.exe
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Listopad1918_3D-Windows
+          path: listopad1918_3d/build/Listopad1918_3D.exe
+
+  windows:
+    needs: godot
+    runs-on: windows-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: Listopad1918_3D-Windows
+      - name: Autotest gotowego EXE
+        shell: pwsh
+        run: |
+          $p = Start-Process -FilePath ".\Listopad1918_3D.exe" -ArgumentList "--headless","--","--autotest" -Wait -PassThru -RedirectStandardOutput out.txt -RedirectStandardError err.txt
+          Get-Content out.txt, err.txt
+          if ($p.ExitCode -ne 0) { throw "Autotest EXE: kod $($p.ExitCode)" }
+      - name: Publikacja jako Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: listopad1918-3d-latest
+          name: Listopad 1918 3D — gra na Windows (najnowsza wersja)
+          target_commitish: ${{ github.sha }}
+          body: |
+            Wersja 3D (Godot): diorama z papierowych wycinanek, sterowanie „kliknij i idź”.
+            Pobierz Listopad1918_3D.exe i uruchom (SmartScreen: „Więcej informacji” → „Uruchom mimo to”).
+          files: Listopad1918_3D.exe
+          make_latest: false
