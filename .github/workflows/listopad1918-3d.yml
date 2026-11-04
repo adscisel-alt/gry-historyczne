@@ -36,6 +36,20 @@ jobs:
           cat log.txt
           if grep -E "SCRIPT ERROR|Parse Error|Failed to load script|Invalid call|Invalid access" log.txt; then exit 1; fi
           exit $kod
+      - name: Zrzuty ekranu (renderowanie programowe, xvfb)
+        continue-on-error: true
+        run: |
+          apt-get update -qq && apt-get install -y -qq xvfb libgl1-mesa-dri libglx-mesa0 libgl1 > /dev/null
+          rm -rf zrzuty && mkdir -p zrzuty
+          timeout 300 xvfb-run -a -s "-screen 0 1280x720x24" godot --path . --rendering-driver opengl3 --resolution 1280x720 -- --zrzuty=$PWD/zrzuty > zrzuty_log.txt 2>&1 || true
+          tail -40 zrzuty_log.txt
+          ls zrzuty
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          cd "$GITHUB_WORKSPACE"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add listopad1918_3d/zrzuty
+          git commit -m "Listopad 1918 3D: zrzuty ekranu z CI [skip ci]" && git push origin HEAD:${GITHUB_REF_NAME} || echo "brak zmian lub push odrzucony"
       - name: Eksport EXE (Windows)
         run: |
           mkdir -p build
