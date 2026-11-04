@@ -1,0 +1,37 @@
+name: Listopad 1918 — EXE (Windows)
+
+# Buduje grę „Listopad 1918” do pliku EXE na Windows i publikuje go jako artefakt.
+on:
+  push:
+    paths: ["listopad1918/**", ".github/workflows/listopad1918-exe.yml"]
+  workflow_dispatch:
+
+jobs:
+  windows-exe:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: listopad1918
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Zależności
+        run: python -m pip install -r requirements.txt
+      - name: Testy automatyczne
+        env:
+          SDL_VIDEODRIVER: dummy
+          SDL_AUDIODRIVER: dummy
+        run: python -m pytest -q tests
+      - name: Budowanie EXE
+        run: python build_exe.py --bez-testow
+      - name: Autotest gotowego EXE
+        shell: pwsh
+        run: |
+          $p = Start-Process -FilePath "dist\Listopad1918.exe" -ArgumentList "--autotest" -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "Autotest EXE nie przeszedł: $($p.ExitCode)" }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Listopad1918-Windows
+          path: listopad1918/dist/Listopad1918.exe

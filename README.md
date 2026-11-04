@@ -12,6 +12,8 @@ https://adscisel-alt.github.io/gry-historyczne/
 - `cyberdetektyw.html` — „Damian Teacher: Cyberdetektyw”, klockowa gra RPG 3D o zasadach bezpieczeństwa
   w internecie dla klas VI–VIII (Szkoła Mentis): 9 spraw z quizami i słowniczkiem PL–EN (m.in. AI, deepfake,
   uzależnienie od ekranu), 12 złotych kłódek z poradami, finał z Phisherem i certyfikat do druku
+- `listopad1918/` — „Listopad 1918 — Pocztówki z niepodległości”, przygodówka point-and-click na Windows (Python + Pygame,
+  EXE budowany PyInstallerem): 7 rozdziałów, 14 lokacji, 12 postaci historycznych, 10 mitów, prawa wyborcze kobiet
 
 Wszystkie strony są samowystarczalne (działają offline, bez zależności sieciowych).
 Deploy: `.github/workflows/pages.yml` publikuje główną gałąź przy każdym pushu.
