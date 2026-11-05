@@ -35,6 +35,8 @@ with sync_playwright() as p:
             title = page.title()
         except Exception:
             title = ""
+        if "KRONIKI:ERROR" in title:
+            break
         if "KRONIKI:MENU" in title:
             logs.append("KRONIKI:MENU (tytuł strony)")
         joined = "\n".join(logs)
@@ -67,7 +69,10 @@ for l in logs[-25:]:
     print("  ", l[:300])
 if errors:
     print("Błędy strony:", errors[:5])
-if any("Traceback" in l for l in logs):
+for l in logs:
+    if "KRONIKI:TRACEBACK" in l:
+        print(l)
+if any("Traceback" in l or "TRACEBACK" in l for l in logs):
     print("BŁĄD: wyjątek Pythona w przeglądarce")
     sys.exit(1)
 print("---- tekst strony (terminal pygbag) ----")
