@@ -137,6 +137,37 @@ class World:
         self.dirty = True
         self.update_territory()
 
+    # ------------------------------------------------------------ zapis gry
+    def to_dict(self):
+        return {
+            "idx": self.idx, "res": self.res, "turn": self.turn,
+            "buildings": [[x, y, b] for (x, y), b in self.buildings.items()],
+            "techs": sorted(self.techs), "beaten": [c["id"] for c in self.camps.values() if c["beaten"]],
+            "deck": self.deck, "recruited": self.recruited_this_turn, "locked": sorted(self.tech_locked),
+            "done": sorted(self.done), "final_won": self.final_won, "morale": self.morale_bonus, "stats": self.stats,
+            "extra": getattr(self, "extra", {}),
+        }
+
+    @classmethod
+    def from_dict(cls, d):
+        w = cls(d["idx"])
+        w.res = dict(d["res"])
+        w.turn = d["turn"]
+        w.buildings = {(x, y): b for x, y, b in d["buildings"]}
+        w.techs = set(d["techs"])
+        for c in w.camps.values():
+            c["beaten"] = c["id"] in d["beaten"]
+        w.deck = list(d["deck"])
+        w.recruited_this_turn = d.get("recruited", 0)
+        w.tech_locked = set(d.get("locked", []))
+        w.done = set(d.get("done", []))
+        w.final_won = d.get("final_won", False)
+        w.morale_bonus = d.get("morale", 0)
+        w.stats = d.get("stats", w.stats)
+        w.extra = d.get("extra", {})
+        w.update_territory()
+        return w
+
     # ------------------------------------------------------------ terytorium
     def update_territory(self):
         t = set()

@@ -3,7 +3,7 @@
 import random
 import pygame
 
-from . import data, gfx, ui, audio
+from . import data, gfx, ui, audio, storage
 from .gfx import TW, TH
 from .world import N, World
 from .modals import Scene, Dialogue, Quiz, Info, W, H
@@ -114,9 +114,10 @@ class MapRenderer:
 
 
 class MapScene(Scene):
-    def __init__(self, app, chapter_idx):
+    def __init__(self, app, chapter_idx, world=None):
         super().__init__(app)
-        self.w = World(chapter_idx, app.save.get("techs", []))
+        self.w = world or World(chapter_idx, app.save.get("techs", []))
+        app.chapter = self.w.idx
         self.ch = self.w.ch
         self.r = MapRenderer(self.w)
         cx, cy = tile_center(*self.w.cap)
@@ -133,7 +134,10 @@ class MapScene(Scene):
         self.make_buttons()
         self.update_tip()
         audio.start_music(f"music_{self.w.epoch}")
-        self.queue.append(lambda: self.app.push(Dialogue(self.app, [{"who": w, "text": t} for w, t in self.ch["dialogue_start"]], self.w)))
+        if world is None:
+            self.queue.append(lambda: self.app.push(Dialogue(self.app, [{"who": w, "text": t} for w, t in self.ch["dialogue_start"]], self.w)))
+        else:
+            self.floats.append(["Wczytano zapis – tura %d" % self.w.turn, VIEW.centerx, VIEW.y + 60, (255, 240, 160), 0])
 
     # ------------------------------------------------------------ współrzędne
     def screen_to_tile(self, pos):
@@ -246,13 +250,28 @@ class MapScene(Scene):
         ws.discard("damian")
         return ws
 
+    def save_game(self):
+        storage.save("gra", self.w.to_dict())
+
+    @staticmethod
+    def has_save():
+        return storage.load("gra") is not None
+
+    @classmethod
+    def load_game(cls, app):
+        d = storage.load("gra")
+        return cls(app, d["idx"], World.from_dict(d))
+
     def pause(self):
         def to_menu():
+            self.save_game()
             from .scenes import MenuScene
             self.app.replace(MenuScene(self.app))
         from .scenes import help_text
-        self.app.push(Info(self.app, "Przerwa w kronice", "Gra zapisuje postęp po każdym ukończonym rozdziale.\n\n" + help_text(),
-                           buttons=[("Menu główne", to_menu), ("Wróć do gry", None)], wide=True))
+        self.app.push(Info(self.app, "Przerwa w kronice",
+                           "Gra zapisuje się sama na początku każdej tury, a „Menu główne” zapisuje bieżący stan. "
+                           "Wrócisz przyciskiem „Kontynuuj” w menu.\n\n" + help_text(),
+                           buttons=[("Zapisz i wyjdź do menu", to_menu), ("Wróć do gry", None)], wide=True))
 
     def attack_camp(self, pos):
         c = self.w.camps[pos]
@@ -308,6 +327,7 @@ class MapScene(Scene):
                 self.floats.append([f"+{prod[k]} {data.RES_NAMES[k]}", 120 + data.RES_ORDER.index(k) * 150, y, (255, 240, 160), 0])
         w = self.w
         self.after_change()
+        self.save_game()
         if w.turn > w.max_turns and not w.complete():
             self.defeat("Czas minął! Kronika urywa się w pół zdania... Spróbuj jeszcze raz – tym razem z lepszym planem.")
             return
@@ -363,6 +383,7 @@ class MapScene(Scene):
 
     def defeat(self, text):
         from .scenes import DefeatScene
+        storage.delete("gra")
         self.finished = True
         self.app.replace(DefeatScene(self.app, self.w.idx, text))
 
@@ -471,6 +492,7 @@ class MapScene(Scene):
 
     def victory(self):
         from .scenes import VictoryScene
+        storage.delete("gra")
         audio.play("fanfare")
         self.app.replace(VictoryScene(self.app, self.w))
 

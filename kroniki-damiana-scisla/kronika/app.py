@@ -41,6 +41,15 @@ class App:
     def write_save(self):
         storage.save("postep", self.save)
 
+    # ------------------------------------------------------------ dziennik nauki
+    def log_answer(self, question, correct, ok, ctx=""):
+        import time
+        j = self.save.setdefault("dziennik", [])
+        j.append({"t": time.strftime("%Y-%m-%d %H:%M"), "r": getattr(self, "chapter", -1), "q": question,
+                  "a": correct, "ok": bool(ok), "k": ctx})
+        del j[:-600]
+        self.write_save()
+
     # ------------------------------------------------------------ sceny
     def push(self, s):
         self.stack.append(s)

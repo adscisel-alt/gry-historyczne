@@ -191,6 +191,8 @@ class Quiz(Scene):
 
     def done(self):
         self.app.pop()
+        if hasattr(self.app, "log_answer"):
+            self.app.log_answer(self.q, self.answers[self.ok], self.chosen == self.ok, self.title)
         self.on_result(self.chosen == self.ok)
 
     def handle(self, ev):
@@ -266,5 +268,58 @@ class Info(Scene):
             x = b.x + 60 + self.image.get_width()
         ui.draw_text(surf, self.title, (b.x + 40, b.y + 24), 24, ui.RED, True)
         ui.draw_text(surf, self.text, (x, b.y + 74), 17, ui.INK, width=b.right - x - 40)
+        for bt in self.buttons:
+            bt.draw(surf)
+
+
+class TextInput(Scene):
+    """Proste okno wpisywania tekstu (np. imię na dyplom)."""
+    opaque = False
+
+    def __init__(self, app, title, prompt, value, on_ok, maxlen=32):
+        super().__init__(app)
+        self.title, self.prompt, self.value, self.on_ok, self.maxlen = title, prompt, value, on_ok, maxlen
+        self.box = pygame.Rect(W // 2 - 330, H // 2 - 130, 660, 260)
+        b = self.box
+        self.buttons = [ui.Button((b.right - 190, b.bottom - 60, 160, 42), "OK", self.ok),
+                        ui.Button((b.right - 360, b.bottom - 60, 160, 42), "Anuluj", self.app.pop)]
+        self.t = 0
+        try:
+            pygame.key.start_text_input()
+        except Exception:
+            pass
+
+    def ok(self):
+        self.app.pop()
+        self.on_ok(self.value.strip())
+
+    def handle(self, ev):
+        if super().handle(ev):
+            return True
+        if ev.type == pygame.TEXTINPUT and len(self.value) < self.maxlen:
+            self.value += ev.text
+        elif ev.type == pygame.KEYDOWN:
+            if ev.key == pygame.K_BACKSPACE:
+                self.value = self.value[:-1]
+            elif ev.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
+                self.ok()
+            elif ev.key == pygame.K_ESCAPE:
+                self.app.pop()
+        return True
+
+    def update(self, dt):
+        self.t += dt
+
+    def draw(self, surf):
+        dim(surf, 140)
+        b = self.box
+        surf.blit(gfx.panel(b.w, b.h, 17), b.topleft)
+        ui.draw_text(surf, self.title, (b.x + 30, b.y + 22), 22, ui.RED, True)
+        ui.draw_text(surf, self.prompt, (b.x + 30, b.y + 62), 16, ui.INK, width=b.w - 60)
+        fr = pygame.Rect(b.x + 30, b.y + 110, b.w - 60, 46)
+        pygame.draw.rect(surf, (252, 246, 228), fr)
+        pygame.draw.rect(surf, ui.INK_SOFT, fr, 2)
+        cur = "|" if int(self.t * 2) % 2 == 0 else ""
+        ui.draw_text(surf, self.value + cur, (fr.x + 12, fr.y + 10), 20, ui.INK, True)
         for bt in self.buttons:
             bt.draw(surf)

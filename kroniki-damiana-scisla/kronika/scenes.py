@@ -3,8 +3,8 @@
 import math
 import pygame
 
-from . import data, gfx, ui, audio
-from .modals import Scene, Dialogue, Quiz, Info, W, H, dim
+from . import data, gfx, ui, audio, storage, export
+from .modals import Scene, Dialogue, Quiz, Info, TextInput, W, H, dim
 from .world import World
 
 
@@ -33,17 +33,31 @@ class MenuScene(Scene):
         self.world.update_territory()
         self.r = MapRenderer(self.world)
         self.t = 0
-        x = 80
-        self.buttons = [
-            ui.Button((x, 330, 300, 50), "Kampania", self.campaign, 22),
-            ui.Button((x, 392, 300, 50), "Postacie historyczne", self.gallery, 18),
-            ui.Button((x, 454, 300, 50), "Jak grać", self.help, 18),
-            ui.Button((x, 516, 300, 50), "Wyjście", self.app.quit, 18, color=(90, 60, 40)),
-        ]
+        from .mapview import MapScene
+        items = []
+        if MapScene.has_save():
+            items.append(("Kontynuuj", self.cont, 22, (70, 100, 50)))
+        items += [("Kampania", self.campaign, 22, None), ("Postacie historyczne", self.gallery, 18, None),
+                  ("Dziennik nauki", self.journal, 18, (100, 50, 140)), ("Jak grać", self.help, 18, None)]
+        if not storage.WEB:
+            items.append(("Wyjście", self.app.quit, 18, (90, 60, 40)))
+        y0 = 316
+        self.buttons = [ui.Button((80, y0 + i * 56, 300, 46), lab, cb, sz, color=col) for i, (lab, cb, sz, col) in enumerate(items)]
         audio.start_music("music")
 
     def campaign(self):
         self.app.push(ChapterSelectScene(self.app))
+
+    def cont(self):
+        from .mapview import MapScene
+        try:
+            self.app.replace(MapScene.load_game(self.app))
+        except Exception:
+            storage.delete("gra")
+            self.app.push(Info(self.app, "Zapis uszkodzony", "Nie udało się wczytać zapisu. Zacznij rozdział od nowa."))
+
+    def journal(self):
+        self.app.push(JournalScene(self.app))
 
     def gallery(self):
         self.app.push(GalleryScene(self.app))
@@ -546,5 +560,152 @@ class EndingScene(Scene):
         sc = self.app.save.get("scores", {})
         stars = sum(sc.values())
         ui.draw_text(surf, f"Zdobyte gwiazdki: {stars}/18", (W // 2, H - 130), 22, ui.PURPLE, True, center=True)
+        for b in self.buttons:
+            b.draw(surf)
+
+
+# ---------------------------------------------------------------- dziennik nauki, dyplom, CSV
+def journal_stats(save):
+    j = save.get("dziennik", [])
+    ok = sum(1 for e in j if e["ok"])
+    return j, ok, len(j)
+
+
+def make_diploma(save):
+    """Dyplom do druku (A4 poziomo, 1754 x 1240 px ≈ 150 dpi)."""
+    Wd, Hd = 1754, 1240
+    s = gfx.parchment(Wd, Hd, 314).copy()
+    gfx.frame(s, pygame.Rect(30, 30, Wd - 60, Hd - 60), width=8)
+    gfx.frame(s, pygame.Rect(60, 60, Wd - 120, Hd - 120), width=3)
+    j, ok, n = journal_stats(save)
+    done = len(save.get("completed", []))
+    stars = sum(save.get("scores", {}).values())
+    name = save.get("imie") or "Dzielny Kronikarz"
+    ui.draw_text(s, "DYPLOM KRONIKARZA", (Wd // 2, 120), 84, ui.RED, True, center=True, shadow=(200, 170, 110))
+    ui.draw_text(s, "„Kroniki Damiana Ścisła” – Polska 966–1410", (Wd // 2, 240), 34, ui.INK_SOFT, True, center=True)
+    ui.draw_text(s, "Niniejszym zaświadcza się, że", (Wd // 2, 340), 34, ui.INK, center=True)
+    ui.draw_text(s, name, (Wd // 2, 400), 76, ui.PURPLE, True, center=True)
+    pygame.draw.line(s, ui.INK_SOFT, (Wd // 2 - 450, 500), (Wd // 2 + 450, 500), 3)
+    txt = (f"jako doradca książąt i królów przeprowadził(a) księstwo przez dzieje Polski. "
+           f"Ukończone rozdziały kampanii: {done} z {len(data.CHAPTERS)}. Zdobyte gwiazdki: {stars}. "
+           f"Trafne odpowiedzi na pytania z historii: {ok} z {n}.")
+    ui.draw_text(s, txt, (300, 540), 34, ui.INK, width=Wd - 600, line_h=48)
+    import time
+    ui.draw_text(s, "Data: " + time.strftime("%d.%m.%Y"), (200, Hd - 220), 30, ui.INK)
+    ui.draw_text(s, "Damian Ściseł, kronikarz", (Wd - 620, Hd - 220), 30, ui.INK, True)
+    pygame.draw.line(s, ui.INK_SOFT, (Wd - 640, Hd - 230), (Wd - 200, Hd - 230), 2)
+    tk = gfx.hero_figure(9)
+    s.blit(tk, (Wd - tk.get_width() - 120, 560))
+    for k in range(min(stars, 18)):
+        s.blit(gfx.icon("star", 4), (200 + k * 60, Hd - 330))
+    sx, sy = Wd // 2, Hd - 200
+    pygame.draw.circle(s, (170, 40, 36), (sx, sy), 70)
+    pygame.draw.circle(s, ui.GOLD, (sx, sy), 60, 4)
+    ui.draw_text(s, "966", (sx, sy - 28), 36, ui.GOLD, True, center=True)
+    ui.draw_text(s, "1410", (sx, sy + 12), 26, ui.GOLD, True, center=True)
+    return s
+
+
+def journal_csv(save):
+    import csv
+    import io
+    out = io.StringIO()
+    w = csv.writer(out, delimiter=";")
+    w.writerow(["Imię", "Data", "Rozdział", "Rodzaj", "Pytanie", "Poprawna odpowiedź", "Wynik"])
+    name = save.get("imie", "")
+    for e in save.get("dziennik", []):
+        r = e.get("r", -1)
+        rozd = data.CHAPTERS[r]["title"] if 0 <= r < len(data.CHAPTERS) else "-"
+        w.writerow([name, e["t"], rozd, e.get("k", ""), e["q"], e["a"], "dobrze" if e["ok"] else "źle"])
+    return ("\ufeff" + out.getvalue()).encode("utf-8")
+
+
+class JournalScene(Scene):
+    """„Czego się nauczyłem” – podsumowanie odpowiedzi, błędy do powtórki, dyplom, eksport dla nauczyciela."""
+
+    def __init__(self, app):
+        super().__init__(app)
+        self.page = 0
+        self.make()
+
+    def make(self):
+        self.buttons = [
+            ui.Button((W - 220, H - 62, 190, 44), "◀ Wróć", self.app.pop, key=pygame.K_ESCAPE),
+            ui.Button((40, H - 62, 250, 44), "Imię na dyplom", self.ask_name, 16, color=(100, 50, 140)),
+            ui.Button((300, H - 62, 230, 44), "Dyplom (PNG)", self.diploma, 16),
+            ui.Button((540, H - 62, 300, 44), "Wyniki dla nauczyciela (CSV)", self.csv, 15),
+        ]
+        if len(self.mistakes()) > 8:
+            self.buttons.append(ui.Button((W - 420, H - 62, 180, 44), "Dalej ▶", self.next_page, 15))
+
+    def next_page(self):
+        self.page = (self.page + 1) % max(1, (len(self.mistakes()) + 7) // 8)
+
+    def mistakes(self):
+        seen, out = set(), []
+        for e in reversed(self.app.save.get("dziennik", [])):
+            if not e["ok"] and e["q"] not in seen:
+                seen.add(e["q"])
+                out.append(e)
+        return out
+
+    def ask_name(self):
+        def ok(v):
+            self.app.save["imie"] = v
+            self.app.write_save()
+        self.app.push(TextInput(self.app, "Imię na dyplom", "Wpisz imię i nazwisko, które pojawi się na dyplomie:",
+                                self.app.save.get("imie", ""), ok))
+
+    def diploma(self):
+        import io
+        buf = io.BytesIO()
+        pygame.image.save(make_diploma(self.app.save), buf, "dyplom.png")
+        msg = export.offer("dyplom_kronikarza.png", buf.getvalue(), "image/png")
+        self.app.push(Info(self.app, "Dyplom gotowy", msg + "\n\nWydrukuj go poziomo na kartce A4."))
+
+    def csv(self):
+        msg = export.offer("wyniki_kroniki.csv", journal_csv(self.app.save), "text/csv")
+        self.app.push(Info(self.app, "Wyniki dla nauczyciela", msg + "\n\nPlik otworzysz w Excelu lub Arkuszach Google "
+                           "(rozdzielone średnikami): data, rozdział, pytanie, poprawna odpowiedź i wynik."))
+
+    def draw(self, surf):
+        surf.blit(gfx.parchment(W, H, 919), (0, 0))
+        gfx.frame(surf, pygame.Rect(8, 8, W - 16, H - 16))
+        ui.draw_text(surf, "Dziennik nauki – czego się nauczyłem", (W // 2, 22), 30, ui.RED, True, center=True)
+        j, ok, n = journal_stats(self.app.save)
+        pct = int(100 * ok / n) if n else 0
+        name = self.app.save.get("imie") or "(nie podano imienia)"
+        ui.draw_text(surf, f"Gracz: {name}   •   Odpowiedzi: {n}   •   Trafne: {ok} ({pct}%)   •   "
+                           f"Ukończone rozdziały: {len(self.app.save.get('completed', []))}/{len(data.CHAPTERS)}",
+                     (W // 2, 66), 16, ui.INK, True, center=True)
+        # pasek wyników wg rozdziałów
+        x = 60
+        for i, ch in enumerate(data.CHAPTERS):
+            es = [e for e in j if e.get("r") == i]
+            good = sum(1 for e in es if e["ok"])
+            r = pygame.Rect(x, 100, 180, 54)
+            pygame.draw.rect(surf, (240, 228, 196), r)
+            pygame.draw.rect(surf, data.EPOCHS[ch["epoch"]]["color"], r, 3)
+            ui.draw_text(surf, f"{ch['place']} {ch['year']}", (r.x + 8, r.y + 6), 12, ui.INK, True)
+            if es:
+                pygame.draw.rect(surf, (80, 150, 70), (r.x + 8, r.y + 32, int(124 * good / len(es)), 12))
+                pygame.draw.rect(surf, ui.INK_SOFT, (r.x + 8, r.y + 32, 124, 12), 1)
+                ui.draw_text(surf, f"{good}/{len(es)}", (r.right - 8 - ui.font(12, True).size(f"{good}/{len(es)}")[0], r.y + 30), 12, ui.INK, True)
+            else:
+                ui.draw_text(surf, "brak odpowiedzi", (r.x + 8, r.y + 28), 12, ui.INK_SOFT)
+            x += 196
+        ms = self.mistakes()
+        ui.draw_text(surf, "Do powtórki – pytania, na które padła zła odpowiedź (z poprawną odpowiedzią):",
+                     (60, 176), 17, ui.PURPLE, True)
+        if not ms:
+            ui.draw_text(surf, "Brak błędów do powtórki. Brawo! (Albo jeszcze nie było pytań – zagraj rozdział.)",
+                         (60, 214), 16, ui.GREEN, True)
+        y = 210
+        for e in ms[self.page * 8:(self.page + 1) * 8]:
+            yy = ui.draw_text(surf, "• " + e["q"], (60, y), 15, ui.INK, True, width=W - 140)
+            yy = ui.draw_text(surf, "→ " + e["a"], (84, yy), 15, ui.GREEN, width=W - 160)
+            y = yy + 6
+            if y > H - 100:
+                break
         for b in self.buttons:
             b.draw(surf)
