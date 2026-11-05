@@ -28,11 +28,20 @@ def beats(a, b):
     return data.CARD_TYPES[data.CARDS[a]["type"]]["beats"] == data.CARDS[b]["type"]
 
 
-def resolve(pc, ec, bonus, terrain):
+def player_power(pc, bonus, terrain, mods=None):
+    """Siła karty gracza z premiami terenu, dowódcy i taktyk (bez przewagi typu)."""
+    m = mods or {}
+    t = data.CARDS[pc]["type"]
+    return (card_power(pc, bonus, terrain, True) + m.get("type_bonus", {}).get(t, 0)
+            + m.get("plus", 0) + m.get("type_plus", {}).get(t, 0))
+
+
+def resolve(pc, ec, bonus, terrain, mods=None):
     """Zwraca (siła gracza, siła wroga, obrażenia dla gracza, obrażenia dla wroga)."""
-    P = card_power(pc, bonus, terrain, True) + (ADV if beats(pc, ec) else 0)
-    E = card_power(ec, 0, terrain, False) + (ADV if beats(ec, pc) else 0)
-    shield = data.CARDS[pc].get("shield", 0)
+    m = mods or {}
+    P = player_power(pc, bonus, terrain, m) + (ADV if beats(pc, ec) else 0)
+    E = max(0, card_power(ec, 0, terrain, False) - m.get("e_minus", 0)) + (ADV if beats(ec, pc) and not m.get("no_adv") else 0)
+    shield = data.CARDS[pc].get("shield", 0) + m.get("shield", 0)
     if P > E:
         return P, E, 0, P - E + 1
     if E > P:
@@ -59,11 +68,20 @@ class Battle(Scene):
         self.ediscard = []
         self.hand_size = 4 + (1 if "zaciezni" in world.techs else 0)
         self.hand = []
-        self.p_max = 20 + world.defense_bonus(defense)
-        self.p_hp = self.p_max
         from .world import DIFF
-        self.e_max = enemy_morale = max(6, int(round(enemy_morale * DIFF[getattr(world, "diff", 1)]["enemy"])))
+        diff = DIFF[getattr(world, "diff", 1)]
+        self.cmd = data.COMMANDERS.get(world.idx, {"who": None, "desc": "", "type_bonus": {}, "morale": 0, "tactics": []})
+        self.p_max = 20 + world.defense_bonus(defense) + self.cmd.get("morale", 0)
+        self.p_hp = self.p_max
+        self.e_max = enemy_morale = max(6, int(round(enemy_morale * diff["enemy"])))
         self.e_hp = enemy_morale
+        self.hidden_p = diff["hidden"]
+        self.ehidden = None
+        self.revealed_hidden = False
+        self.tactics = list(self.cmd.get("tactics", [])) + (["tabor"] if "tabor" in world.techs else [])
+        self.used_tactics = set()
+        self.rmods = {}
+        self.tactic_hover = None
         self.bonus = 0
         self.ecard = None
         self.played = None
@@ -126,7 +144,8 @@ class Battle(Scene):
     def start_question(self):
         self.buttons = []
         q, ans, ok = random.choice(data.QUESTIONS[self.w.epoch])
-        hints = 1 if "akademia" in self.w.techs else 0
+        from .world import DIFF
+        hints = (1 if "akademia" in self.w.techs else 0) + DIFF[getattr(self.w, "diff", 1)]["hints"]
         self.app.push(Quiz(self.app, "Pytanie rady wojennej", q, ans, ok, self.after_question, hints))
 
     def after_question(self, good):
@@ -157,15 +176,97 @@ class Battle(Scene):
             self.edeck, self.ediscard = self.ediscard, []
             random.shuffle(self.edeck)
         self.ecard = self.edeck.pop()
+        self.ehidden = None
+        if self.hidden_p > 0:
+            if not self.edeck and self.ediscard:
+                self.edeck, self.ediscard = self.ediscard, []
+                random.shuffle(self.edeck)
+            if self.edeck:
+                self.ehidden = self.edeck.pop()
+        self.revealed_hidden = False
         self.played = None
+        self.rmods = self.base_mods()
         self.phase = "choose"
         self.anim = 0.0
+        self.make_tactic_buttons()
+
+    # ------------------------------------------------------------ dowódca i taktyki
+    def base_mods(self):
+        m = {"type_bonus": dict(self.cmd.get("type_bonus", {})), "plus": 0, "type_plus": {}, "e_minus": 0, "shield": 0}
+        if self.cmd.get("stubborn") and self.p_hp < self.p_max * 0.5:
+            m["plus"] += self.cmd["stubborn"]
+        return m
+
+    def make_tactic_buttons(self):
+        self.buttons = []
+        for i, tid in enumerate(self.tactics):
+            t = data.TACTICS[tid]
+            used = tid in self.used_tactics
+            b = ui.Button((24, 316 + i * 44, 320, 38), ("✓ " if used else "") + t["name"],
+                          lambda tid=tid: self.use_tactic(tid), 14, enabled=not used and self.phase == "choose",
+                          color=(110, 60, 140))
+            b.tid = tid
+            self.buttons.append(b)
+
+    def use_tactic(self, tid):
+        if self.phase != "choose" or tid in self.used_tactics:
+            return
+        self.used_tactics.add(tid)
+        t = data.TACTICS[tid]
+        e = t["effect"]
+        m = self.rmods
+        if e == "reinforce":
+            for _ in range(2):
+                if not self.deck and self.discard:
+                    self.deck, self.discard = self.discard, []
+                    random.shuffle(self.deck)
+                if self.deck:
+                    self.hand.append(self.deck.pop())
+        elif e == "ambush":
+            m["plus"] += 3
+        elif e == "sortie":
+            self.e_hp -= 5
+            self.floats.append(["−5", W - 260, 120, (250, 230, 120), 0])
+        elif e == "volley":
+            self.e_hp -= 3
+            m["type_plus"]["lucznicy"] = m["type_plus"].get("lucznicy", 0) + 2
+            self.floats.append(["−3", W - 260, 120, (250, 230, 120), 0])
+        elif e == "fog":
+            m["no_adv"] = True
+            m["plus"] += 1
+        elif e == "hymn":
+            self.p_max += 4
+            self.p_hp += 4
+            m["plus"] += 2
+        elif e == "retreat":
+            m["e_minus"] += 4
+        elif e == "wagons":
+            m["shield"] += 5
+        audio.play("good")
+        self.log.append(f"Taktyka: {t['name']}! {t['desc']}")
+        self.log = self.log[-6:]
+        if self.e_hp <= 0:
+            self.e_hp = 0
+            self.phase = "end"
+            self.result = True
+            audio.play("fanfare")
+            self.buttons = [ui.Button((W // 2 - 100, 430, 200, 46), "Dalej ▶", self.finish, key=pygame.K_SPACE)]
+            return
+        self.make_tactic_buttons()
 
     def play(self, i):
         if self.phase != "choose" or i >= len(self.hand):
             return
         self.played = self.hand.pop(i)
-        P, E, dp, de = resolve(self.played, self.ecard, self.bonus, self.terrain)
+        if self.ehidden is not None and random.random() < self.hidden_p:
+            self.edeck.insert(0, self.ecard)
+            self.ecard, self.ehidden = self.ehidden, None
+            self.revealed_hidden = True
+        elif self.ehidden is not None:
+            self.edeck.insert(0, self.ehidden)
+            self.ehidden = None
+        self.buttons = []
+        P, E, dp, de = resolve(self.played, self.ecard, self.bonus, self.terrain, self.rmods)
         self.last = (P, E, dp, de)
         self.phase = "resolve"
         self.anim = 0.0
@@ -217,8 +318,13 @@ class Battle(Scene):
             s = "Piechota wroga! Nasi strzelcy zasypią ich gradem strzał (+3)."
         else:
             s = "Uwaga, coś niezwykłego! Tu liczy się czysta siła – wystaw najsilniejszą kartę."
+        if self.ehidden is not None:
+            s += f" Uwaga: druga chorągiew wroga jest ukryta (zagra ją z szansą ok. {int(self.hidden_p * 100)}%)."
         if self.p_hp < self.p_max * 0.35:
             s += " Morale słabnie – nie ryzykujmy!"
+        if self.tactic_hover:
+            t = data.TACTICS[self.tactic_hover]
+            s = f"{t['name']}: {t['desc']} Ciekawostka: {t['fact']}"
         return s
 
     # ------------------------------------------------------------ zdarzenia
@@ -232,6 +338,8 @@ class Battle(Scene):
     def handle(self, ev):
         if super().handle(ev):
             return True
+        if ev.type == pygame.MOUSEMOTION:
+            self.tactic_hover = next((b.tid for b in self.buttons if hasattr(b, "tid") and b.rect.collidepoint(ev.pos)), None)
         if self.phase == "choose":
             if ev.type == pygame.MOUSEMOTION:
                 self.hover = -1
@@ -303,7 +411,12 @@ class Battle(Scene):
         ui.draw_text(surf, "Jazda ▶ Strzelcy", (tri.x + 10, tri.y + 46), 13, ui.CREAM)
         ui.draw_text(surf, "Strzelcy ▶ Piechota", (tri.x + 10, tri.y + 64), 13, ui.CREAM)
         # porada Damiana
-        adv = pygame.Rect(20, 120, 330, 170)
+        if self.cmd.get("who"):
+            c = data.CHARACTERS[self.cmd["who"]]
+            surf.blit(gfx.portrait(c["p"], 1), (30, 108))
+            ui.draw_text(surf, f"Dowódca: {c['name']}", (70, 108), 13, ui.GOLD, True, shadow=(0, 0, 0))
+            ui.draw_text(surf, self.cmd["desc"], (70, 124), 12, ui.CREAM, shadow=(0, 0, 0))
+        adv = pygame.Rect(20, 148, 330, 160)
         surf.blit(gfx.panel(adv.w, adv.h, 9), adv.topleft)
         surf.blit(gfx.portrait(data.HERO["p"], 2), (adv.x + 12, adv.y + 12))
         ui.draw_text(surf, "Rada kronikarza", (adv.x + 86, adv.y + 14), 15, ui.PURPLE, True)
@@ -319,8 +432,11 @@ class Battle(Scene):
             surf.blit(gfx.panel(box.w, box.h, 4), box.topleft)
             ui.draw_text(surf, self.name, (box.centerx, box.y + 20), 22, ui.RED, True, center=True)
             ui.draw_text(surf, self.intro or "Wróg stoi naprzeciw. Kronikarz szepcze radę władcy...", (box.x + 30, box.y + 62), 16, ui.INK, width=box.w - 60)
-            ui.draw_text(surf, f"Nasze morale: {self.p_max} (z umocnień i technologii)   •   Morale wroga: {self.e_max}",
+            ui.draw_text(surf, f"Nasze morale: {self.p_max} (umocnienia, technologie, dowódca)   •   Morale wroga: {self.e_max}",
                          (box.centerx, box.bottom - 40), 14, ui.INK_SOFT, True, center=True)
+            if self.tactics:
+                ui.draw_text(surf, "Taktyki do użycia raz w bitwie: " + ", ".join(data.TACTICS[t]["name"] for t in self.tactics),
+                             (box.centerx, box.bottom - 66), 13, ui.PURPLE, True, center=True)
         # karta wroga
         if self.ecard and self.phase in ("choose", "resolve", "end"):
             ex, ey = W // 2 - CW // 2, 90
@@ -328,6 +444,18 @@ class Battle(Scene):
                 ex = int(W // 2 + 10)
             ui.draw_text(surf, "Wróg wystawia:", (W // 2, 66 + 0), 14, ui.CREAM, True, center=True, shadow=(0, 0, 0))
             self.card(surf, self.ecard, (ex, ey), glow=(160, 40, 40))
+            if self.phase == "choose" and self.ehidden is not None:
+                hx = ex + CW + 16
+                back = pygame.Rect(hx, ey, CW, CH)
+                pygame.draw.rect(surf, (60, 30, 30), back, border_radius=4)
+                pygame.draw.rect(surf, ui.GOLD, back, 3, border_radius=4)
+                for k in range(0, CH, 12):
+                    pygame.draw.line(surf, (90, 46, 40), (hx + 4, ey + k), (hx + CW - 4, ey + k))
+                ui.draw_text(surf, "?", (back.centerx, back.y + 44), 56, ui.GOLD, True, center=True)
+                ui.draw_text(surf, "ukryta", (back.centerx, back.bottom - 34), 13, ui.CREAM, True, center=True)
+            if self.phase == "resolve" and self.revealed_hidden and self.anim > 0.2:
+                ui.draw_text(surf, "Wróg zagrał ukrytą chorągiew!", (W // 2 + 70, ey + CH + 6), 15, (255, 170, 140), True,
+                             center=True, shadow=(0, 0, 0))
         if self.phase == "resolve" and self.played:
             t = min(1, self.anim / 0.4)
             px_, py_ = int(W // 2 - CW - 10), int(H - CH - 16 + (90 - (H - CH - 16)) * t)
@@ -343,7 +471,7 @@ class Battle(Scene):
             ui.draw_text(surf, "Doradź władcy: którą kartę wystawić? (kliknij lub 1–%d)" % len(self.hand),
                          (W // 2, H - CH - 58), 17, ui.CREAM, True, center=True, shadow=(0, 0, 0))
             for i, (cid, r) in enumerate(zip(self.hand, self.hand_rects())):
-                pw = card_power(cid, self.bonus, self.terrain, True)
+                pw = player_power(cid, self.bonus, self.terrain, self.rmods)
                 glow = None
                 if self.ecard and beats(cid, self.ecard):
                     glow = (90, 200, 90)

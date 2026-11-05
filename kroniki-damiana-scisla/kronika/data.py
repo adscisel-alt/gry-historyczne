@@ -641,6 +641,58 @@ CHAPTERS = [
     },
 ]
 
+# ---------------------------------------------------------------- TAKTYKI HISTORYCZNE (jednorazowe w bitwie)
+TACTICS = {
+    "czesi": {"name": "Posiłki czeskie", "effect": "reinforce",
+              "desc": "Dobierasz 2 dodatkowe karty.",
+              "fact": "W 967 r. Mieszkowi pomogły dwa hufce jazdy czeskiej przysłane przez teścia, Bolesława I."},
+    "puszcza": {"name": "Zasadzka w puszczy", "effect": "ambush",
+                "desc": "W tej rundzie nasza karta +3.",
+                "fact": "Słowianie świetnie znali swoje lasy – zasadzka była ulubionym fortelem wojów."},
+    "wycieczka": {"name": "Wycieczka z grodu", "effect": "sortie",
+                  "desc": "Śmiały wypad z bramy: wróg traci od razu 5 morale.",
+                  "fact": "Obrońcy oblężonych grodów robili nocne wypady, by palić machiny i siać zamęt."},
+    "salwa": {"name": "Salwa z wałów", "effect": "volley",
+              "desc": "Wróg −3 morale, a nasi strzelcy w tej rundzie +2.",
+              "fact": "Z wysokości wału strzała leci dalej – obrońca ma przewagę nad oblegającym."},
+    "kusze": {"name": "Kusze mieszczan", "effect": "volley",
+              "desc": "Wróg −3 morale, a nasi strzelcy w tej rundzie +2.",
+              "fact": "Mieszczanie lokowanych miast sami bronili murów – każdy cech miał swój odcinek."},
+    "pospolite": {"name": "Pospolite ruszenie", "effect": "reinforce",
+                  "desc": "Dobierasz 2 dodatkowe karty.",
+                  "fact": "Pospolite ruszenie to obowiązek stawienia się wszystkich rycerzy na wezwanie władcy."},
+    "mgla": {"name": "Mgła nad Płowcami", "effect": "fog",
+             "desc": "W tej rundzie wróg traci przewagę typu, a my +1.",
+             "fact": "Bitwa pod Płowcami zaczęła się rano we mgle – Polacy uderzyli na rozdzieloną armię zakonu."},
+    "rozdzielona": {"name": "Uderzenie na rozdzielonych", "effect": "ambush",
+                    "desc": "W tej rundzie nasza karta +3.",
+                    "fact": "Krzyżacy pod Płowcami maszerowali w dwóch częściach – Łokietek zaatakował słabszą."},
+    "witold": {"name": "Chorągwie Witolda", "effect": "reinforce",
+               "desc": "Dobierasz 2 dodatkowe karty.",
+               "fact": "Lekka jazda litewska była szybka i świetnie nadawała się do zwiadu i pościgu."},
+    "bogurodzica": {"name": "Bogurodzica", "effect": "hymn",
+                    "desc": "Pieśń dodaje ducha: morale +4, a nasza karta w tej rundzie +2.",
+                    "fact": "„Bogurodzica” to najstarsza zachowana polska pieśń. Rycerstwo śpiewało ją przed Grunwaldem."},
+    "odwrot": {"name": "Pozorowany odwrót", "effect": "retreat",
+               "desc": "Wróg rzuca się w pościg: jego karta w tej rundzie −4.",
+               "fact": "Część historyków uważa odwrót Litwinów pod Grunwaldem za celowy fortel, znany z walk z Tatarami."},
+    "tabor": {"name": "Wozy w krąg", "effect": "wagons",
+              "desc": "Tabor osłania wojsko: w tej rundzie blokujesz 5 obrażeń.",
+              "fact": "Wozy taboru ustawione w krąg tworzyły ruchomą twierdzę."},
+}
+
+# dowódcy rozdziałów: premie stałe w bitwach + taktyki
+COMMANDERS = {
+    0: {"who": "mieszko", "desc": "Jazda +1", "type_bonus": {"jazda": 1}, "morale": 0, "tactics": ["czesi", "puszcza"]},
+    1: {"who": "henryk", "desc": "Piechota +1, morale +2", "type_bonus": {"piechota": 1}, "morale": 2, "tactics": ["wycieczka", "salwa"]},
+    2: {"who": "boleslaw", "desc": "Strzelcy +1", "type_bonus": {"lucznicy": 1}, "morale": 0, "tactics": ["kusze", "pospolite"]},
+    3: {"who": "lokietek", "desc": "Upór: gdy morale < 50%, wszystkie karty +2", "type_bonus": {}, "morale": 0,
+        "stubborn": 2, "tactics": ["mgla", "rozdzielona"]},
+    4: {"who": "witold", "desc": "Jazda +2", "type_bonus": {"jazda": 2}, "morale": 0, "tactics": ["witold", "puszcza"]},
+    5: {"who": "jagiello", "desc": "Morale +4; rycerstwo (Zawisza) +1", "type_bonus": {"jazda": 1}, "morale": 4,
+        "tactics": ["bogurodzica", "odwrot"]},
+}
+
 # ---------------------------------------------------------------- ZAGONY WROGA (aktywny przeciwnik na mapie)
 RAIDS = {
     0: {"start": 7, "every": 7, "name": "Zagon Wichmana", "faction": "en", "unit": "spear",

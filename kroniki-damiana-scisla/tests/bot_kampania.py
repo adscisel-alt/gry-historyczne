@@ -140,7 +140,13 @@ def step(app, stats):
         if top.phase == "intro":
             top.start_question()
         elif top.phase == "choose":
-            best = max(range(len(top.hand)), key=lambda i: (lambda r: r[3] - r[2])(resolve(top.hand[i], top.ecard, top.bonus, top.terrain)))
+            free = [t for t in top.tactics if t not in top.used_tactics]
+            if free and random.random() < 0.3:
+                top.use_tactic(free[0])
+                return True
+            if top.phase != "choose":
+                return True
+            best = max(range(len(top.hand)), key=lambda i: (lambda r: r[3] - r[2])(resolve(top.hand[i], top.ecard, top.bonus, top.terrain, top.rmods)))
             top.play(best)
         elif top.phase == "resolve":
             top.apply_result()
@@ -178,7 +184,7 @@ def step(app, stats):
 def run(seed):
     random.seed(seed)
     app = App(headless=True)
-    app.save = {"unlocked": 0, "completed": [], "techs": [], "scores": {}}
+    app.save = {"unlocked": 0, "completed": [], "techs": [], "scores": {}, "trudnosc": int(os.environ.get("TRUDNOSC", "1"))}
     app.stack = [MenuScene(app)]
     stats = {"n": 0, "battles": 0, "won": 0, "defeats": 0, "chapters": []}
     for i in range(200000):

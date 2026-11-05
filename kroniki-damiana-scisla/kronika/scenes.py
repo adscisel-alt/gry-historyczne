@@ -99,8 +99,21 @@ class ChapterSelectScene(Scene):
         for i in range(6):
             col, row = i % 3, i // 3
             self.rects.append(pygame.Rect(60 + col * 395, 120 + row * 270, 370, 250))
-        self.buttons = [ui.Button((W - 220, H - 62, 190, 44), "◀ Wróć", self.app.pop, key=pygame.K_ESCAPE)]
         self.hover = -1
+        self.make()
+
+    def make(self):
+        from .world import DIFF
+        cur = self.app.save.get("trudnosc", 1)
+        self.buttons = [ui.Button((W - 220, H - 62, 190, 44), "◀ Wróć", self.app.pop, key=pygame.K_ESCAPE)]
+        for i in range(3):
+            self.buttons.append(ui.Button((60 + i * 170, H - 62, 160, 44), DIFF[i]["name"], lambda i=i: self.set_diff(i), 16,
+                                          color=(70, 110, 50) if i == cur else (110, 90, 70)))
+
+    def set_diff(self, i):
+        self.app.save["trudnosc"] = i
+        self.app.write_save()
+        self.make()
 
     def handle(self, ev):
         if super().handle(ev):
@@ -117,6 +130,9 @@ class ChapterSelectScene(Scene):
     def draw(self, surf):
         surf.blit(gfx.parchment(W, H, 77, dark=True), (0, 0))
         ui.draw_text(surf, "Kampania: Kronika czterech epok", (W // 2, 36), 32, ui.GOLD, True, center=True)
+        from .world import DIFF
+        d = DIFF[self.app.save.get("trudnosc", 1)]
+        ui.draw_text(surf, f"Poziom trudności: {d['name']} – {d['desc']}", (580, H - 52), 14, ui.CREAM, True, width=440)
         unl = self.app.save.get("unlocked", 0)
         done = set(self.app.save.get("completed", []))
         for i, r in enumerate(self.rects):
@@ -283,7 +299,8 @@ class TechScene(Scene):
 
     def riddle(self, tid):
         t = data.TECHS[tid]
-        hints = 1 if self.w.count("kosciol") else 0
+        from .world import DIFF
+        hints = (1 if self.w.count("kosciol") else 0) + DIFF[self.w.diff]["hints"]
 
         def res(good):
             w = self.w

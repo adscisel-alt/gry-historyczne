@@ -131,6 +131,8 @@ class World:
         self.res = {k: int(round(v * mult)) for k, v in self.ch["start_res"].items()}
         self.turn = 1
         self.max_turns = self.ch["turns"] + DIFF[diff]["turns"]
+        if self.ch.get("siege_turn"):
+            self.max_turns = max(self.max_turns, self.ch["siege_turn"] + 2)
         self.buildings = {}            # (x,y) -> typ
         self.cap = tuple(cfg["capital"])
         self.buildings[self.cap] = "grod"

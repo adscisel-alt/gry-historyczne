@@ -440,7 +440,8 @@ class MapScene(Scene):
                     else:
                         self.say("damian", "Żak się zaśmiał i poszedł dalej. Ale przynajmniej czegoś się nauczyliśmy!")
                     self.after_change()
-                hints = 1 if w.count("kosciol") else 0
+                from .world import DIFF
+                hints = (1 if w.count("kosciol") else 0) + DIFF[w.diff]["hints"]
                 self.app.push(Quiz(self.app, "Zakład z żakiem", q, ans, ok, res, hints))
         item = {"who": None, "icon": gfx.event_icon(ev["icon"]), "title": ev["title"], "text": ev["text"],
                 "choices": ev["choices"], "special": special}
