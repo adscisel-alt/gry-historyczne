@@ -64,7 +64,7 @@ class MapRenderer:
             v = w.var[y][x]
             if pos in w.buildings:
                 b = w.buildings[pos]
-                img = gfx.building(b, w.epoch if b == "grod" else 0, self.frame % 2)
+                img = gfx.building(b, w.epoch if b == "grod" else 0, self.frame % 4)
                 s.blit(img, (cx - img.get_width() // 2, cy - (gfx.BUILD_H - gfx.HTH // 2) * 2))
                 if b == "grod":
                     for k, (ux, uy) in enumerate([(-40, 18), (-26, 24), (30, 20)]):
@@ -114,7 +114,7 @@ class MapRenderer:
 
     def tick(self, dt):
         self.timer += dt
-        if self.timer > 0.5:
+        if self.timer > 0.25:
             self.timer = 0
             self.frame += 1
             self.w.dirty = True
@@ -610,6 +610,7 @@ class MapScene(Scene):
             sx, sy = self.tile_screen(*self.sel)
             a = 120 + int(80 * abs(((self.t * 2) % 2) - 1))
             surf.blit(gfx.tile_outline((255, 220, 80, a), 3), (sx - TW // 2, sy - TH // 2))
+        self.draw_smoke(surf)
         self.draw_raids(surf)
         self.draw_compass(surf)
         for f in self.floats:
@@ -618,6 +619,29 @@ class MapScene(Scene):
         self.draw_top(surf)
         self.draw_panel(surf)
         self.draw_tip(surf)
+
+    SMOKE = {"grod": (-6, -70), "drwal": (-8, -46), "koszary": (-10, -52), "mlyn": (-6, -60), "zupa": (14, -44)}
+
+    def draw_smoke(self, surf):
+        """Dym z kominów – półprzezroczyste kłęby unoszące się i rozwiewane wiatrem."""
+        import math
+        layer = pygame.Surface(VIEW.size, pygame.SRCALPHA)
+        for (x, y), b in self.w.buildings.items():
+            if b not in self.SMOKE:
+                continue
+            sx, sy = self.tile_screen(x, y)
+            if not (-60 < sx < VIEW.right + 60 and VIEW.y - 60 < sy < VIEW.bottom + 120):
+                continue
+            ox, oy = self.SMOKE[b]
+            seed = (x * 7 + y * 13) % 10 / 10
+            for k in range(5):
+                t = (self.t * 0.35 + k / 5 + seed) % 1.0
+                px_ = sx + ox + t * 22 + math.sin((t + seed) * 6) * 3
+                py_ = sy + oy - t * 46
+                r = 3 + t * 8
+                a = int(150 * (1 - t))
+                pygame.draw.circle(layer, (200, 200, 196, a), (int(px_ - VIEW.x), int(py_ - VIEW.y)), int(r))
+        surf.blit(layer, VIEW.topleft)
 
     def draw_compass(self, surf):
         cx, cy = VIEW.x + 64, VIEW.y + 56
@@ -641,11 +665,10 @@ class MapScene(Scene):
                 pygame.draw.circle(surf, (220, 60, 50), (int(sx + (cx - sx) * t), int(sy + (cy - sy) * t)), 2)
             pulse = 2 + int(2 * abs(math.sin(self.t * 4)))
             pygame.draw.ellipse(surf, (220, 40, 40), (sx - 26, sy - 10, 52, 22), pulse)
-            u = gfx.unit_big(r["unit"], r["faction"], 2)
-            u = pygame.transform.flip(u, sx > cx, False)
-            bob = int(abs(math.sin(self.t * 6)) * 3)
             for k, (dx, dy) in enumerate([(-14, -4), (8, 2)]):
-                surf.blit(u, (sx + dx - u.get_width() // 2, sy + dy - u.get_height() + 6 - (bob if k == 0 else 3 - bob)))
+                u = gfx.unit_walk(r["unit"], r["faction"], int(self.t * 7) + k * 2, 2)
+                u = pygame.transform.flip(u, sx > cx, False)
+                surf.blit(u, (sx + dx - u.get_width() // 2, sy + dy - u.get_height() + 6))
             ui.draw_text(surf, r["name"], (sx, sy + 12), 12, (255, 220, 200), True, center=True, shadow=(0, 0, 0))
 
     def draw_top(self, surf):

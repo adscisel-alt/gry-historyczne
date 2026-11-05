@@ -248,11 +248,22 @@ def pyramid(x, y, z, w, h, m):
     return cone(x, y, z, w * 0.72, 0, h, m, v=4, rot=(0, 0, math.pi / 4))
 
 
+ANIM = {"walk": None, "wave": 0, "mill": 0.0}   # parametry klatek animacji
+
+
 def flag(x, y, z, h, c1, c2=None, size=0.22):
+    """Flaga z dwóch segmentów; ANIM['wave'] wygina ją (klatki powiewania)."""
     cyl(x, y, z, 0.015, h, mat((80, 58, 34)), v=6)
-    box(x, y + size / 2 + 0.01, z + h - size * 0.62, 0.012, size, size * 0.3, mat(c1, 0.7))
-    if c2:
-        box(x, y + size / 2 + 0.01, z + h - size * 0.62 - size * 0.3, 0.012, size, size * 0.3, mat(c2, 0.7))
+    bend = (0.0, 0.35) if ANIM["wave"] == 0 else (0.3, -0.25)
+    half = size / 2
+    for j, c in enumerate([c1, c2] if c2 else [c1]):
+        zz = z + h - size * 0.62 - j * size * 0.3
+        a1, a2 = bend
+        p0 = (x, y + 0.01)
+        p1 = (p0[0] + math.sin(a1) * half, p0[1] + math.cos(a1) * half)
+        box((p0[0] + p1[0]) / 2, (p0[1] + p1[1]) / 2, zz, 0.012, half, size * 0.3, mat(c, 0.7), rz=-a1)
+        p2 = (p1[0] + math.sin(a2) * half, p1[1] + math.cos(a2) * half)
+        box((p1[0] + p2[0]) / 2, (p1[1] + p2[1]) / 2, zz, 0.012, half, size * 0.3, mat(c, 0.7), rz=-a2)
 
 
 def gold_cross(x, y, z, s=1.0):
@@ -430,7 +441,7 @@ def b_grod(epoch):
         flag(-0.25, 0.25, 0, 0.75, (235, 235, 235), (200, 30, 40))
     else:
         castle()
-    render(f"building_grod_{min(epoch, 2)}", 80, 112, 40, 96, ppu=PPU_BLD)
+    render(f"building_grod_{min(epoch, 2)}" + ("_f1" if ANIM["wave"] else ""), 80, 112, 40, 96, ppu=PPU_BLD)
 
 
 def b_simple(kind):
@@ -507,7 +518,7 @@ def b_simple(kind):
         box(0.0, 0.3, 0, 0.9, 0.16, 0.02, mat((60, 110, 170), 0.15))
         cyl(0.02, 0.2, 0.22, 0.2, 0.05, mat((90, 64, 40)), v=16, rot=(math.pi / 2, 0, 0), center=True)
         for k in range(8):
-            a = k * math.pi / 4
+            a = k * math.pi / 4 + ANIM["mill"]
             box(0.02 + math.cos(a) * 0.17, 0.2, 0.22 + math.sin(a) * 0.17 - 0.03, 0.06, 0.07, 0.06, mat((120, 86, 50)), ry=-a)
     elif kind == "zupa":
         w = mat((110, 76, 40))
@@ -521,7 +532,12 @@ def b_simple(kind):
             cone(x, y, 0, s, 0, s * 1.3, salt, v=8)
     elif kind == "zamek":
         castle(big=True)
-    render(f"building_{kind}", 80, 112, 40, 96, ppu=PPU_BLD)
+    suffix = ""
+    if kind == "mlyn" and ANIM["mill"]:
+        suffix = "_f%d" % round(ANIM["mill"] / (math.pi / 16))
+    elif ANIM["wave"]:
+        suffix = "_f1"
+    render(f"building_{kind}{suffix}", 80, 112, 40, 96, ppu=PPU_BLD)
 
 
 def b_camp(fac):
@@ -547,7 +563,7 @@ def b_camp(fac):
         a = k * 2.1
         rod((0.25 + math.cos(a) * 0.05, -0.05 + math.sin(a) * 0.05, 0.0), (0.25, -0.05, 0.06), 0.012, mat((90, 60, 30)))
     sph(0.25, -0.05, 0.05, 0.035, mat((250, 150, 40), emit=6.0), sub=1)
-    render(f"camp_{fac}", 80, 112, 40, 96, ppu=PPU_BLD)
+    render(f"camp_{fac}" + ("_f1" if ANIM["wave"] else ""), 80, 112, 40, 96, ppu=PPU_BLD)
 
 
 def b_landmark():
@@ -567,8 +583,10 @@ def human(fac, kind, z0=0.0, legs=True, weapon=True):
     t = FACTION[fac]
     tun = mat(t["tunic"])
     if legs:
-        for y in (-0.06, 0.06):
-            cyl(0, y, z0, 0.05, 0.32, mat((70, 56, 44)), v=8)
+        ph = ANIM["walk"]
+        for j, y in enumerate((-0.06, 0.06)):
+            sw = 0.0 if ph is None else math.sin(ph * math.pi / 2 + j * math.pi) * 0.12
+            rod((0, y, z0 + 0.32), (sw, y, z0 + 0.0), 0.05, mat((70, 56, 44)), v=8)
     cone(0, 0, z0 + 0.3, 0.15, 0.12, 0.36, tun, v=10)
     box(0, 0, z0 + 0.34, 0.27, 0.27, 0.035, mat(t["trim"]))
     if fac in ("tz", "kz"):
@@ -624,8 +642,10 @@ def horse(col, cloth=None, cross=None):
     sph(0, 0, 0.58, 0.2, hm, sub=2, scale=(2.3, 0.95, 1.0), smooth=True)
     rod((0.36, 0, 0.62), (0.55, 0, 0.92), 0.08, hm)
     box(0.62, 0, 0.84, 0.22, 0.1, 0.1, hm, ry=0.5)
-    for (x, y) in [(0.3, -0.09), (0.3, 0.09), (-0.3, -0.09), (-0.3, 0.09)]:
-        cyl(x, y, 0, 0.04, 0.44, mat(tuple(int(c * 0.75) for c in col)), v=8)
+    ph = ANIM["walk"]
+    for j, (x, y) in enumerate([(0.3, -0.09), (0.3, 0.09), (-0.3, -0.09), (-0.3, 0.09)]):
+        sw = 0.0 if ph is None else math.sin(ph * math.pi / 2 + (j in (1, 2)) * math.pi) * 0.14
+        rod((x, y, 0.46), (x + sw, y, 0.0), 0.04, mat(tuple(int(c * 0.75) for c in col)), v=8)
     rod((-0.44, 0, 0.66), (-0.56, 0, 0.36), 0.045, mat((60, 40, 30)))
     sph(0.66, 0.05, 0.92, 0.015, mat((10, 10, 10)), sub=1)
     if cloth:
@@ -635,8 +655,9 @@ def horse(col, cloth=None, cross=None):
             box(0.0, -0.205, 0.53, 0.2, 0.012, 0.06, mat(cross))
 
 
-def unit(kind, fac):
+def unit(kind, fac, walk=None):
     reset()
+    ANIM["walk"] = walk
     if kind in ("spear", "sword", "pike", "bow", "xbow"):
         human(fac, kind)
     elif kind in ("horse", "horse_lt", "horse_mg", "knight", "knight_t", "knight_w"):
@@ -675,7 +696,32 @@ def unit(kind, fac):
         for _ in range(7):
             sph(r.uniform(-0.3, 0.3), r.uniform(-0.2, 0.2), r.uniform(0.2, 0.6), r.uniform(0.14, 0.24),
                 mat((190, 190, 180), 1.0, alpha=0.75), sub=2, smooth=True)
-    render(f"unit_{kind}_{fac}", 96, 88, 40, 82, ppu=UNIT_PPU, rot=UNIT_ROT)
+    suffix = "" if walk is None else f"_w{walk}"
+    render(f"unit_{kind}_{fac}{suffix}", 96, 88, 40, 82, ppu=UNIT_PPU, rot=UNIT_ROT)
+    ANIM["walk"] = None
+
+
+# ------------------------------------------------------------------ klatki animacji
+WALKERS = [("spear", "pl"), ("bow", "pl"), ("horse", "pl"), ("spear", "en"), ("horse_mg", "mg"), ("knight_t", "tz"),
+           ("knight", "en"), ("pike", "en")]
+
+
+def animations():
+    for kind, fac in WALKERS:
+        for ph in range(4):
+            unit(kind, fac, ph)
+    for k in (1, 2, 3):                       # koło młyna: 4 klatki (0 = statyczny render)
+        ANIM["mill"] = k * math.pi / 16
+        b_simple("mlyn")
+    ANIM["mill"] = 0.0
+    ANIM["wave"] = 1                          # druga klatka powiewających flag
+    for e in range(3):
+        b_grod(e)
+    for k in ("koszary", "zamek"):
+        b_simple(k)
+    for f in ("en", "mg", "tz"):
+        b_camp(f)
+    ANIM["wave"] = 0
 
 
 # ------------------------------------------------------------------ Damian Ściseł
@@ -917,6 +963,7 @@ def main():
     for kind in ["cannon", "wagon", "smoke"]:
         for fac in FACTION:
             unit(kind, fac)
+    animations()
     hero()
     portraits()
     for k in ["field", "forest", "grod"]:

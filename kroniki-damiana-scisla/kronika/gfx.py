@@ -324,7 +324,13 @@ def _canvas():
 
 @cached
 def building(kind, epoch=0, frame=0):
-    a = asset(f"building_grod_{min(epoch, 2)}" if kind == "grod" else f"building_{kind}")
+    base = f"building_grod_{min(epoch, 2)}" if kind == "grod" else f"building_{kind}"
+    a = None
+    if kind == "mlyn" and frame % 4:
+        a = asset(f"{base}_f{frame % 4}")
+    elif kind in ("grod", "koszary", "zamek") and frame % 2:
+        a = asset(f"{base}_f1")
+    a = a or asset(base)
     if a:
         return a
     s, cx, cy = _canvas()
@@ -441,7 +447,7 @@ def building(kind, epoch=0, frame=0):
 
 @cached
 def camp(faction, frame=0):
-    a = asset(f"camp_{faction}")
+    a = (asset(f"camp_{faction}_f1") if frame % 2 else None) or asset(f"camp_{faction}")
     if a:
         return a
     s, cx, cy = _canvas()
@@ -613,6 +619,17 @@ def unit(kind, faction="pl"):
             pygame.draw.circle(s, (170, 170, 160, 220), (x, y), r)
             pygame.draw.circle(s, (200, 200, 190, 220), (x - 1, y - 1), max(1, r - 2))
     return s  # zwracane w pół-rozdzielczości; skaluj ręcznie
+
+
+def unit_walk(kind, faction, frame, k):
+    """Klatka marszu (render 3D) albo zwykły sprite."""
+    a = asset(f"unit_{kind}_{faction}_w{frame % 4}")
+    if a:
+        key = ("walk", kind, faction, frame % 4, k)
+        if key not in _cache:
+            _cache[key] = pygame.transform.smoothscale(a, (24 * k, 22 * k))
+        return _cache[key]
+    return unit_big(kind, faction, k)
 
 
 def unit_big(kind, faction, k):
