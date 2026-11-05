@@ -1,13 +1,13 @@
-name: Kroniki Tomka Turby – Windows EXE
+name: Kroniki Damiana Ścisła – Windows EXE
 
-# Buduje grę „Kroniki Tomka Turby” (Python + Pygame) do jednego pliku .exe na Windows.
-# Gotowy plik: zakładka Actions → ostatni przebieg → Artifacts → KronikiTomkaTurby-Windows.
+# Buduje grę „Kroniki Damiana Ścisła” (Python + Pygame) do jednego pliku .exe na Windows.
+# Gotowy plik: zakładka Actions → ostatni przebieg → Artifacts → KronikiDamianaScisla-Windows.
 # Wypchnięcie tagu kroniki-v* dodatkowo publikuje wydanie (Release) z plikiem .exe.
 on:
   push:
     branches: ["**"]
     paths:
-      - "kroniki-tomka-turby/**"
+      - "kroniki-damiana-scisla/**"
       - ".github/workflows/kroniki-exe.yml"
     tags:
       - "kroniki-v*"
@@ -21,7 +21,7 @@ jobs:
     runs-on: windows-latest
     defaults:
       run:
-        working-directory: kroniki-tomka-turby
+        working-directory: kroniki-damiana-scisla
     env:
       SDL_VIDEODRIVER: dummy
       SDL_AUDIODRIVER: dummy
@@ -37,22 +37,22 @@ jobs:
       - name: Test – bot przechodzi całą kampanię
         run: python tests/bot_kampania.py 1
       - name: Kompilacja PyInstaller
-        run: python -m PyInstaller --noconfirm KronikiTomkaTurby.spec
+        run: python -m PyInstaller --noconfirm KronikiDamianaScisla.spec
       - name: Uruchomienie EXE i zrzuty ekranu
         shell: pwsh
         run: |
-          $p = Start-Process -FilePath dist\KronikiTomkaTurby.exe -ArgumentList "--screenshots","zrzuty" -PassThru -Wait
+          $p = Start-Process -FilePath dist\KronikiDamianaScisla.exe -ArgumentList "--screenshots","zrzuty" -PassThru -Wait
           if ($p.ExitCode -ne 0) { throw "EXE zakończył się kodem $($p.ExitCode)" }
           Get-ChildItem zrzuty
           if ((Get-ChildItem zrzuty -Filter *.png).Count -lt 10) { throw "Brak zrzutów ekranu" }
       - uses: actions/upload-artifact@v4
         with:
-          name: KronikiTomkaTurby-Windows
+          name: KronikiDamianaScisla-Windows
           path: |
-            kroniki-tomka-turby/dist/KronikiTomkaTurby.exe
-            kroniki-tomka-turby/zrzuty/*.png
+            kroniki-damiana-scisla/dist/KronikiDamianaScisla.exe
+            kroniki-damiana-scisla/zrzuty/*.png
       - name: Wydanie (tylko dla tagów)
         if: startsWith(github.ref, 'refs/tags/kroniki-v')
         uses: softprops/action-gh-release@v2
         with:
-          files: kroniki-tomka-turby/dist/KronikiTomkaTurby.exe
+          files: kroniki-damiana-scisla/dist/KronikiDamianaScisla.exe
