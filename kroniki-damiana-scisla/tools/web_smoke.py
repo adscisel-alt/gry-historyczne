@@ -29,7 +29,14 @@ with sync_playwright() as p:
     while time.time() - t0 < 150:
         page.wait_for_timeout(3000)
         page.mouse.click(640, 380)
+        page.keyboard.press("Space")
         clicked = True
+        try:
+            title = page.title()
+        except Exception:
+            title = ""
+        if "KRONIKI:MENU" in title:
+            logs.append("KRONIKI:MENU (tytuł strony)")
         joined = "\n".join(logs)
         if "Traceback" in joined:
             break
@@ -48,6 +55,10 @@ with sync_playwright() as p:
         }""")
     page.wait_for_timeout(500)
     page.screenshot(path=shot)
+    try:
+        body = page.evaluate("() => document.body.innerText")
+    except Exception as e:
+        body = f"(brak: {e})"
     b.close()
 httpd.shutdown()
 tb = [l for l in logs if "Traceback" in l or "Error" in l]
@@ -58,6 +69,12 @@ if errors:
     print("Błędy strony:", errors[:5])
 if any("Traceback" in l for l in logs):
     print("BŁĄD: wyjątek Pythona w przeglądarce")
+    sys.exit(1)
+print("---- tekst strony (terminal pygbag) ----")
+print(body[-3000:])
+print("----")
+if "Traceback" in body:
+    print("BŁĄD: wyjątek Pythona w przeglądarce (terminal)")
     sys.exit(1)
 if not any("KRONIKI:MENU" in l for l in logs):
     print("BŁĄD: gra nie narysowała menu w ciągu 150 s")

@@ -120,6 +120,12 @@ class App:
             if not getattr(self, "_announced", False):
                 self._announced = True
                 print("KRONIKI:MENU – pierwsza klatka narysowana", flush=True)
+                if WEB:
+                    try:
+                        from platform import window
+                        window.document.title = "Kroniki Damiana Ścisła – KRONIKI:MENU"
+                    except Exception:
+                        pass
             await asyncio.sleep(0)
         if not WEB:
             pygame.quit()
