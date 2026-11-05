@@ -8,6 +8,8 @@ Przeglądarka:  pygbag (patrz README) – ten sam plik, pętla asyncio.
 import asyncio
 import sys
 
+import pygame  # noqa: F401 – pygbag pobiera biblioteki według importów w main.py
+
 
 def _web_report(tb):
     """W przeglądarce: wypisz błąd do konsoli JS (widoczny w narzędziach deweloperskich i w teście)."""
