@@ -101,6 +101,15 @@ class MapRenderer:
             elif t == "grass" and v == 3 and (x * 7 + y) % 5 == 0:
                 img = gfx.tree(1 + (x % 2))
                 s.blit(img, (cx - 16, cy - 48))
+        # podpisy rzek i jezior (geografia)
+        for (pos, text) in w.ch["map"].get("labels", []):
+            cx, cy = tile_center(*pos)
+            f = ui.font(16, True)
+            img = f.render(text, True, (235, 244, 255))
+            sh = f.render(text, True, (20, 40, 70))
+            for dx, dy in ((-1, 0), (1, 0), (0, -1), (0, 1), (2, 2)):
+                s.blit(sh, (cx - img.get_width() // 2 + dx, cy - 10 + dy))
+            s.blit(img, (cx - img.get_width() // 2, cy - 10))
         w.dirty = False
 
     def tick(self, dt):
@@ -134,6 +143,12 @@ class MapScene(Scene):
         self.make_buttons()
         self.update_tip()
         audio.start_music(f"music_{self.w.epoch}")
+        from .encyclopedia import CHAPTER_TERMS, GLOSSARY
+        new = [k for k in CHAPTER_TERMS.get(self.w.idx, []) if app.unlock("pojecia", k)]
+        if new:
+            app.toasts.append([f"Encyklopedia: nowe pojęcia ({len(new)}) – {', '.join(GLOSSARY[k][0] for k in new[:3])}…", 4.0])
+        for t in self.w.techs:
+            app.unlock("wynalazki", t)
         if world is None:
             self.queue.append(lambda: self.app.push(Dialogue(self.app, [{"who": w, "text": t} for w, t in self.ch["dialogue_start"]], self.w)))
         else:
@@ -165,7 +180,7 @@ class MapScene(Scene):
         y = p.bottom - 150
         self.buttons.append(ui.Button((p.x + 10, y, bw, 38), "Technologie", self.open_tech, 15, icon=gfx.icon("tech", 2), key=pygame.K_t))
         self.buttons.append(ui.Button((p.x + 20 + bw, y, bw, 38), "Wojsko", self.open_army, 15, icon=gfx.icon("army", 2), key=pygame.K_w))
-        self.buttons.append(ui.Button((p.x + 10, y + 46, bw, 38), "Postacie", self.open_gallery, 15, icon=gfx.icon("chronicle", 2), key=pygame.K_k))
+        self.buttons.append(ui.Button((p.x + 10, y + 46, bw, 38), "Encyklopedia", self.open_encyclopedia, 14, icon=gfx.icon("chronicle", 2), key=pygame.K_k))
         self.buttons.append(ui.Button((p.x + 20 + bw, y + 46, bw, 38), "Menu", self.pause, 15, key=pygame.K_ESCAPE))
         self.buttons.append(ui.Button((p.x + 10, y + 92, p.w - 20, 46), "Koniec tury ▶", self.end_turn, 19,
                                       icon=gfx.icon("turn", 2), color=(70, 100, 50), key=pygame.K_SPACE))
@@ -193,8 +208,10 @@ class MapScene(Scene):
             return
         if pos in self.w.landmarks:
             n, t = self.w.landmarks[pos]
-            self.tile_buttons.append(ui.Button((p.x + 10, y0 + 40, p.w - 20, 38), "Przeczytaj w kronice",
-                                               lambda: self.app.push(Info(self.app, n, t, gfx.landmark(0))), 15))
+            def read(n=n, t=t):
+                self.app.unlock("miejsca", n, n)
+                self.app.push(Info(self.app, n, t, gfx.landmark(0)))
+            self.tile_buttons.append(ui.Button((p.x + 10, y0 + 40, p.w - 20, 38), "Przeczytaj w kronice", read, 15))
             return
         if pos in self.w.buildings or pos not in self.w.territory or self.w.terr[y][x] == "water":
             return
@@ -240,6 +257,10 @@ class MapScene(Scene):
     def open_army(self):
         from .scenes import ArmyScene
         self.app.push(ArmyScene(self.app, self))
+
+    def open_encyclopedia(self):
+        from .encyclopedia import EncyclopediaScene
+        self.app.push(EncyclopediaScene(self.app))
 
     def open_gallery(self):
         from .scenes import GalleryScene
@@ -590,12 +611,23 @@ class MapScene(Scene):
             a = 120 + int(80 * abs(((self.t * 2) % 2) - 1))
             surf.blit(gfx.tile_outline((255, 220, 80, a), 3), (sx - TW // 2, sy - TH // 2))
         self.draw_raids(surf)
+        self.draw_compass(surf)
         for f in self.floats:
             ui.draw_text(surf, f[0], (int(f[1]), int(f[2])), 18, f[3], True, center=True, shadow=(0, 0, 0))
         surf.set_clip(None)
         self.draw_top(surf)
         self.draw_panel(surf)
         self.draw_tip(surf)
+
+    def draw_compass(self, surf):
+        cx, cy = VIEW.x + 64, VIEW.y + 56
+        pygame.draw.circle(surf, (40, 28, 18), (cx, cy), 30)
+        pygame.draw.circle(surf, ui.GOLD, (cx, cy), 30, 2)
+        pygame.draw.polygon(surf, (200, 40, 40), [(cx, cy - 24), (cx - 7, cy), (cx + 7, cy)])
+        pygame.draw.polygon(surf, (230, 220, 200), [(cx, cy + 24), (cx - 7, cy), (cx + 7, cy)])
+        for t, (dx, dy) in (("N", (0, -40)), ("S", (0, 40)), ("W", (-40, 0)), ("E", (40, 0))):
+            ui.draw_text(surf, {"N": "Pn", "S": "Pd", "W": "Zch", "E": "Wsch"}[t], (cx + dx, cy + dy - 8), 11, ui.CREAM, True,
+                         center=True, shadow=(0, 0, 0))
 
     def draw_raids(self, surf):
         import math

@@ -213,6 +213,8 @@ class Battle(Scene):
             return
         self.used_tactics.add(tid)
         t = data.TACTICS[tid]
+        if hasattr(self.app, "unlock"):
+            self.app.unlock("taktyki", tid, t["name"])
         e = t["effect"]
         m = self.rmods
         if e == "reinforce":

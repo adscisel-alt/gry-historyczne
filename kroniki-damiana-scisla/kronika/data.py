@@ -1012,3 +1012,62 @@ RAIDS.update({
 
 CHRONO = [0, 6, 7, 1, 2, 8, 3, 4, 5]   # kolejność chronologiczna rozdziałów na ekranie kampanii
 MAIN = [0, 1, 2, 3, 4, 5]
+
+
+# ---------------------------------------------------------------- GEOGRAFIA MAP
+# Współrzędne geograficzne (wsch, płd) w zakresie -1..1 względem środka mapy: wschód w prawo, północ w górę ekranu.
+def geo(e, s):
+    sx, sy = e * 0.92, 1 + s * 0.92
+    x = round(29 * (sy + sx) / 2)
+    y = round(29 * (sy - sx) / 2)
+    return (max(0, min(29, x)), max(0, min(29, y)))
+
+
+GEOGRAPHY = {
+    0: {"capital": (0, 0), "river": [(-1, .75), (-.4, .65), (.2, .8), (1, .6)],
+        "lakes": [(-.45, -.1, 3), (.25, .22, 1), (-.2, .32, 1), (.3, -.35, 1)],
+        "landmarks": [(-.45, -.1), (.08, .1)], "camps": [(-.6, -.75)],
+        "labels": [((.05, .72), "Warta"), ((-.45, -.32), "Jezioro Lednickie")]},
+    6: {"capital": (0, 0), "river": [(-1, .75), (-.4, .65), (.2, .8), (1, .6)],
+        "lakes": [(-.45, -.1, 3), (.25, .22, 1), (-.2, .32, 1)],
+        "landmarks": [(.08, .1), (-.45, -.1)], "camps": [(.1, -.85)],
+        "labels": [((.05, .72), "Warta"), ((-.45, -.32), "Jezioro Lednickie")]},
+    1: {"capital": (-.18, .05), "river": [(.1, 1), (.05, .5), (-.02, 0), (.05, -.5), (0, -1)],
+        "lakes": [(.32, .22, 1)], "landmarks": [(.48, .4), (.6, -.6)], "camps": [(.85, .62)],
+        "labels": [((.12, -.32), "Kaczawa"), ((.32, .08), "Jez. Kunickie")]},
+    2: {"capital": (-.02, -.08), "river": [(-1, .2), (-.5, .15), (-.12, .3), (.05, .34), (.3, .15), (.6, .25), (1, .3)],
+        "lakes": [], "landmarks": [(.04, .2), (.55, .62)], "camps": [(-.7, .7)],
+        "labels": [((-.55, .06), "Wisła"), ((.5, .16), "Wisła")]},
+    8: {"capital": (-.02, -.08), "river": [(-1, .2), (-.5, .15), (-.12, .3), (.05, .34), (.3, .15), (.6, .25), (1, .3)],
+        "lakes": [], "landmarks": [(.04, .2), (-.12, -.22)], "camps": [(.4, -.45)],
+        "labels": [((-.55, .06), "Wisła")]},
+    3: {"capital": (.1, -.12), "river": [(1, -.1), (.6, -.45), (.2, -.8), (-.25, -1)],
+        "lakes": [(-.55, -.6, 1), (-.5, -.32, 2), (-.46, 0, 1), (-.45, .3, 2)],
+        "landmarks": [(.02, -.3), (.3, .4)], "camps": [(.75, -.75)],
+        "labels": [((.45, -.62), "Wisła"), ((-.6, .0), "Gopło")]},
+    4: {"capital": (.1, .1), "river": [(-1, -.5), (-.4, -.35), (.2, -.55), (1, -.4)],
+        "lakes": [(-.5, .3, 2), (.5, .45, 2), (.55, -.1, 1), (-.15, .6, 1)],
+        "landmarks": [(.28, .02), (-.45, -.48)], "camps": [(-.85, .6)],
+        "labels": [((-.1, -.5), "Wilia")]},
+    5: {"capital": (-.38, .38), "river": [(-1, .78), (-.3, .9), (.3, .82), (1, .72)],
+        "lakes": [(-.22, .12, 2), (.4, .3, 1), (-.6, -.3, 2)],
+        "landmarks": [(.1, -.05), (-.75, .72)], "camps": [(-.78, .12)],
+        "labels": [((.2, .9), "Drwęca"), ((-.22, -.05), "Jez. Łubień")]},
+    7: {"capital": (.04, .14), "river": [(1, .6), (.4, .25), (0, .02), (-.5, -.3), (-1, -.55)],
+        "lakes": [(.55, -.25, 1)], "landmarks": [(.72, .66), (.1, -.86)], "camps": [(-.82, .32)],
+        "labels": [((-.45, -.4), "Odra")]},
+}
+
+
+def _apply_geography():
+    for idx, g in GEOGRAPHY.items():
+        m = CHAPTERS[idx]["map"]
+        m["capital"] = geo(*g["capital"])
+        m["river"] = [geo(*p) for p in g["river"]]
+        m["lakes"] = [geo(e, s) + (r,) for (e, s, r) in g["lakes"]]
+        m["labels"] = [(geo(*p), t) for p, t in g["labels"]]
+        m["landmarks"] = [(geo(*p),) + tuple(l[1:]) for p, l in zip(g["landmarks"], m["landmarks"])]
+        m["camps"] = [(geo(*p),) + tuple(c[1:]) for p, c in zip(g["camps"], m["camps"])]
+
+
+_apply_geography()

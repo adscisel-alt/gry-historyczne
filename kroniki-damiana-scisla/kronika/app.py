@@ -32,6 +32,7 @@ class App:
         self.running = True
         self.save = self.load_save()
         self.used_q = set()
+        self.toasts = []
         if self.save.get("styl"):
             gfx.set_style(self.save["styl"])
 
@@ -41,6 +42,18 @@ class App:
 
     def write_save(self):
         storage.save("postep", self.save)
+
+    # ------------------------------------------------------------ encyklopedia
+    def unlock(self, kind, key, name=None):
+        enc = self.save.setdefault("encyklopedia", {})
+        lst = enc.setdefault(kind, [])
+        if key in lst:
+            return False
+        lst.append(key)
+        self.write_save()
+        if name:
+            self.toasts.append([f"Nowe hasło w encyklopedii: {name}", 3.5])
+        return True
 
     # ------------------------------------------------------------ dziennik nauki
     def log_answer(self, question, correct, ok, ctx=""):
@@ -80,6 +93,20 @@ class App:
         for s in self.stack[start:]:
             s.draw(self.screen)
 
+    def draw_toasts(self, dt):
+        y = 54
+        for t in self.toasts:
+            t[1] -= dt
+            img = ui.font(15, True).render(t[0], True, (255, 240, 200))
+            r = pygame.Rect(W // 2 - img.get_width() // 2 - 14, y, img.get_width() + 28, 30)
+            bg = pygame.Surface(r.size, pygame.SRCALPHA)
+            bg.fill((60, 30, 90, 225))
+            self.screen.blit(bg, r.topleft)
+            pygame.draw.rect(self.screen, ui.GOLD, r, 1)
+            self.screen.blit(img, (r.x + 14, r.y + 6))
+            y += 36
+        self.toasts = [t for t in self.toasts if t[1] > 0][-3:]
+
     def run(self):
         import asyncio
         asyncio.run(self.run_async())
@@ -116,6 +143,7 @@ class App:
                 if hasattr(s, "r") and hasattr(s.r, "tick"):
                     s.r.tick(dt)
             self.draw()
+            self.draw_toasts(dt)
             pygame.display.flip()
             if not getattr(self, "_announced", False):
                 self._announced = True

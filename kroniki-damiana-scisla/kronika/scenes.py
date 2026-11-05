@@ -38,11 +38,12 @@ class MenuScene(Scene):
         if MapScene.has_save():
             items.append(("Kontynuuj", self.cont, 22, (70, 100, 50)))
         items += [("Kampania", self.campaign, 22, None), ("Postacie historyczne", self.gallery, 18, None),
+                  ("Encyklopedia", self.encyclopedia, 18, None),
                   ("Dziennik nauki", self.journal, 18, (100, 50, 140)), ("Jak grać", self.help, 18, None)]
         if not storage.WEB:
             items.append(("Wyjście", self.app.quit, 18, (90, 60, 40)))
-        y0 = 316
-        self.buttons = [ui.Button((80, y0 + i * 56, 300, 46), lab, cb, sz, color=col) for i, (lab, cb, sz, col) in enumerate(items)]
+        y0 = 300
+        self.buttons = [ui.Button((80, y0 + i * 54, 300, 44), lab, cb, sz, color=col) for i, (lab, cb, sz, col) in enumerate(items)]
         audio.start_music("music")
 
     def campaign(self):
@@ -55,6 +56,10 @@ class MenuScene(Scene):
         except Exception:
             storage.delete("gra")
             self.app.push(Info(self.app, "Zapis uszkodzony", "Nie udało się wczytać zapisu. Zacznij rozdział od nowa."))
+
+    def encyclopedia(self):
+        from .encyclopedia import EncyclopediaScene
+        self.app.push(EncyclopediaScene(self.app))
 
     def journal(self):
         self.app.push(JournalScene(self.app))
@@ -327,6 +332,7 @@ class TechScene(Scene):
                 w.stats["quiz_ok"] += 1
                 w.pay(w.tech_cost(tid))
                 w.techs.add(tid)
+                self.app.unlock("wynalazki", tid, t["name"])
                 audio.play("fanfare")
                 self.ms.after_change()
                 self.app.push(Info(self.app, "Odkrycie: " + t["name"], "Ciekawostka: " + t["fact"] + "\n\nEfekt: " + t["effect"],
