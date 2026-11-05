@@ -627,8 +627,28 @@ def _ellipse(s, c, r):
     pygame.draw.ellipse(s, c, r)
 
 
+def _portrait_id(p):
+    from . import data
+    if p == data.HERO["p"]:
+        return "damian"
+    for cid, c in data.CHARACTERS.items():
+        if c["p"] == p:
+            return cid
+    return None
+
+
 @cached
 def portrait(p, k=4):
+    cid = _portrait_id(p)
+    a = asset(f"portrait_{cid}") if cid else None
+    if a:
+        size = 32 * k
+        out = pygame.Surface((size, size))
+        bg = p["bg"]
+        for y in range(size):
+            out.fill(mix(shade(bg, 1.3), shade(bg, 0.55), y / max(1, size - 1)), (0, y, size, 1))
+        out.blit(pygame.transform.smoothscale(a, (size, size)), (0, 0))
+        return out
     s = S(32, 32)
     bg = p["bg"]
     for y in range(32):

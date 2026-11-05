@@ -714,6 +714,101 @@ def hero():
     render("hero", 154, 252, 77, 246, ppu=150, rot=(84, 0, 18))
 
 
+# ------------------------------------------------------------------ portrety (popiersia)
+def bust(p):
+    reset()
+    skin, hair = mat(SKIN, 0.65), mat(p["hair"], 0.8)
+    cloth = mat(p["cloth"], 0.8)
+    head = p["head"]
+    female = head in ("veil", "crown_veil") or (head == "crown_s" and not p.get("beard") and p["hair"][0] > 180)
+    # ramiona i szyja
+    sph(0, 0, 0.0, 0.42, cloth, sub=3, scale=(1.25, 0.7, 0.55), smooth=True)
+    if head == "mitre":
+        for x in (-0.12, 0.12):
+            box(x, -0.27, -0.2, 0.04, 0.01, 0.4, mat(GOLD, 0.4, 0.6))
+    cyl(0, 0, 0.12, 0.09, 0.2, skin, v=16)
+    # głowa
+    sph(0, 0, 0.5, 0.2, skin, sub=3, scale=(0.92, 0.95, 1.12), smooth=True)
+    for x in (-0.185, 0.185):
+        sph(x, 0.0, 0.5, 0.045, skin, sub=2, scale=(0.5, 1, 1), smooth=True)
+    cone(0, -0.19, 0.46, 0.035, 0.0, 0.07, mat((222, 170, 140), 0.6), v=8, rot=(math.radians(-80), 0, 0))
+    for x in (-0.072, 0.072):
+        sph(x, -0.165, 0.535, 0.03, mat((245, 245, 245), 0.3), sub=2, smooth=True)
+        sph(x, -0.19, 0.535, 0.015, mat((40, 30, 30), 0.3), sub=2, smooth=True)
+        box(x, -0.18, 0.585, 0.07, 0.02, 0.016, mat(tuple(int(c * 0.8) for c in p["hair"])))
+    box(0, -0.185, 0.39, 0.075, 0.02, 0.018, mat((170, 90, 80), 0.5))
+    for x in (-0.11, 0.11):
+        sph(x, -0.16, 0.45, 0.03, mat((240, 160, 140), 0.7), sub=1, scale=(1, 0.4, 0.8))
+    # włosy
+    covered = head in ("hood", "veil", "crown_veil", "mitre", "helmet")
+    if not covered:
+        sph(0, 0.03, 0.6, 0.21, hair, sub=3, scale=(0.98, 0.98, 0.72), smooth=True)
+        sph(0, 0.09, 0.5, 0.2, hair, sub=3, scale=(0.97, 0.75, 1.0), smooth=True)
+        if female or head == "crown_s":
+            sph(0, 0.08, 0.32, 0.2, hair, sub=3, scale=(1.05, 0.7, 1.3), smooth=True)
+    b = p.get("beard")
+    if b in ("full", "long"):
+        sph(0, -0.09, 0.37 if b == "full" else 0.3, 0.16, hair, sub=3, scale=(1.0, 0.8, 0.9 if b == "full" else 1.4), smooth=True)
+        box(0, -0.185, 0.39, 0.075, 0.03, 0.018, mat((150, 80, 70), 0.5))
+    elif b == "short":
+        sph(0, -0.08, 0.38, 0.15, hair, sub=3, scale=(1.0, 0.85, 0.7), smooth=True)
+        box(0, -0.2, 0.39, 0.075, 0.03, 0.018, mat((150, 80, 70), 0.5))
+    elif b == "mustache":
+        for x in (-0.05, 0.05):
+            sph(x, -0.19, 0.415, 0.03, hair, sub=2, scale=(1.6, 0.7, 0.6), smooth=True)
+    # nakrycia głowy
+    gold = mat(GOLD, 0.3, 0.8)
+    if head in ("crown_b", "crown_s", "crown_veil"):
+        r = 0.2 if head == "crown_b" else 0.17
+        z = 0.66 if head != "crown_veil" else 0.7
+        cyl(0, 0.0, z, r, 0.07 if head == "crown_b" else 0.05, gold, v=20)
+        n = 8 if head == "crown_b" else 6
+        for k in range(n):
+            a = k * math.tau / n
+            cone(math.cos(a) * r * 0.95, math.sin(a) * r * 0.95, z + 0.06, 0.035, 0.0, 0.09 if head == "crown_b" else 0.06, gold, v=6)
+        sph(0, -r, z + 0.035, 0.022, mat((200, 30, 40), 0.2), sub=1)
+    if head == "circlet":
+        bpy.ops.mesh.primitive_torus_add(major_radius=0.19, minor_radius=0.012, location=(0, 0, 0.62))
+        _fin(bpy.context.active_object, gold)
+    if head in ("veil", "crown_veil"):
+        white = mat((238, 236, 228), 0.9)
+        sph(0, 0.1, 0.55, 0.24, white, sub=3, scale=(1.05, 0.85, 1.1), smooth=True)
+        cyl(0, 0.12, 0.05, 0.25, 0.45, white, v=20)
+        sph(0, -0.02, 0.66, 0.2, white, sub=3, scale=(1.05, 0.9, 0.45), smooth=True)
+    if head == "mitre":
+        white = mat((240, 238, 230), 0.7)
+        cone(0, 0, 0.62, 0.2, 0.06, 0.4, white, v=4, rot=(0, 0, math.pi / 4))
+        box(0, -0.13, 0.62, 0.03, 0.01, 0.36, gold)
+        cyl(0, 0, 0.62, 0.2, 0.04, gold, v=20)
+    if head == "helmet":
+        steel = mat(STEEL, 0.3, 0.85)
+        cone(0, 0, 0.56, 0.22, 0.0, 0.32, steel, v=16)
+        box(0, -0.205, 0.42, 0.03, 0.02, 0.18, steel)
+        sph(0, 0.05, 0.42, 0.2, mat((150, 156, 166), 0.5, 0.7), sub=2, scale=(1.05, 0.9, 0.8))
+    if head == "hood":
+        robe_d = mat(tuple(int(c * 0.75) for c in p["cloth"]), 0.85)
+        sph(0, 0.06, 0.53, 0.25, robe_d, sub=3, scale=(1, 0.95, 1.15), smooth=True)
+        cone(0, 0.18, 0.66, 0.1, 0.0, 0.22, robe_d, v=10, rot=(-0.7, 0, 0))
+        bpy.ops.mesh.primitive_torus_add(major_radius=0.19, minor_radius=0.04, location=(0, -0.1, 0.51),
+                                         rotation=(math.pi / 2, 0, 0))
+        o = _fin(bpy.context.active_object, cloth)
+        o.scale = (1, 1.2, 1)
+        sph(0, -0.12, 0.62, 0.15, hair, sub=2, scale=(1.05, 0.6, 0.4), smooth=True)
+    if head == "fur":
+        cyl(0, 0, 0.6, 0.215, 0.12, mat((100, 70, 44), 1.0), v=20)
+        sph(0, 0, 0.72, 0.17, mat((40, 110, 70), 0.8), sub=2, scale=(1, 1, 0.6), smooth=True)
+
+
+def portraits():
+    sys.path.insert(0, os.path.normpath(os.path.join(HERE, "..", "..")))
+    from kronika import data as gdata
+    people = dict(gdata.CHARACTERS)
+    people["damian"] = gdata.HERO
+    for cid, c in people.items():
+        bust(c["p"])
+        render(f"portrait_{cid}", 128, 128, 64, 124, ppu=126, rot=(86, 0, 12))
+
+
 # ------------------------------------------------------------------ tła bitew
 def battle_bg(kind):
     reset()
@@ -823,6 +918,7 @@ def main():
         for fac in FACTION:
             unit(kind, fac)
     hero()
+    portraits()
     for k in ["field", "forest", "grod"]:
         battle_bg(k)
     print("Gotowe.")
