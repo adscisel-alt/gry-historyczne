@@ -429,7 +429,7 @@ class MapScene(Scene):
                 self.app.push(Battle(self.app, w, "Najazd łupieżców", eff["battle"], 16, True, "field",
                                      intro="Banda łupieżców pod grodem! Szybka potyczka – pokażmy im drogę do domu.", on_end=done))
             elif "quiz" in eff:
-                q, ans, ok = random.choice(data.QUESTIONS[w.epoch])
+                q, ans, ok = data.pick_question(w.epoch, self.app.used_q)
 
                 def res(good):
                     w.stats["quiz_all"] += 1

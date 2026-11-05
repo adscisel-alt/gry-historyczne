@@ -31,6 +31,7 @@ class App:
         self.stack = []
         self.running = True
         self.save = self.load_save()
+        self.used_q = set()
         if self.save.get("styl"):
             gfx.set_style(self.save["styl"])
 

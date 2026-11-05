@@ -143,7 +143,7 @@ class Battle(Scene):
     # ------------------------------------------------------------ przebieg
     def start_question(self):
         self.buttons = []
-        q, ans, ok = random.choice(data.QUESTIONS[self.w.epoch])
+        q, ans, ok = data.pick_question(self.w.epoch, self.app.used_q)
         from .world import DIFF
         hints = (1 if "akademia" in self.w.techs else 0) + DIFF[getattr(self.w, "diff", 1)]["hints"]
         self.app.push(Quiz(self.app, "Pytanie rady wojennej", q, ans, ok, self.after_question, hints))
