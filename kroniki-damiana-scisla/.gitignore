@@ -3,3 +3,4 @@ dist/
 zrzuty/
 __pycache__/
 *.pyc
+web_build/

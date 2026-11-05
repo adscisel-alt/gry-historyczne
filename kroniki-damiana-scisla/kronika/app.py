@@ -6,24 +6,20 @@ import sys
 
 import pygame
 
-from . import audio, gfx, ui
+from . import audio, gfx, ui, storage
 from .modals import W, H
 
 TITLE = "Kroniki Damiana Ścisła – Doradca książąt 966–1410"
 
 
-def save_path():
-    base = os.environ.get("APPDATA") or os.path.join(os.path.expanduser("~"), ".config")
-    d = os.path.join(base, "KronikiDamianaScisla")
-    os.makedirs(d, exist_ok=True)
-    return os.path.join(d, "postep.json")
+WEB = sys.platform == "emscripten"
 
 
 class App:
     def __init__(self, headless=False):
         pygame.init()
         audio.init()
-        flags = 0 if headless else pygame.SCALED | pygame.RESIZABLE
+        flags = 0 if (headless or WEB) else pygame.SCALED | pygame.RESIZABLE
         pygame.display.set_caption(TITLE)
         try:
             ic = gfx.portrait({"hair": (222, 184, 96), "beard": None, "head": "hood", "cloth": (110, 50, 150), "bg": (60, 50, 80)}, 1)
@@ -40,18 +36,10 @@ class App:
 
     # ------------------------------------------------------------ zapis
     def load_save(self):
-        try:
-            with open(save_path(), encoding="utf-8") as f:
-                return json.load(f)
-        except Exception:
-            return {"unlocked": 0, "completed": [], "techs": [], "scores": {}}
+        return storage.load("postep", None) or {"unlocked": 0, "completed": [], "techs": [], "scores": {}}
 
     def write_save(self):
-        try:
-            with open(save_path(), "w", encoding="utf-8") as f:
-                json.dump(self.save, f, ensure_ascii=False, indent=1)
-        except Exception:
-            pass
+        storage.save("postep", self.save)
 
     # ------------------------------------------------------------ sceny
     def push(self, s):
@@ -83,6 +71,11 @@ class App:
             s.draw(self.screen)
 
     def run(self):
+        import asyncio
+        asyncio.run(self.run_async())
+
+    async def run_async(self):
+        import asyncio
         from .scenes import MenuScene
         self.push(MenuScene(self))
         while self.running:
@@ -90,7 +83,7 @@ class App:
             for ev in pygame.event.get():
                 if ev.type == pygame.QUIT:
                     self.running = False
-                elif ev.type == pygame.KEYDOWN and ev.key == pygame.K_F11:
+                elif ev.type == pygame.KEYDOWN and ev.key == pygame.K_F11 and not WEB:
                     pygame.display.toggle_fullscreen()
                     continue
                 elif ev.type == pygame.KEYDOWN and ev.key == pygame.K_g:
@@ -114,7 +107,9 @@ class App:
                     s.r.tick(dt)
             self.draw()
             pygame.display.flip()
-        pygame.quit()
+            await asyncio.sleep(0)
+        if not WEB:
+            pygame.quit()
 
 
 def screenshots(outdir):

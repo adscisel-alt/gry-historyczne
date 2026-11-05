@@ -27,8 +27,22 @@ jobs:
       - uses: actions/configure-pages@v5
         with:
           enablement: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Wersja przeglądarkowa „Kronik Damiana Ścisła” (pygbag)
+        run: |
+          python -m pip install pygbag
+          bash kroniki-damiana-scisla/tools/build_web.sh
+      - name: Złożenie strony
+        run: |
+          mkdir -p ../_site
+          rsync -a --exclude .git --exclude web_build ./ ../_site/
+          mkdir -p ../_site/kroniki-damiana-scisla/graj
+          cp -r kroniki-damiana-scisla/web_build/kroniki-damiana-scisla/build/web/. ../_site/kroniki-damiana-scisla/graj/
+          mv ../_site ./_site
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: .
+          path: _site
       - id: deployment
         uses: actions/deploy-pages@v4

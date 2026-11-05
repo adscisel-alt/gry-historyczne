@@ -132,6 +132,7 @@ class MapScene(Scene):
         self.t = 0
         self.make_buttons()
         self.update_tip()
+        audio.start_music(f"music_{self.w.epoch}")
         self.queue.append(lambda: self.app.push(Dialogue(self.app, [{"who": w, "text": t} for w, t in self.ch["dialogue_start"]], self.w)))
 
     # ------------------------------------------------------------ współrzędne

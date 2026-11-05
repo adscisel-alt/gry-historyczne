@@ -1,0 +1,38 @@
+name: Kroniki Damiana Ścisła – wersja przeglądarkowa
+
+# Buduje grę do WebAssembly (pygbag) i sprawdza ją w Chromium (Playwright).
+# Zbudowana strona i zrzut ekranu trafiają do Artifacts. Na gałęzi main stronę publikuje pages.yml.
+on:
+  push:
+    branches: ["**"]
+    paths:
+      - "kroniki-damiana-scisla/**"
+      - ".github/workflows/kroniki-web.yml"
+  workflow_dispatch:
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: kroniki-damiana-scisla
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Narzędzia
+        run: |
+          python -m pip install pygbag playwright
+          python -m playwright install --with-deps chromium
+      - name: Budowanie (pygbag)
+        run: bash tools/build_web.sh
+      - name: Test w przeglądarce
+        run: python tools/web_smoke.py web_build/kroniki-damiana-scisla/build/web web_zrzut.png
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: KronikiDamianaScisla-Web
+          path: |
+            kroniki-damiana-scisla/web_build/kroniki-damiana-scisla/build/web
+            kroniki-damiana-scisla/web_zrzut.png

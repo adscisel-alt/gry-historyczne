@@ -40,7 +40,7 @@ class MenuScene(Scene):
             ui.Button((x, 454, 300, 50), "Jak grać", self.help, 18),
             ui.Button((x, 516, 300, 50), "Wyjście", self.app.quit, 18, color=(90, 60, 40)),
         ]
-        audio.start_music()
+        audio.start_music("music")
 
     def campaign(self):
         self.app.push(ChapterSelectScene(self.app))
@@ -141,6 +141,7 @@ class ChronicleScene(Scene):
         self.idx = idx
         self.ch = data.CHAPTERS[idx]
         self.text = "\n\n".join(self.ch["chronicle"])
+        audio.start_music(f"music_{self.ch['epoch']}")
         self.chars = 0.0
         self.t = 0
         self.buttons = [ui.Button((W - 300, H - 78, 250, 48), "Rozpocznij rozdział ▶", self.go, 18),

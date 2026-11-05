@@ -3,7 +3,7 @@
 a = Analysis(
     ["main.py"],
     pathex=[],
-    datas=[("assets/fonts", "assets/fonts"), ("assets/3d", "assets/3d")],
+    datas=[("assets/fonts", "assets/fonts"), ("assets/3d", "assets/3d"), ("assets/audio", "assets/audio")],
     hiddenimports=[],
     excludes=["tkinter", "numpy", "unittest", "pydoc"],
 )
