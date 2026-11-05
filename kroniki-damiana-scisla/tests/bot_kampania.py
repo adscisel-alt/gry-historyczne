@@ -171,6 +171,8 @@ def step(app, stats):
         print("  porażka:", top.idx, top.text[:50], flush=True)
         top.retry()
     elif isinstance(top, (MenuScene, ChapterSelectScene)):
+        if stats.get("bonus"):
+            return False
         app.replace(ChronicleScene(app, 0))
     elif isinstance(top, EndingScene):
         return False
@@ -197,9 +199,19 @@ def run(seed):
             raise SystemExit("Za dużo porażek – balans?")
     else:
         raise SystemExit("Bot utknął: " + type(app.top()).__name__)
-    print(f"seed {seed}: rozdziały (idx, tura, gwiazdki) {stats['chapters']}, bitwy {stats['won']}/{stats['battles']}, porażki misji {stats['defeats']}")
     assert isinstance(app.top(), EndingScene)
     assert app.save["completed"] == [0, 1, 2, 3, 4, 5]
+    # rozdziały dodatkowe
+    stats["bonus"] = True
+    for idx in (6, 7, 8):
+        app.stack = [ChronicleScene(app, idx)]
+        for i in range(200000):
+            if not step(app, stats):
+                break
+            if stats["defeats"] > 12:
+                raise SystemExit("Za dużo porażek – balans?")
+    print(f"seed {seed}: rozdziały (idx, tura, gwiazdki) {stats['chapters']}, bitwy {stats['won']}/{stats['battles']}, porażki misji {stats['defeats']}")
+    assert app.save["completed"] == list(range(9)), app.save["completed"]
 
 
 if __name__ == "__main__":

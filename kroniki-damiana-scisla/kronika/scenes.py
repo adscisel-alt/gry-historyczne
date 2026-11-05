@@ -79,7 +79,7 @@ class MenuScene(Scene):
         ui.draw_text(surf, "Doradca książąt i królów • 966–1410", (title.centerx, title.y + 100), 22, ui.INK, True, center=True)
         ui.draw_text(surf, "Strategia turowa z dziejów Polski: od grodu Polan po pola Grunwaldu.",
                      (title.centerx, title.y + 146), 16, ui.INK_SOFT, center=True)
-        ui.draw_text(surf, "6 rozdziałów • 4 epoki • 20 technologii • 12 postaci", (title.centerx, title.y + 176), 15, ui.PURPLE, True, center=True)
+        ui.draw_text(surf, "9 rozdziałów • 4 epoki • 20 technologii • 15 postaci • 152 pytania", (title.centerx, title.y + 176), 15, ui.PURPLE, True, center=True)
         tk = gfx.hero_figure(7)
         bob = int(math.sin(self.t * 2) * 4)
         surf.blit(tk, (W - tk.get_width() - 120, H - tk.get_height() - 30 + bob))
@@ -92,22 +92,32 @@ class MenuScene(Scene):
         ui.draw_text(surf, "G – grafika 3D/pikselowa   M – muzyka   F11 – pełny ekran", (20, H - 28), 13, ui.CREAM, shadow=(0, 0, 0))
 
 
+def chapter_unlocked(save, idx):
+    ch = data.CHAPTERS[idx]
+    if ch.get("bonus"):
+        return ch["after"] in save.get("completed", [])
+    return idx <= save.get("unlocked", 0)
+
+
 class ChapterSelectScene(Scene):
+    """Kampania: 9 rozdziałów w kolejności chronologicznej (6 głównych + 3 dodatkowe)."""
+
     def __init__(self, app):
         super().__init__(app)
+        self.order = list(data.CHRONO)
         self.rects = []
-        for i in range(6):
-            col, row = i % 3, i // 3
-            self.rects.append(pygame.Rect(60 + col * 395, 120 + row * 270, 370, 250))
+        for k in range(len(self.order)):
+            col, row = k % 3, k // 3
+            self.rects.append(pygame.Rect(46 + col * 400, 78 + row * 190, 388, 178))
         self.hover = -1
         self.make()
 
     def make(self):
         from .world import DIFF
         cur = self.app.save.get("trudnosc", 1)
-        self.buttons = [ui.Button((W - 220, H - 62, 190, 44), "◀ Wróć", self.app.pop, key=pygame.K_ESCAPE)]
+        self.buttons = [ui.Button((W - 220, H - 56, 190, 44), "◀ Wróć", self.app.pop, key=pygame.K_ESCAPE)]
         for i in range(3):
-            self.buttons.append(ui.Button((60 + i * 170, H - 62, 160, 44), DIFF[i]["name"], lambda i=i: self.set_diff(i), 16,
+            self.buttons.append(ui.Button((46 + i * 150, H - 56, 140, 44), DIFF[i]["name"], lambda i=i: self.set_diff(i), 16,
                                           color=(70, 110, 50) if i == cur else (110, 90, 70)))
 
     def set_diff(self, i):
@@ -119,46 +129,54 @@ class ChapterSelectScene(Scene):
         if super().handle(ev):
             return True
         if ev.type == pygame.MOUSEMOTION:
-            self.hover = next((i for i, r in enumerate(self.rects) if r.collidepoint(ev.pos)), -1)
+            self.hover = next((k for k, r in enumerate(self.rects) if r.collidepoint(ev.pos)), -1)
         if ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
-            for i, r in enumerate(self.rects):
-                if r.collidepoint(ev.pos) and i <= self.app.save.get("unlocked", 0):
+            for k, r in enumerate(self.rects):
+                idx = self.order[k]
+                if r.collidepoint(ev.pos) and chapter_unlocked(self.app.save, idx):
                     audio.play("click")
-                    self.app.push(ChronicleScene(self.app, i))
+                    self.app.push(ChronicleScene(self.app, idx))
         return True
 
     def draw(self, surf):
         surf.blit(gfx.parchment(W, H, 77, dark=True), (0, 0))
-        ui.draw_text(surf, "Kampania: Kronika czterech epok", (W // 2, 36), 32, ui.GOLD, True, center=True)
+        ui.draw_text(surf, "Kampania: od Gniezna do Grunwaldu", (W // 2, 22), 30, ui.GOLD, True, center=True)
         from .world import DIFF
         d = DIFF[self.app.save.get("trudnosc", 1)]
-        ui.draw_text(surf, f"Poziom trudności: {d['name']} – {d['desc']}", (580, H - 52), 14, ui.CREAM, True, width=440)
-        unl = self.app.save.get("unlocked", 0)
+        ui.draw_text(surf, f"Poziom: {d['name']} – {d['desc']}", (510, H - 52), 13, ui.CREAM, True, width=500)
         done = set(self.app.save.get("completed", []))
-        for i, r in enumerate(self.rects):
-            ch = data.CHAPTERS[i]
+        for k, r in enumerate(self.rects):
+            idx = self.order[k]
+            ch = data.CHAPTERS[idx]
             ep = data.EPOCHS[ch["epoch"]]
-            rr = r.move(0, -6) if i == self.hover and i <= unl else r
-            surf.blit(gfx.panel(rr.w, rr.h, 30 + i), rr.topleft)
-            pygame.draw.rect(surf, ep["color"], (rr.x + 8, rr.y + 8, rr.w - 16, 30))
-            ui.draw_text(surf, ep["name"], (rr.x + 18, rr.y + 13), 15, ui.CREAM, True)
-            ui.draw_text(surf, ch["year"], (rr.right - 18 - ui.font(15, True).size(ch["year"])[0], rr.y + 13), 15, ui.CREAM, True)
-            ui.draw_text(surf, ch["title"], (rr.x + 18, rr.y + 50), 18, ui.RED, True, width=rr.w - 36)
-            ui.draw_text(surf, ch["place"], (rr.x + 18, rr.y + 104), 16, ui.INK, True)
+            unl = chapter_unlocked(self.app.save, idx)
+            rr = r.move(0, -5) if k == self.hover and unl else r
+            surf.blit(gfx.panel(rr.w, rr.h, 30 + idx), rr.topleft)
+            pygame.draw.rect(surf, ep["color"], (rr.x + 8, rr.y + 8, rr.w - 16, 26))
+            ui.draw_text(surf, ep["name"] + ("  • dodatkowy" if ch.get("bonus") else ""), (rr.x + 16, rr.y + 12), 13, ui.CREAM, True)
+            ui.draw_text(surf, ch["year"], (rr.right - 16 - ui.font(14, True).size(ch["year"])[0], rr.y + 11), 14, ui.CREAM, True)
+            title = ch["title"].split(": ", 1)[-1]
+            ui.draw_text(surf, title, (rr.x + 16, rr.y + 42), 16, ui.RED, True, width=rr.w - 120)
+            ui.draw_text(surf, ch["place"], (rr.x + 16, rr.y + 88), 14, ui.INK, True)
             chars = []
             for w, _ in ch["dialogue_start"]:
                 if w != "damian" and w not in chars:
                     chars.append(w)
-            for k, w in enumerate(chars[:3]):
-                surf.blit(gfx.portrait(data.CHARACTERS[w]["p"], 2), (rr.x + 18 + k * 72, rr.y + 136))
-            if i > unl:
-                s = pygame.Surface(rr.size, pygame.SRCALPHA)
-                s.fill((30, 20, 10, 170))
-                surf.blit(s, rr.topleft)
-                surf.blit(gfx.icon("lock", 5), (rr.centerx - 30, rr.centery - 30))
-            elif i in done:
-                surf.blit(gfx.icon("star", 4), (rr.right - 66, rr.bottom - 66))
-                ui.draw_text(surf, "Ukończony", (rr.right - 100, rr.bottom - 92), 13, ui.GREEN, True)
+            for j, w in enumerate(chars[:3]):
+                surf.blit(gfx.portrait(data.CHARACTERS[w]["p"], 1), (rr.x + 16 + j * 38, rr.y + 116))
+            sc = self.app.save.get("scores", {}).get(str(idx), 0)
+            if not unl:
+                sh = pygame.Surface(rr.size, pygame.SRCALPHA)
+                sh.fill((30, 20, 10, 170))
+                surf.blit(sh, rr.topleft)
+                surf.blit(gfx.icon("lock", 4), (rr.centerx - 24, rr.centery - 24))
+                if ch.get("bonus"):
+                    ui.draw_text(surf, "Odblokuj: " + data.CHAPTERS[ch["after"]]["title"].split(": ")[-1], (rr.centerx, rr.bottom - 28),
+                                 12, ui.CREAM, True, center=True)
+            elif idx in done:
+                for j in range(3):
+                    surf.blit(gfx.icon("star" if j < sc else "lock", 2), (rr.right - 90 + j * 26, rr.bottom - 36))
+                ui.draw_text(surf, "Ukończony", (rr.right - 90, rr.bottom - 58), 12, ui.GREEN, True)
         for b in self.buttons:
             b.draw(surf)
 
@@ -443,7 +461,8 @@ class GalleryScene(Scene):
         super().__init__(app)
         self.ids = list(data.CHARACTERS.keys())
         self.hl = set(highlight)
-        self.rects = [pygame.Rect(48 + (i % 6) * 200, 110 + (i // 6) * 250, 180, 230) for i in range(len(self.ids))]
+        per = 8
+        self.rects = [pygame.Rect(30 + (i % per) * 154, 96 + (i // per) * 270, 144, 256) for i in range(len(self.ids))]
         self.buttons = [ui.Button((W - 210, H - 60, 180, 44), "◀ Wróć", self.app.pop, key=pygame.K_ESCAPE),
                         ui.Button((40, H - 60, 260, 44), "Damian Ściseł", self.hero_info, 16, color=(100, 50, 140))]
 
@@ -477,9 +496,9 @@ class GalleryScene(Scene):
             surf.blit(gfx.panel(rr.w, rr.h, 40), rr.topleft)
             if cid in self.hl:
                 pygame.draw.rect(surf, ui.GOLD, rr, 4)
-            surf.blit(gfx.portrait(c["p"], 4), (rr.centerx - 64, rr.y + 14))
-            ui.draw_text(surf, c["name"], (rr.centerx, rr.y + 150), 15, ui.INK, True, center=True, width=rr.w - 16)
-            ui.draw_text(surf, c["years"], (rr.centerx, rr.y + 196), 12, ui.INK_SOFT, center=True)
+            surf.blit(gfx.portrait(c["p"], 4), (rr.centerx - 64, rr.y + 12))
+            ui.draw_text(surf, c["name"], (rr.centerx, rr.y + 150), 14, ui.INK, True, center=True, width=rr.w - 12)
+            ui.draw_text(surf, c["years"], (rr.centerx, rr.y + 220), 11, ui.INK_SOFT, center=True)
         for b in self.buttons:
             b.draw(surf)
 
@@ -490,7 +509,8 @@ class VictoryScene(Scene):
         self.w = world
         idx = world.idx
         s = app.save
-        s["unlocked"] = max(s.get("unlocked", 0), min(5, idx + 1))
+        if not world.ch.get("bonus"):
+            s["unlocked"] = max(s.get("unlocked", 0), min(5, idx + 1))
         comp = set(s.get("completed", []))
         comp.add(idx)
         s["completed"] = sorted(comp)
@@ -501,13 +521,17 @@ class VictoryScene(Scene):
         sc[str(idx)] = max(sc.get(str(idx), 0), stars)
         app.write_save()
         last = idx == 5
-        btns = [ui.Button((W // 2 + 20, H - 90, 300, 50), "Zakończenie kroniki ▶" if last else "Następny rozdział ▶", self.next, 18),
+        label = "Zakończenie kroniki ▶" if last else ("Wybór rozdziału ▶" if world.ch.get("bonus") else "Następny rozdział ▶")
+        btns = [ui.Button((W // 2 + 20, H - 90, 300, 50), label, self.next, 18),
                 ui.Button((W // 2 - 320, H - 90, 300, 50), "Menu główne", self.menu, 18)]
         self.buttons = btns
         self.t = 0
 
     def next(self):
-        if self.w.idx == 5:
+        if self.w.ch.get("bonus"):
+            self.app.replace(MenuScene(self.app))
+            self.app.push(ChapterSelectScene(self.app))
+        elif self.w.idx == 5:
             self.app.replace(EndingScene(self.app))
         else:
             self.app.replace(ChronicleScene(self.app, self.w.idx + 1), keep_menu=True)
@@ -580,7 +604,7 @@ class EndingScene(Scene):
         surf.blit(tk, (W - tk.get_width() - 90, 150 + int(math.sin(self.t * 2) * 4)))
         sc = self.app.save.get("scores", {})
         stars = sum(sc.values())
-        ui.draw_text(surf, f"Zdobyte gwiazdki: {stars}/18", (W // 2, H - 130), 22, ui.PURPLE, True, center=True)
+        ui.draw_text(surf, f"Zdobyte gwiazdki: {stars}/{3 * len(data.CHAPTERS)}", (W // 2, H - 130), 22, ui.PURPLE, True, center=True)
         for b in self.buttons:
             b.draw(surf)
 
@@ -700,21 +724,23 @@ class JournalScene(Scene):
                            f"Ukończone rozdziały: {len(self.app.save.get('completed', []))}/{len(data.CHAPTERS)}",
                      (W // 2, 66), 16, ui.INK, True, center=True)
         # pasek wyników wg rozdziałów
-        x = 60
-        for i, ch in enumerate(data.CHAPTERS):
+        x = 40
+        bw = (W - 80) // len(data.CHAPTERS) - 6
+        for i in data.CHRONO:
+            ch = data.CHAPTERS[i]
             es = [e for e in j if e.get("r") == i]
             good = sum(1 for e in es if e["ok"])
-            r = pygame.Rect(x, 100, 180, 54)
+            r = pygame.Rect(x, 100, bw, 54)
             pygame.draw.rect(surf, (240, 228, 196), r)
             pygame.draw.rect(surf, data.EPOCHS[ch["epoch"]]["color"], r, 3)
-            ui.draw_text(surf, f"{ch['place']} {ch['year']}", (r.x + 8, r.y + 6), 12, ui.INK, True)
+            ui.draw_text(surf, f"{ch['place']} {ch['year'][:4]}", (r.x + 6, r.y + 6), 11, ui.INK, True)
             if es:
-                pygame.draw.rect(surf, (80, 150, 70), (r.x + 8, r.y + 32, int(124 * good / len(es)), 12))
-                pygame.draw.rect(surf, ui.INK_SOFT, (r.x + 8, r.y + 32, 124, 12), 1)
+                pygame.draw.rect(surf, (80, 150, 70), (r.x + 6, r.y + 32, int((bw - 50) * good / len(es)), 12))
+                pygame.draw.rect(surf, ui.INK_SOFT, (r.x + 6, r.y + 32, bw - 50, 12), 1)
                 ui.draw_text(surf, f"{good}/{len(es)}", (r.right - 8 - ui.font(12, True).size(f"{good}/{len(es)}")[0], r.y + 30), 12, ui.INK, True)
             else:
-                ui.draw_text(surf, "brak odpowiedzi", (r.x + 8, r.y + 28), 12, ui.INK_SOFT)
-            x += 196
+                ui.draw_text(surf, "brak", (r.x + 6, r.y + 28), 11, ui.INK_SOFT)
+            x += bw + 6
         ms = self.mistakes()
         ui.draw_text(surf, "Do powtórki – pytania, na które padła zła odpowiedź (z poprawną odpowiedzią):",
                      (60, 176), 17, ui.PURPLE, True)

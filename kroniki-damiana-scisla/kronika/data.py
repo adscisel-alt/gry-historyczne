@@ -852,3 +852,163 @@ def pick_question(epoch, used):
     q = _r.choice(pool)
     used.add(q[0])
     return q
+
+
+# ---------------------------------------------------------------- ROZDZIAŁY DODATKOWE
+CHARACTERS.update({
+    "chrobry": {"name": "Bolesław Chrobry", "title": "Pierwszy król Polski", "years": "967–1025",
+                "p": {"hair": (110, 70, 40), "beard": "full", "head": "crown_b", "cloth": (170, 40, 40), "bg": (90, 80, 50)},
+                "bio": "Syn Mieszka I i Dobrawy. Gościł cesarza Ottona III na zjeździe gnieźnieńskim, a w 1025 r. "
+                       "koronował się na pierwszego króla Polski.",
+                "fact": "Według Galla Anonima cesarz Otto III zdjął z głowy swój diadem i włożył go na głowę Bolesława."},
+    "otto": {"name": "Otto III", "title": "Cesarz rzymski", "years": "980–1002",
+             "p": {"hair": (200, 160, 90), "beard": None, "head": "crown_b", "cloth": (90, 50, 140), "bg": (60, 70, 110)},
+             "bio": "Młody cesarz marzący o odnowieniu Cesarstwa Rzymskiego. W 1000 r. przybył z pielgrzymką do grobu "
+                    "św. Wojciecha w Gnieźnie.",
+             "fact": "Podarował Bolesławowi kopię Włóczni św. Maurycego – dziś przechowywaną w skarbcu katedry na Wawelu."},
+    "krzywousty": {"name": "Bolesław Krzywousty", "title": "Książę Polski", "years": "1086–1138",
+                   "p": {"hair": (80, 55, 35), "beard": "short", "head": "circlet", "cloth": (60, 90, 150), "bg": (100, 70, 60)},
+                   "bio": "Przyłączył Pomorze i obronił kraj przed cesarzem Henrykiem V. W testamencie (1138) "
+                          "podzielił Polskę między synów, co rozpoczęło rozbicie dzielnicowe.",
+                   "fact": "Według kroniki stoczył ponad 40 bitew. Przydomek wziął się podobno od krzywo zrośniętej szczęki."},
+})
+
+CARDS.update({
+    "e_cesarscy": {"name": "Piechota cesarska", "type": "piechota", "power": 6, "unit": "spear", "faction": "en"},
+    "e_rycerze_ces": {"name": "Rycerze cesarscy", "type": "jazda", "power": 7, "unit": "knight", "faction": "en"},
+    "e_pomorzanie": {"name": "Wojowie pomorscy", "type": "piechota", "power": 5, "unit": "spear", "faction": "en"},
+    "e_buntownicy": {"name": "Buntownicy wójta Alberta", "type": "piechota", "power": 5, "unit": "pike", "faction": "en"},
+    "e_kusze_miejskie": {"name": "Kusznicy miejscy", "type": "lucznicy", "power": 5, "unit": "xbow", "faction": "en"},
+})
+
+TACTICS.update({
+    "druzyna_chrobrego": {"name": "Pancerni Chrobrego", "effect": "ambush",
+                          "desc": "W tej rundzie nasza karta +3.",
+                          "fact": "Drużyna Bolesława Chrobrego była jedną z najlepiej uzbrojonych w ówczesnej Europie."},
+    "psie_pole": {"name": "Pościg na Psim Polu", "effect": "retreat",
+                  "desc": "Wróg cofa się w nieładzie: jego karta w tej rundzie −4.",
+                  "fact": "Legenda mówi, że po klęsce cesarza pod Wrocławiem w 1109 r. psy rozwłóczyły ciała – stąd nazwa Psie Pole."},
+    "soczewica": {"name": "Próba: „soczewica, koło, miele, młyn”", "effect": "fog",
+                  "desc": "Rozpoznajesz przebierańców: wróg traci przewagę typu, a my +1.",
+                  "fact": "Po buncie wójta Alberta (1311–1312) mieszczan sprawdzano, czy umieją wymówić polskie słowa."},
+})
+
+CHAPTERS += [
+    {
+        "id": 6, "epoch": 0, "year": "1000", "place": "Gniezno", "bonus": True, "after": 0,
+        "title": "Rozdział dodatkowy: Zjazd gnieźnieński",
+        "chronicle": [
+            "Roku Pańskiego 1000. Do Gniezna zmierza cesarz Otto III – boso, jako pielgrzym do grobu biskupa Wojciecha, "
+            "który zginął z rąk Prusów, a dziś czczony jest jako święty.",
+            "Książę Bolesław, syn Mieszka i Dobrawy, chce przyjąć cesarza tak, by cała Europa o tym mówiła. Kronikarz "
+            "Gall Anonim zapisze potem, że uczty trwały trzy dni, a srebrne i złote naczynia rozdawano gościom.",
+            "Ja, Damian Ściseł, mam przygotować gród, spichlerze i skarbiec. Bo dyplomacja, mili moi, to także... "
+            "bardzo dużo pierogów. No, może jeszcze nie pierogów – kaszy i miodu pitnego.",
+            "Zadanie: przygotować ucztę i dary, wznieść kościoły dla nowego arcybiskupstwa i przyjąć cesarza.",
+        ],
+        "map": {"seed": 1000, "lakes": [(8, 20, 3), (22, 9, 2), (5, 6, 2)], "river": [(0, 14), (7, 15), (13, 12), (20, 14), (26, 19), (29, 20)],
+                "forest": 0.28, "hills": 0.06, "capital": (14, 17),
+                "landmarks": [((17, 21), "Grób św. Wojciecha", "Biskup Wojciech zginął w 997 r. na misji u Prusów. Bolesław wykupił jego ciało – według legendy na wagę złota – i pochował w Gnieźnie."),
+                              ((9, 13), "Ostrów Lednicki", "Gród z kamiennym palatium i kaplicą – jedna z siedzib pierwszych Piastów.")],
+                "camps": [((25, 4), "pomorzanie", "Obóz Pomorzan", ["e_pomorzanie", "e_lucznicy", "e_pomorzanie", "e_jazda"])]},
+        "start_res": {"food": 22, "wood": 22, "stone": 6, "silver": 12},
+        "start_deck": ["woje", "woje", "lucznicy", "konni", "konni", "druzyna"],
+        "turns": 26,
+        "objectives": [("tech", "pismo"), ("build", "kosciol", 2), ("res", "food", 45), ("res", "silver", 35), ("camp", "pomorzanie")],
+        "final": None,
+        "dialogue_start": [("chrobry", "Kronikarzu, przyjedzie sam cesarz! Niech zobaczy, że Polska to nie dzika puszcza, lecz państwo."),
+                           ("otto", "Przybywam jako pielgrzym do grobu mojego przyjaciela Wojciecha... i jako przyjaciel twojego księcia."),
+                           ("damian", "Skarbiec, spichlerz, kościoły – i żeby żaden Pomorzanin nie zepsuł nam uczty. Do roboty!")],
+        "scripted": {5: ("decision", "Posłowie cesarscy pytają, czy książę przyjmie biskupów pod władzę arcybiskupa w Gnieźnie.",
+                         [("Tak – własne arcybiskupstwo to niezależność! (−6 srebra)", {"silver": -6, "morale": 2}, "Powstaje metropolia gnieźnieńska z biskupstwami w Krakowie, Wrocławiu i Kołobrzegu."),
+                          ("Odłożyć sprawę (+4 srebra)", {"silver": 4}, "Cesarz marszczy brwi. Kronikarz zapisuje: „Okazja nie puka dwa razy”.")]),
+                     12: ("otto", "Twój książę godzien jest korony. Weź ode mnie tę włócznię na znak przyjaźni."),
+                     18: ("chrobry", "Uczta ma trwać trzy dni! Niech nikt nie powie, że Piastowie są skąpi.")},
+        "victory": "Cesarz włożył swój diadem na głowę Bolesława, nazwał go bratem i współpracownikiem Cesarstwa, a w Gnieźnie "
+                   "powstało arcybiskupstwo. Kronika notuje: „Polska weszła do Europy przez szeroko otwarte drzwi”.",
+    },
+    {
+        "id": 7, "epoch": 1, "year": "1109–1138", "place": "Głogów", "bonus": True, "after": 0,
+        "title": "Rozdział dodatkowy: Krzywousty i obrona Głogowa",
+        "chronicle": [
+            "Roku 1109. Cesarz Henryk V wkracza na Śląsk z potężną armią. Żąda daniny i posłuszeństwa. Książę Bolesław "
+            "Krzywousty odpowiada krótko: woli stracić kraj w walce, niż zachować go w niewoli.",
+            "Wojska cesarskie oblegają Głogów. Mieszczanie i wojowie stają na wałach. Książę nęka wroga podjazdami, "
+            "a kronikarz – jak zwykle – liczy zapasy i liczy na cud.",
+            "Kiedyś, za wiele lat, Bolesław spisze testament i podzieli kraj między synów. Ale to później. Teraz trzeba "
+            "przetrwać oblężenie!",
+            "Zadanie: umocnić gród, zgromadzić zapasy i odeprzeć szturm cesarskich wojsk.",
+        ],
+        "map": {"seed": 1109, "lakes": [(24, 22, 2)], "river": [(29, 6), (22, 9), (16, 12), (11, 17), (6, 23), (0, 28)],
+                "forest": 0.27, "hills": 0.08, "capital": (13, 15),
+                "landmarks": [((20, 6), "Psie Pole", "Według legendy tu, pod Wrocławiem, rozbito wojska cesarza w 1109 r. Kronikarze wciąż się spierają, czy bitwa naprawdę się odbyła."),
+                              ((6, 10), "Nakło", "W 1109 r. Krzywousty pokonał pod Nakłem Pomorzan i otworzył sobie drogę nad morze.")],
+                "camps": [((26, 26), "cesarscy", "Podjazd cesarski", ["e_cesarscy", "e_lucznicy", "e_rycerze_ces", "e_cesarscy"])]},
+        "start_res": {"food": 22, "wood": 24, "stone": 8, "silver": 10},
+        "start_deck": ["woje", "woje", "lucznicy", "lucznicy", "konni", "druzyna"],
+        "turns": 20, "siege_turn": 16,
+        "objectives": [("tech", "grod_walowy"), ("build", "palisada", 2), ("res", "food", 35), ("final",)],
+        "final": {"name": "Obrona Głogowa (1109)", "enemy_morale": 38, "defense": True, "terrain": "grod",
+                  "deck": ["e_cesarscy", "e_rycerze_ces", "e_lucznicy", "e_cesarscy", "e_rycerze_ces", "e_cesarscy"],
+                  "allies": ["mieszczanie", "mieszczanie"],
+                  "intro": "Machiny oblężnicze toczą się ku wałom. Cesarz liczy, że obrońcy się poddadzą. Nie zna mieszczan z Głogowa..."},
+        "dialogue_start": [("krzywousty", "Kronikarzu, cesarz chce daniny. Dostanie ją – w strzałach i kamieniach!"),
+                           ("damian", "Wasza Miłość, palisady i pełne spichlerze. Oblężenie wygrywa ten, komu później zabraknie chleba.")],
+        "scripted": {6: ("krzywousty", "Cesarskie wojska przeszły Odrę. Będą pod Głogowem za kilka tygodni!"),
+                     10: ("decision", "Cesarz proponuje rozejm na 5 dni, żeby mieszczanie mogli się naradzić.",
+                          [("Przyjąć – zyskamy czas na umocnienia (+8 drewna)", {"wood": 8}, "Mieszczanie w tym czasie wzmocnili wały. Sprytnie!"),
+                           ("Odrzucić – nie wierzymy cesarzowi", {"morale": 2}, "Obrońcy wierzą w swojego księcia (+2 morale).")]),
+                     14: ("damian", "Do szturmu zostały 2 tury! Wszyscy na wały!")},
+        "victory": "Głogów nie skapitulował, a cesarz wycofał się ze Śląska. Krzywousty przyłączył potem Pomorze. Przed śmiercią "
+                   "w 1138 r. spisał testament, dzieląc kraj między synów – zaczęło się rozbicie dzielnicowe. "
+                   "Notuję w kronice: „Jedność trudno zdobyć, a łatwo podzielić”.",
+    },
+    {
+        "id": 8, "epoch": 2, "year": "1311–1320", "place": "Kraków", "bonus": True, "after": 2,
+        "title": "Rozdział dodatkowy: Korona Łokietka",
+        "chronicle": [
+            "Roku 1311. Władysław Łokietek, książę mały wzrostem, a wielki uporem, zbiera kawałki rozbitego królestwa. "
+            "Ale w Krakowie wójt Albert i część bogatych mieszczan podnosi bunt i zaprasza obcego księcia!",
+            "Trzeba stłumić bunt, zdobyć poparcie rycerstwa i duchowieństwa, a potem – po prawie dwustu latach rozbicia – "
+            "nałożyć koronę w katedrze na Wawelu.",
+            "Kronikarz przygotowuje listę słów do sprawdzania przebierańców: „soczewica, koło, miele, młyn”. "
+            "Spróbujcie to powiedzieć szybko trzy razy!",
+            "Zadanie: stłumić bunt wójta Alberta, zgromadzić skarb na koronację i zbudować poparcie Kościoła.",
+        ],
+        "map": {"seed": 1320, "lakes": [], "river": [(0, 18), (7, 17), (13, 19), (18, 17), (24, 20), (29, 22)],
+                "forest": 0.2, "hills": 0.14, "capital": (14, 14),
+                "landmarks": [((15, 18), "Katedra na Wawelu", "Tu 20 stycznia 1320 r. Łokietek koronował się na króla Polski – pierwszy raz w Krakowie, nie w Gnieźnie."),
+                              ((9, 9), "Rynek krakowski", "Bunt wójta Alberta zakończył się utratą przywilejów przez miasto. Łokietek odebrał wójtostwo i ufortyfikował Wawel.")],
+                "camps": [((22, 5), "albert", "Bunt wójta Alberta", ["e_buntownicy", "e_kusze_miejskie", "e_buntownicy", "e_jazda", "e_kusze_miejskie"])]},
+        "start_res": {"food": 24, "wood": 22, "stone": 12, "silver": 14},
+        "start_deck": ["woje", "lucznicy", "konni", "konni", "druzyna", "kusznicy"],
+        "turns": 26,
+        "objectives": [("camp", "albert"), ("tech", "statut"), ("build", "kosciol", 1), ("res", "silver", 50)],
+        "final": None,
+        "dialogue_start": [("lokietek", "Kronikarzu, mam niewielu ludzi i jeszcze mniej srebra. Ale mam rację – i upór!"),
+                           ("kazimierz", "Ojcze, a gdy już zostaniesz królem, nauczysz mnie budować zamki?"),
+                           ("damian", "Najpierw bunt, potem koronacja, a zamki – jak mówią moje notatki – za jakieś dwadzieścia lat.")],
+        "scripted": {6: ("decision", "Biskup krakowski pyta, czy król zapewni Kościołowi ochronę.",
+                         [("Obiecać ochronę i dary (−8 srebra, +6 kamienia)", {"silver": -8, "stone": 6}, "Duchowieństwo poprze koronację!"),
+                          ("Odłożyć rozmowę", {"food": 4}, "Biskup wyszedł zamyślony...")]),
+                     12: ("lokietek", "Papież zgodził się na koronację! Teraz potrzeba skarbu i spokoju w kraju.")},
+        "victory": "20 stycznia 1320 r. w katedrze na Wawelu Władysław Łokietek został koronowany na króla Polski. Po latach "
+                   "rozbicia królestwo znów miało króla. W kronice zapisuję: „Mała postura, wielka korona”.",
+    },
+]
+
+COMMANDERS.update({
+    6: {"who": "chrobry", "desc": "Piechota +1, morale +2", "type_bonus": {"piechota": 1}, "morale": 2, "tactics": ["druzyna_chrobrego", "puszcza"]},
+    7: {"who": "krzywousty", "desc": "Jazda +1, morale +2", "type_bonus": {"jazda": 1}, "morale": 2, "tactics": ["wycieczka", "psie_pole"]},
+    8: {"who": "lokietek", "desc": "Upór: gdy morale < 50%, wszystkie karty +2", "type_bonus": {}, "morale": 0,
+        "stubborn": 2, "tactics": ["soczewica", "pospolite"]},
+})
+
+RAIDS.update({
+    6: {"start": 8, "every": 7, "name": "Zagon Pomorzan", "faction": "en", "unit": "spear", "deck": ["e_pomorzanie", "e_lucznicy", "e_pomorzanie"]},
+    7: {"start": 5, "every": 5, "name": "Podjazd cesarski", "faction": "en", "unit": "knight", "deck": ["e_cesarscy", "e_lucznicy", "e_rycerze_ces"]},
+    8: {"start": 7, "every": 7, "name": "Zwolennicy Alberta", "faction": "en", "unit": "pike", "deck": ["e_buntownicy", "e_kusze_miejskie", "e_buntownicy"]},
+})
+
+CHRONO = [0, 6, 7, 1, 2, 8, 3, 4, 5]   # kolejność chronologiczna rozdziałów na ekranie kampanii
+MAIN = [0, 1, 2, 3, 4, 5]
