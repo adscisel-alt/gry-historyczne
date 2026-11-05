@@ -923,9 +923,7 @@ def battle_bg(kind):
     sc.render.resolution_x, sc.render.resolution_y = 1280, 720
     name = f"battle_{kind}"
     if not ONLY or name.startswith(ONLY):
-        sc.render.filepath = os.path.join(OUT, name + ".png")
-        bpy.ops.render.render(write_still=True)
-        print("  ✓", name, flush=True)
+        _render_jpg(name)
     # przywróć jednolite tło świata dla kolejnych renderów
     for n in list(nt.nodes):
         if n.type not in ("BACKGROUND", "OUTPUT_WORLD"):
@@ -933,6 +931,202 @@ def battle_bg(kind):
     bg.inputs[0].default_value = lin((150, 160, 185))
     bg.inputs[1].default_value = 0.9
     sc.render.film_transparent = True
+
+
+# ------------------------------------------------------------------ przerywniki filmowe
+def _sky(top, hor):
+    nt = bpy.context.scene.world.node_tree
+    for n in list(nt.nodes):
+        if n.type not in ("BACKGROUND", "OUTPUT_WORLD"):
+            nt.nodes.remove(n)
+    tc = nt.nodes.new("ShaderNodeTexCoord")
+    sep = nt.nodes.new("ShaderNodeSeparateXYZ")
+    ramp = nt.nodes.new("ShaderNodeValToRGB")
+    ramp.color_ramp.elements[0].color = lin(hor)
+    ramp.color_ramp.elements[1].color = lin(top)
+    ramp.color_ramp.elements[1].position = 0.65
+    nt.links.new(tc.outputs["Window"], sep.inputs[0])
+    nt.links.new(sep.outputs["Y"], ramp.inputs["Fac"])
+    bg = nt.nodes["Background"]
+    nt.links.new(ramp.outputs["Color"], bg.inputs["Color"])
+    bg.inputs[1].default_value = 1.0
+
+
+def _reset_world():
+    nt = bpy.context.scene.world.node_tree
+    for n in list(nt.nodes):
+        if n.type not in ("BACKGROUND", "OUTPUT_WORLD"):
+            nt.nodes.remove(n)
+    bg = nt.nodes["Background"]
+    bg.inputs[0].default_value = lin((150, 160, 185))
+    bg.inputs[1].default_value = 0.9
+
+
+def place(fn, x, y, rz=0.0, sc=1.0, z=0.0):
+    """Buduje obiekt funkcją fn w początku układu i przenosi go na miejsce."""
+    before = set(gen_coll().objects)
+    fn()
+    new = [o for o in gen_coll().objects if o not in before]
+    bpy.context.view_layer.update()     # przelicz macierze (skala ustawiona po utworzeniu obiektu)
+    from mathutils import Matrix
+    m = Matrix.Translation((x, y, z)) @ Matrix.Rotation(rz, 4, "Z") @ Matrix.Scale(sc, 4)
+    for o in new:
+        o.matrix_world = m @ o.matrix_world
+
+
+def _ground(c1=(70, 110, 50), c2=(104, 146, 66), hills=True):
+    bpy.ops.mesh.primitive_plane_add(size=120, location=(0, 30, 0))
+    g = _fin(bpy.context.active_object, noise_mat(c1, c2, scale=4, seed=3, bump=0.3))
+    if hills:
+        bpy.ops.object.mode_set(mode="EDIT")
+        bpy.ops.mesh.subdivide(number_cuts=50)
+        bpy.ops.object.mode_set(mode="OBJECT")
+        for v in g.data.vertices:
+            yy = v.co.y + 30
+            if yy > 18:
+                v.co.z = (math.sin(v.co.x / 5.0) * 1.5 + math.sin(v.co.x / 11.0 + 2) * 2.5 + 2.0) * min(1, (yy - 18) / 20)
+        for p in g.data.polygons:
+            p.use_smooth = True
+
+
+def _forest(n, ymin, ymax, seed=1, xr=40):
+    r = random.Random(seed)
+    for _ in range(n):
+        x, y = r.uniform(-xr, xr), r.uniform(ymin, ymax)
+        s_ = r.uniform(1.2, 2.2)
+        cyl(x, y, 0, 0.08 * s_, 0.6 * s_, mat((92, 62, 36)), v=6)
+        if r.random() < 0.6:
+            cone(x, y, 0.35 * s_, 0.6 * s_, 0, 1.6 * s_, mat(r.choice([(34, 84, 46), (44, 100, 54)])), v=7)
+        else:
+            sph(x, y, 1.0 * s_, 0.6 * s_, mat(r.choice([(62, 120, 50), (52, 104, 44)])), sub=1)
+
+
+def _army(kind, fac, x0, y0, cols, rows, dx=0.9, dy=1.1, face=0.0, seed=0, banner=None):
+    r = random.Random(seed)
+    for i in range(cols):
+        for j in range(rows):
+            x = x0 + i * dx + r.uniform(-0.15, 0.15)
+            y = y0 + j * dy + r.uniform(-0.15, 0.15)
+            if kind in ("horse", "knight", "knight_t", "horse_mg", "horse_lt"):
+                place(lambda: (horse((110, 76, 46) if kind == "horse" else (90, 70, 60),
+                                     {"knight": (190, 40, 44), "knight_t": (238, 238, 232)}.get(kind),
+                                     {"knight_t": (20, 20, 20)}.get(kind)),
+                               human("mg" if kind == "horse_mg" else fac, kind, z0=0.42, legs=False, weapon=False),
+                               rod((-0.3, 0.2, 0.85), (1.0, 0.2, 1.3), 0.018, mat((130, 100, 60)))),
+                      x, y, face)
+            else:
+                place(lambda: human(fac, kind), x, y, face)
+    if banner:
+        c1, c2, cross = banner
+        cyl(x0 + cols * dx / 2, y0 - 0.5, 0, 0.03, 3.2, mat((80, 58, 34)), v=6)
+        box(x0 + cols * dx / 2 + 0.45, y0 - 0.5, 2.3, 0.9, 0.02, 0.8, mat(c1, 0.7))
+        if c2:
+            box(x0 + cols * dx / 2 + 0.45, y0 - 0.49, 2.3, 0.9, 0.02, 0.4, mat(c2, 0.7))
+        if cross:
+            box(x0 + cols * dx / 2 + 0.45, y0 - 0.52, 2.35, 0.12, 0.02, 0.7, mat(cross))
+            box(x0 + cols * dx / 2 + 0.45, y0 - 0.52, 2.62, 0.6, 0.02, 0.12, mat(cross))
+
+
+def _render_jpg(name):
+    """Duże kadry (tła bitew, przerywniki) zapisujemy jako JPG – są kilka razy mniejsze niż PNG."""
+    sc = bpy.context.scene
+    st = sc.render.image_settings
+    st.file_format, st.color_mode, st.quality = "JPEG", "RGB", 88
+    sc.render.filepath = os.path.join(OUT, name + ".jpg")
+    bpy.ops.render.render(write_still=True)
+    st.file_format, st.color_mode = "PNG", "RGBA"
+    print("  ✓", name, flush=True)
+
+
+def _shot(name, cam_loc, cam_rot, lens=35, W=1280, H=720):
+    sc = bpy.context.scene
+    co = sc.camera
+    co.data.type = "PERSP"
+    co.data.lens = lens
+    co.data.shift_x = co.data.shift_y = 0
+    co.location = cam_loc
+    co.rotation_euler = [math.radians(a) for a in cam_rot]
+    sc.render.film_transparent = False
+    sc.render.resolution_x, sc.render.resolution_y = W, H
+    if not ONLY or name.startswith(ONLY):
+        _render_jpg(name)
+    sc.render.film_transparent = True
+
+
+def _tent(x, y, c1, c2, s_=1.0):
+    cyl(x, y, 0, 1.3 * s_, 1.4 * s_, mat(c1), v=16)
+    cone(x, y, 1.4 * s_, 1.45 * s_, 0, 1.6 * s_, mat(c2), v=16)
+    cyl(x, y, 3.0 * s_, 0.03, 1.0, mat((80, 58, 34)), v=6)
+    box(x + 0.3, y, 3.6 * s_, 0.6, 0.02, 0.35, mat((200, 30, 40)))
+
+
+def cutscenes():
+    # Grunwald 1: dwa nagie miecze przed namiotem królewskim
+    reset(); _sky((90, 140, 200), (240, 220, 170)); _ground()
+    _forest(60, 30, 70, seed=4)
+    _tent(-2.5, 9, (240, 236, 226), (190, 40, 44), 1.2)
+    _tent(3.5, 12, (240, 236, 226), (60, 120, 70), 0.9)
+    steel = mat((215, 220, 230), 0.15, 1.0)
+    for k, x in enumerate((-0.45, 0.45)):
+        rot = (0, math.radians(8 if k else -8), 0)
+        bpy.ops.mesh.primitive_cube_add(size=1, location=(x, 2.5, 0.75), rotation=rot)
+        o = _fin(bpy.context.active_object, steel); o.scale = (0.09, 0.02, 1.5)
+        box(x + (0.1 if k else -0.1), 2.5, 1.5, 0.5, 0.06, 0.06, mat((120, 90, 40), 0.4, 0.6), ry=rot[1])
+        box(x + (0.12 if k else -0.12), 2.5, 1.56, 0.07, 0.07, 0.3, mat((90, 60, 30)), ry=rot[1])
+    place(lambda: human("tz", "spear", weapon=False), -2.0, 3.8, math.radians(-60), 1.6)
+    place(lambda: human("tz", "spear", weapon=False), 2.2, 4.2, math.radians(-120), 1.6)
+    _army("knight", "pl", -9, 14, 7, 2, 1.2, 1.4, face=math.radians(-90), seed=2, banner=((235, 235, 235), (200, 30, 40), None))
+    _shot("cut_grunwald_1", (0, -4.5, 1.6), (84, 0, 0), lens=32)
+    # Grunwald 2: dwa wojska naprzeciw siebie
+    reset(); _sky((110, 150, 200), (235, 215, 170)); _ground()
+    _forest(50, 40, 75, seed=7)
+    _army("knight", "pl", -13, 4, 10, 2, 1.1, 1.3, face=0.0, seed=3, banner=((235, 235, 235), (200, 30, 40), None))
+    _army("knight_t", "tz", 2.5, 4, 10, 2, 1.1, 1.3, face=math.pi, seed=5, banner=((240, 240, 240), None, (20, 20, 20)))
+    _army("spear", "pl", -13, 7.5, 12, 2, 0.8, 1.0, face=0.0, seed=6)
+    _army("pike", "tz", 2.5, 7.5, 12, 2, 0.8, 1.0, face=math.pi, seed=8)
+    _shot("cut_grunwald_2", (0, -7, 3.0), (78, 0, 0), lens=28)
+    # Legnica: gród o zmierzchu, zagony mongolskie
+    reset(); _sky((45, 30, 50), (230, 120, 70)); _ground((60, 80, 45), (90, 110, 60))
+    wall = mat((126, 88, 50))
+    for i in range(46):
+        a = i / 46 * math.tau
+        x, y = math.cos(a) * 5, 16 + math.sin(a) * 3
+        cyl(x, y, 0, 0.18, 2.4, wall, v=7); cone(x, y, 2.4, 0.18, 0, 0.35, wall, v=7)
+    box(0, 16, 0, 3, 2, 2.2, mat(WOOD)); gable(0, 16, 2.2, 3, 2, 1.4, mat(THATCH, 0.95))
+    for k, (x, y) in enumerate([(-7, 22), (8, 24), (3, 28)]):
+        for j in range(5):
+            sph(x + j * 0.4, y, 3 + j * 1.8, 0.8 + j * 0.4, mat((60, 55, 55), 1.0, alpha=0.6), sub=2, smooth=True)
+    _army("horse_mg", "mg", -8, 4, 8, 2, 1.4, 1.5, face=math.radians(80), seed=9)
+    _shot("cut_legnica_1", (0, -6, 2.0), (82, 0, 0), lens=30)
+    # Płowce: szarża we mgle
+    reset(); _sky((180, 185, 190), (225, 225, 220)); _ground((90, 110, 70), (120, 136, 90), hills=False)
+    _forest(30, 25, 60, seed=11)
+    _army("knight", "pl", -8, 3, 8, 2, 1.2, 1.4, face=math.radians(15), seed=12, banner=((235, 235, 235), (200, 30, 40), None))
+    _army("knight_t", "tz", -2, 15, 8, 2, 1.2, 1.4, face=math.radians(200), seed=13, banner=((240, 240, 240), None, (20, 20, 20)))
+    for k in range(10):
+        bpy.ops.mesh.primitive_plane_add(size=80, location=(0, 8 + k * 3.5, 0.6 + k * 0.15))
+        _fin(bpy.context.active_object, mat((220, 222, 222), 1.0, alpha=0.18))
+    _shot("cut_plowce_1", (0, -6, 2.6), (80, 0, 0), lens=30)
+    # Wichman: Polanie i jazda czeska na skraju puszczy
+    reset(); _sky((90, 130, 180), (225, 215, 175)); _ground()
+    _forest(90, 12, 60, seed=14)
+    _army("spear", "pl", -6, 3, 9, 2, 0.8, 1.0, face=math.radians(10), seed=15)
+    _army("horse", "cz", 2, 6, 5, 2, 1.3, 1.4, face=math.radians(10), seed=16, banner=((200, 40, 40), (240, 240, 240), None))
+    _shot("cut_wichman_1", (-1, -5, 1.8), (84, 0, -6), lens=30)
+    # Głogów: obrońcy na wałach i cesarska wieża oblężnicza
+    reset(); _sky((80, 100, 140), (210, 190, 160)); _ground()
+    for i in range(30):
+        x = -12 + i * 0.6
+        cyl(x, 4, 0, 0.3, 3.0, wall, v=7); cone(x, 4, 3.0, 0.3, 0, 0.4, wall, v=7)
+    box(-10, 4.2, 0, 2.4, 2.4, 4.6, mat(WOOD)); pyramid(-10, 4.2, 4.6, 3.0, 1.6, mat(THATCH, 0.95))
+    for i in range(8):
+        place(lambda: human("pl", "bow"), -10 + i * 1.3, 4.6, math.radians(90), 1.0, z=3.0)
+    box(6, 16, 0, 2.2, 2.2, 6.5, mat((110, 80, 50)))
+    for z in (1.5, 3.0, 4.5):
+        box(6, 14.88, z, 2.25, 0.05, 0.12, mat((80, 58, 34)))
+    _army("spear", "en", 0, 18, 12, 2, 0.8, 1.0, face=math.radians(-90), seed=17, banner=((240, 200, 60), None, (20, 20, 20)))
+    _shot("cut_glogow_1", (0, -6, 6.2), (72, 0, 8), lens=28)
+    _reset_world()
 
 
 # ------------------------------------------------------------------ główny program
@@ -966,6 +1160,7 @@ def main():
     animations()
     hero()
     portraits()
+    cutscenes()
     for k in ["field", "forest", "grod"]:
         battle_bg(k)
     print("Gotowe.")

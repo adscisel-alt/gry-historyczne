@@ -32,7 +32,9 @@ jobs:
           python-version: "3.12"
       - name: Wersja przeglądarkowa „Kronik Damiana Ścisła” (pygbag)
         run: |
-          python -m pip install pygbag
+          python -m pip install pygbag piper-tts
+          sudo apt-get install -y -q ffmpeg > /dev/null
+          (cd kroniki-damiana-scisla && python tools/make_voice.py) || echo "Lektor niedostępny – budowa bez nagrań"
           bash kroniki-damiana-scisla/tools/build_web.sh
       - name: Złożenie strony
         run: |

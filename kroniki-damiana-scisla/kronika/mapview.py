@@ -375,8 +375,15 @@ class MapScene(Scene):
                 self.final_lock = True
                 self.say("damian", "Bitwa przegrana, ale wojna trwa. Wojsko musi odpocząć do następnej tury. Zwerbuj posiłki!")
                 self.make_buttons()
-        self.app.push(Battle(self.app, self.w, f["name"], f["deck"], f["enemy_morale"], f["defense"], f["terrain"],
-                             f.get("allies", []), f["intro"], done, siege=bool(self.ch.get("siege_turn"))))
+        def battle():
+            self.app.push(Battle(self.app, self.w, f["name"], f["deck"], f["enemy_morale"], f["defense"], f["terrain"],
+                                 f.get("allies", []), f["intro"], done, siege=bool(self.ch.get("siege_turn"))))
+        from .cutscene import Cutscene, has_cutscene
+        if has_cutscene(self.w.idx) and not self.w.extra.get("cutscene_seen"):
+            self.w.extra["cutscene_seen"] = True
+            self.app.push(Cutscene(self.app, self.w.idx, battle))
+        else:
+            battle()
 
     def say(self, who, text):
         self.app.push(Dialogue(self.app, [{"who": who, "text": text}], self.w))

@@ -132,6 +132,8 @@ def step(app, stats):
             k = top.ok
         top.pick(k)
         top.done()
+    elif type(top).__name__ == "Cutscene":
+        top.finish()
     elif isinstance(top, Info):
         top.close(None)
     elif isinstance(top, TechScene):

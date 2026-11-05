@@ -17,7 +17,31 @@ permissions:
   contents: write
 
 jobs:
+  lektor:
+    # Nagrania lektora (Piper TTS, polski głos) – generowane na Ubuntu i przekazywane do budowy EXE.
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    defaults:
+      run:
+        working-directory: kroniki-damiana-scisla
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Lektor (Piper)
+        run: |
+          sudo apt-get install -y -q ffmpeg > /dev/null
+          python -m pip install piper-tts
+          python tools/make_voice.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lektor
+          path: kroniki-damiana-scisla/assets/voice
+
   windows-exe:
+    needs: lektor
+    if: always()
     runs-on: windows-latest
     defaults:
       run:
@@ -32,6 +56,12 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Pobranie nagrań lektora
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: lektor
+          path: kroniki-damiana-scisla/assets/voice
       - name: Zależności
         run: python -m pip install -r requirements.txt
       - name: Test – bot przechodzi całą kampanię

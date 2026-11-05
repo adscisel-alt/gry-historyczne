@@ -25,6 +25,12 @@ jobs:
         run: |
           python -m pip install pygbag playwright pillow
           python -m playwright install --with-deps chromium
+      - name: Lektor (Piper)
+        continue-on-error: true
+        run: |
+          sudo apt-get install -y -q ffmpeg > /dev/null
+          python -m pip install piper-tts
+          python tools/make_voice.py
       - name: Budowanie (pygbag)
         run: bash tools/build_web.sh
       - name: Test w przeglądarce

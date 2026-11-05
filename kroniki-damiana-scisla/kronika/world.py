@@ -150,6 +150,7 @@ class World:
         self.morale_bonus = 0
         self.stats = {"quiz_ok": 0, "quiz_all": 0, "battles": 0}
         self.raids = []
+        self.extra = {}
         self.dirty = True
         self.update_territory()
 

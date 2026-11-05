@@ -39,6 +39,8 @@ def asset(name):
         return None
     if name not in _assets:
         path = os.path.join(_ASSET_DIR, name + ".png")
+        if not os.path.exists(path):
+            path = os.path.join(_ASSET_DIR, name + ".jpg")      # duże obrazy bez przezroczystości
         try:
             img = pygame.image.load(path)
             _assets[name] = img.convert_alpha() if pygame.display.get_surface() else img

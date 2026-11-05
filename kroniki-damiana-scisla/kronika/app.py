@@ -33,6 +33,7 @@ class App:
         self.save = self.load_save()
         self.used_q = set()
         self.toasts = []
+        audio.voice_on = self.save.get("lektor", True)
         if self.save.get("styl"):
             gfx.set_style(self.save["styl"])
 

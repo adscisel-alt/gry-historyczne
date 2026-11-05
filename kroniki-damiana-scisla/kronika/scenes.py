@@ -198,12 +198,36 @@ class ChronicleScene(Scene):
         self.chars = 0.0
         self.t = 0
         self.buttons = [ui.Button((W - 300, H - 78, 250, 48), "Rozpocznij rozdział ▶", self.go, 18),
-                        ui.Button((50, H - 78, 160, 48), "◀ Wróć", self.app.pop, 16)]
+                        ui.Button((50, H - 78, 160, 48), "◀ Wróć", self.back, 16)]
+        self.voice_name = f"kronika_{idx}"
+        if audio.has_voice(self.voice_name):
+            self.voice_btn = ui.Button((230, H - 78, 200, 48), "", self.toggle_voice, 15, color=(100, 50, 140))
+            self.buttons.append(self.voice_btn)
+            self.sync_voice_btn()
+            audio.play_voice(self.voice_name)
+
+    def sync_voice_btn(self):
+        self.voice_btn.label = "Lektor: włączony" if audio.voice_on else "Lektor: wyłączony"
+
+    def toggle_voice(self):
+        audio.voice_on = not audio.voice_on
+        self.app.save["lektor"] = audio.voice_on
+        self.app.write_save()
+        if audio.voice_on:
+            audio.play_voice(self.voice_name)
+        else:
+            audio.stop_voice()
+        self.sync_voice_btn()
+
+    def back(self):
+        audio.stop_voice()
+        self.app.pop()
 
     def go(self):
         if self.chars < len(self.text):
             self.chars = 10 ** 6
             return
+        audio.stop_voice()
         from .mapview import MapScene
         self.app.replace(MapScene(self.app, self.idx), keep_menu=True)
 
@@ -214,7 +238,7 @@ class ChronicleScene(Scene):
                 (ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1):
             self.go()
         elif ev.type == pygame.KEYDOWN and ev.key == pygame.K_ESCAPE:
-            self.app.pop()
+            self.back()
         return True
 
     def update(self, dt):
@@ -532,8 +556,10 @@ class VictoryScene(Scene):
                 ui.Button((W // 2 - 320, H - 90, 300, 50), "Menu główne", self.menu, 18)]
         self.buttons = btns
         self.t = 0
+        audio.play_voice(f"zwyciestwo_{idx}")
 
     def next(self):
+        audio.stop_voice()
         if self.w.ch.get("bonus"):
             self.app.replace(MenuScene(self.app))
             self.app.push(ChapterSelectScene(self.app))
@@ -543,6 +569,7 @@ class VictoryScene(Scene):
             self.app.replace(ChronicleScene(self.app, self.w.idx + 1), keep_menu=True)
 
     def menu(self):
+        audio.stop_voice()
         self.app.replace(MenuScene(self.app))
 
     def update(self, dt):
@@ -576,6 +603,7 @@ class DefeatScene(Scene):
                         ui.Button((W // 2 - 280, H - 120, 260, 50), "Menu główne", lambda: self.app.replace(MenuScene(self.app)), 18)]
 
     def retry(self):
+        audio.stop_voice()
         from .mapview import MapScene
         self.app.replace(MapScene(self.app, self.idx), keep_menu=True)
 
@@ -593,8 +621,13 @@ class EndingScene(Scene):
     def __init__(self, app):
         super().__init__(app)
         self.t = 0
-        self.buttons = [ui.Button((W // 2 - 150, H - 80, 300, 50), "Menu główne", lambda: self.app.replace(MenuScene(self.app)), 18)]
+        self.buttons = [ui.Button((W // 2 - 150, H - 80, 300, 50), "Menu główne", self.menu, 18)]
         audio.play("fanfare")
+        audio.play_voice("zakonczenie")
+
+    def menu(self):
+        audio.stop_voice()
+        self.app.replace(MenuScene(self.app))
 
     def update(self, dt):
         self.t += dt

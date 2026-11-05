@@ -30,6 +30,7 @@ def init():
     try:
         pygame.mixer.pre_init(RATE, -16, 1, 512)
         pygame.mixer.init(RATE, -16, 1, 512)
+        pygame.mixer.set_num_channels(8)
         _ok = pygame.mixer.get_init() is not None
     except Exception:
         _ok = False
@@ -262,3 +263,49 @@ def toggle_music():
         start_music()
     elif _music_ch is not None:
         _music_ch.stop()
+
+
+# ---------------------------------------------------------------- lektor
+_VOICE_DIR = os.path.join(os.path.dirname(_AUDIO_DIR), "voice")
+voice_on = True
+_voice_ch = None
+
+
+def has_voice(name):
+    return os.path.exists(os.path.join(_VOICE_DIR, name + ".ogg"))
+
+
+def play_voice(name):
+    """Odtwarza nagranie lektora (jeśli jest) i ścisza muzykę na czas czytania."""
+    global _voice_ch
+    stop_voice()
+    if not (_ok and voice_on and has_voice(name)):
+        return False
+    try:
+        snd = pygame.mixer.Sound(os.path.join(_VOICE_DIR, name + ".ogg"))
+        _voice_ch = pygame.mixer.Channel(7)
+        _voice_ch.play(snd)
+        if _music_ch is not None:
+            _music_ch.set_volume(0.35)
+        return True
+    except Exception:
+        return False
+
+
+def stop_voice():
+    global _voice_ch
+    if _voice_ch is not None:
+        try:
+            _voice_ch.stop()
+        except Exception:
+            pass
+        _voice_ch = None
+    if _music_ch is not None:
+        try:
+            _music_ch.set_volume(1.0)
+        except Exception:
+            pass
+
+
+def voice_busy():
+    return _voice_ch is not None and _voice_ch.get_busy()

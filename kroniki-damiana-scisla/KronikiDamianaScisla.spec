@@ -1,9 +1,15 @@
 # -*- mode: python ; coding: utf-8 -*-
 # Budowanie:  pyinstaller --noconfirm KronikiDamianaScisla.spec
+import os
+
+datas = [("assets/fonts", "assets/fonts"), ("assets/3d", "assets/3d"), ("assets/audio", "assets/audio")]
+if os.path.isdir("assets/voice"):
+    datas.append(("assets/voice", "assets/voice"))   # lektor (tools/make_voice.py)
+
 a = Analysis(
     ["main.py"],
     pathex=[],
-    datas=[("assets/fonts", "assets/fonts"), ("assets/3d", "assets/3d"), ("assets/audio", "assets/audio")],
+    datas=datas,
     hiddenimports=[],
     excludes=["tkinter", "numpy", "unittest", "pydoc"],
 )
