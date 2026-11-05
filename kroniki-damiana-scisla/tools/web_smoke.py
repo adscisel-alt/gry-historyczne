@@ -33,14 +33,20 @@ with sync_playwright() as p:
         joined = "\n".join(logs)
         if "Traceback" in joined:
             break
+        if "KRONIKI:MENU" in joined:
+            page.wait_for_timeout(6000)
+            # przejdź do kampanii i wybierz rozdział I – sprawdza też kolejne ekrany
+            page.mouse.click(230, 395)
+            page.wait_for_timeout(2500)
+            page.screenshot(path=shot.replace(".png", "_kampania.png"))
+            break
         # menu gry narysowane? sprawdź, czy płótno ma treść (nie jednolity kolor)
         ok = page.evaluate("""() => {
             const c = document.querySelector('canvas'); if (!c) return false;
             try { const g = c.getContext('2d'); } catch(e) {}
             return c.width >= 640;
         }""")
-        if ok and time.time() - t0 > 45:
-            break
+    page.wait_for_timeout(500)
     page.screenshot(path=shot)
     b.close()
 httpd.shutdown()
@@ -52,5 +58,15 @@ if errors:
     print("Błędy strony:", errors[:5])
 if any("Traceback" in l for l in logs):
     print("BŁĄD: wyjątek Pythona w przeglądarce")
+    sys.exit(1)
+if not any("KRONIKI:MENU" in l for l in logs):
+    print("BŁĄD: gra nie narysowała menu w ciągu 150 s")
+    sys.exit(1)
+from PIL import Image
+im = Image.open(shot).convert("RGB")
+colors = len(set(im.crop((100, 100, 1180, 660)).getdata()))
+print("Liczba kolorów na zrzucie:", colors)
+if colors < 400:
+    print("BŁĄD: zrzut wygląda na pusty ekran")
     sys.exit(1)
 print("OK – gra uruchomiła się w przeglądarce")

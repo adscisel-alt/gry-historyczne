@@ -5,7 +5,7 @@ import pygame
 
 from . import data, gfx, ui, audio, storage
 from .gfx import TW, TH
-from .world import N, World
+from .world import N, World, raid_due, spawn_raid, move_raids, raid_eta
 from .modals import Scene, Dialogue, Quiz, Info, W, H
 from .battle import Battle
 
@@ -116,7 +116,7 @@ class MapRenderer:
 class MapScene(Scene):
     def __init__(self, app, chapter_idx, world=None):
         super().__init__(app)
-        self.w = world or World(chapter_idx, app.save.get("techs", []))
+        self.w = world or World(chapter_idx, app.save.get("techs", []), app.save.get("trudnosc", 1))
         app.chapter = self.w.idx
         self.ch = self.w.ch
         self.r = MapRenderer(self.w)
@@ -181,6 +181,11 @@ class MapScene(Scene):
         x, y = pos
         p = PANEL
         y0 = 360
+        if self.raid_at(pos):
+            self.tile_buttons.append(ui.Button((p.x + 10, y0 + 40, p.w - 20, 40), "Przechwyć zagon (−3 żywności)",
+                                               lambda: self.intercept(pos), 15, color=(150, 40, 36),
+                                               enabled=self.w.res["food"] >= 3))
+            return
         if pos in self.w.camps and not self.w.camps[pos]["beaten"]:
             self.tile_buttons.append(ui.Button((p.x + 10, y0 + 40, p.w - 20, 40), "Doradź wyprawę (−4 żywności)",
                                                lambda: self.attack_camp(pos), 15, color=(150, 40, 36),
@@ -292,6 +297,46 @@ class MapScene(Scene):
                              intro=f"Wojsko księcia wyrusza na {c['name'].lower()}. Kronikarz jedzie z tyłu, na najspokojniejszym koniu w stajni.",
                              on_end=done))
 
+    def raid_at(self, pos):
+        for r in self.w.raids:
+            if tuple(r["pos"]) == tuple(pos):
+                return r
+        return None
+
+    def raid_battle(self, r, at_gates=False):
+        w = self.w
+
+        def done(won):
+            if r in w.raids:
+                w.raids.remove(r)
+            if won:
+                w.res["silver"] += 5
+                self.say("damian", f"{r['name']} rozbity! Łupy: 5 srebra. Okoliczne wsie odetchnęły.")
+            elif at_gates:
+                lost_f, lost_s = w.res["food"] * 2 // 5, w.res["silver"] * 2 // 5
+                w.res["food"] -= lost_f
+                w.res["silver"] -= lost_s
+                self.say("damian", f"{r['name']} złupił podgrodzie: −{lost_f} żywności, −{lost_s} srebra. "
+                                   "Zagon odjechał z łupami...")
+            else:
+                self.say("damian", "Nie udało się przechwycić zagonu – wróg wciąż idzie na gród!")
+                w.raids.append(r) if r not in w.raids else None
+            w.dirty = True
+            self.after_change()
+        name = r["name"] + (" pod grodem!" if at_gates else " – przechwycenie")
+        intro = ("Zagon dotarł pod gród! Bramy zamknięte, na wałach łucznicy." if at_gates else
+                 "Konni gońcy wskazali drogę zagonu. Zastawiamy zasadzkę na trakcie.")
+        self.app.push(Battle(self.app, w, name, r["deck"], 10 + 3 * len(r["deck"]) + 2 * w.epoch, at_gates,
+                             "grod" if at_gates else "field", intro=intro, on_end=done))
+
+    def intercept(self, pos):
+        r = self.raid_at(pos)
+        if r and self.w.res["food"] >= 3:
+            self.w.res["food"] -= 3
+            if r in self.w.raids:
+                self.w.raids.remove(r)
+            self.raid_battle(r)
+
     def camp_morale(self, c):
         return 14 + 3 * len(c["deck"]) + 2 * self.w.epoch
 
@@ -326,6 +371,26 @@ class MapScene(Scene):
             if prod[k]:
                 self.floats.append([f"+{prod[k]} {data.RES_NAMES[k]}", 120 + data.RES_ORDER.index(k) * 150, y, (255, 240, 160), 0])
         w = self.w
+        if self.w.upkeep():
+            self.floats.append([f"−{self.w.upkeep()} żywności (utrzymanie wojska)", VIEW.centerx, VIEW.y + 60, (255, 190, 160), 0])
+        if w.deserted:
+            self.queue.append(lambda d=w.deserted: self.say("damian",
+                f"Pusty spichlerz! Oddział „{d}” rozszedł się do domów. Wojsko trzeba żywić – zbuduj więcej pól."))
+        for kind, r, extra in move_raids(w):
+            if kind == "burned":
+                self.queue.append(lambda r=r, e=extra: self.say("damian", f"{r['name']} spalił: {e}! Zagony trzeba przechwytywać, "
+                                                                        "zanim dotrą do naszych ziem – albo chronić je palisadą."))
+            elif kind == "repelled":
+                self.queue.append(lambda r=r, e=extra: self.say("damian", f"{r['name']} rozbił się o nasze umocnienia ({e}). "
+                                                                        "Mur nie śpi, nie je i nie dezerteruje!"))
+            elif kind == "siege":
+                self.queue.append(lambda r=r: self.raid_battle(r, at_gates=True))
+        if raid_due(w):
+            r = spawn_raid(w)
+            self.queue.append(lambda r=r: self.app.push(Dialogue(self.app, [{"who": "damian", "title": "Zagon wroga!",
+                "text": f"Zwiadowcy donoszą: {r['name']} wyruszył w stronę grodu! Dotrze za ok. {raid_eta(w, r)} tur. "
+                        "Kliknij go na mapie i doradź przechwycenie – albo postaw palisadę na jego drodze."}], w)))
+            audio.play("drum")
         self.after_change()
         self.save_game()
         if w.turn > w.max_turns and not w.complete():
@@ -393,6 +458,9 @@ class MapScene(Scene):
         tips = []
         if w.res["food"] < 6:
             tips.append("Spichlerz pustoszeje! Zbuduj pola uprawne – głodny lud nie pracuje.")
+        if w.upkeep() and w.production()["food"] - w.upkeep() < 0:
+            tips.append(f"Wojsko zjada {w.upkeep()} żywności na turę, a pola dają za mało! Zbuduj pola albo młyn, "
+                        "bo oddziały zaczną dezerterować.")
         if w.count("pole") == 0:
             tips.append("Zacznij od pól: kliknij łąkę w granicach księstwa (złota linia) i wybierz „Pole uprawne”.")
         elif w.count("drwal") == 0:
@@ -427,6 +495,10 @@ class MapScene(Scene):
                     else:
                         tips.append("Wykonaj wcześniejsze zadania, a potem zwołamy radę wojenną.")
                 break
+        if w.raids:
+            r = w.raids[0]
+            tips.insert(0, f"{r['name']} idzie na gród (za ok. {raid_eta(w, r)} tur)! Kliknij go i doradź przechwycenie "
+                           "albo postaw palisadę na jego drodze.")
         if self.ch.get("siege_turn") and not w.final_won:
             left = self.ch["siege_turn"] - w.turn
             tips.insert(0, f"Do oblężenia zostało tur: {left}! Palisady i zapasy – szybko!")
@@ -516,6 +588,7 @@ class MapScene(Scene):
             sx, sy = self.tile_screen(*self.sel)
             a = 120 + int(80 * abs(((self.t * 2) % 2) - 1))
             surf.blit(gfx.tile_outline((255, 220, 80, a), 3), (sx - TW // 2, sy - TH // 2))
+        self.draw_raids(surf)
         for f in self.floats:
             ui.draw_text(surf, f[0], (int(f[1]), int(f[2])), 18, f[3], True, center=True, shadow=(0, 0, 0))
         surf.set_clip(None)
@@ -523,14 +596,35 @@ class MapScene(Scene):
         self.draw_panel(surf)
         self.draw_tip(surf)
 
+    def draw_raids(self, surf):
+        import math
+        for r in self.w.raids:
+            sx, sy = self.tile_screen(*r["pos"])
+            cx, cy = self.tile_screen(*self.w.cap)
+            # przerywana linia ku grodowi
+            dist = math.hypot(cx - sx, cy - sy) or 1
+            for k in range(0, int(dist), 14):
+                t = k / dist
+                pygame.draw.circle(surf, (220, 60, 50), (int(sx + (cx - sx) * t), int(sy + (cy - sy) * t)), 2)
+            pulse = 2 + int(2 * abs(math.sin(self.t * 4)))
+            pygame.draw.ellipse(surf, (220, 40, 40), (sx - 26, sy - 10, 52, 22), pulse)
+            u = gfx.unit_big(r["unit"], r["faction"], 2)
+            u = pygame.transform.flip(u, sx > cx, False)
+            bob = int(abs(math.sin(self.t * 6)) * 3)
+            for k, (dx, dy) in enumerate([(-14, -4), (8, 2)]):
+                surf.blit(u, (sx + dx - u.get_width() // 2, sy + dy - u.get_height() + 6 - (bob if k == 0 else 3 - bob)))
+            ui.draw_text(surf, r["name"], (sx, sy + 12), 12, (255, 220, 200), True, center=True, shadow=(0, 0, 0))
+
     def draw_top(self, surf):
         surf.blit(gfx.panel(W, 44, 2, dark=True), (0, 0))
         prod = self.w.production()
+        prod["food"] -= self.w.upkeep()
         x = 16
         for k in data.RES_ORDER:
             surf.blit(gfx.icon(k, 2), (x, 10))
             ui.draw_text(surf, str(self.w.res[k]), (x + 30, 10), 19, ui.CREAM, True)
-            ui.draw_text(surf, f"+{prod[k]}", (x + 30 + ui.font(19, True).size(str(self.w.res[k]))[0] + 6, 14), 14, (170, 220, 140), True)
+            col = (170, 220, 140) if prod[k] >= 0 else (240, 120, 100)
+            ui.draw_text(surf, f"{prod[k]:+d}", (x + 30 + ui.font(19, True).size(str(self.w.res[k]))[0] + 6, 14), 14, col, True)
             x += 150
         surf.blit(gfx.icon("turn", 2), (x + 10, 10))
         ui.draw_text(surf, f"Tura {self.w.turn}/{self.w.max_turns}", (x + 40, 11), 18, ui.GOLD, True)
@@ -561,7 +655,12 @@ class MapScene(Scene):
             x, yy = self.sel
             t = self.w.terr[yy][x]
             pos = self.sel
-            if pos in self.w.buildings:
+            rr = self.raid_at(pos)
+            if rr:
+                ui.draw_text(surf, rr["name"], (p.x + 16, 308), 17, ui.RED, True)
+                ui.draw_text(surf, f"Siła: {len(rr['deck'])} oddziały • pod grodem za ok. {raid_eta(self.w, rr)} tur",
+                             (p.x + 16, 334), 13, ui.INK, width=p.w - 32)
+            elif pos in self.w.buildings:
                 b = self.w.buildings[pos]
                 name = "Siedziba władcy" if b == "grod" else data.BUILDINGS[b]["name"]
                 ui.draw_text(surf, name, (p.x + 16, 308), 17, ui.INK, True)

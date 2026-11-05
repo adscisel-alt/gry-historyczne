@@ -116,6 +116,9 @@ class App:
                     s.r.tick(dt)
             self.draw()
             pygame.display.flip()
+            if not getattr(self, "_announced", False):
+                self._announced = True
+                print("KRONIKI:MENU – pierwsza klatka narysowana", flush=True)
             await asyncio.sleep(0)
         if not WEB:
             pygame.quit()

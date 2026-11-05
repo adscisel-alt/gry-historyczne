@@ -641,6 +641,22 @@ CHAPTERS = [
     },
 ]
 
+# ---------------------------------------------------------------- ZAGONY WROGA (aktywny przeciwnik na mapie)
+RAIDS = {
+    0: {"start": 7, "every": 7, "name": "Zagon Wichmana", "faction": "en", "unit": "spear",
+        "deck": ["e_wieleci", "e_lucznicy", "e_wieleci"]},
+    1: {"start": 5, "every": 4, "name": "Zagon mongolski", "faction": "mg", "unit": "horse_mg",
+        "deck": ["e_mongol_luk", "e_mongol_luk", "e_mongol_dym"]},
+    2: {"start": 8, "every": 8, "name": "Banda zbójców", "faction": "en", "unit": "spear",
+        "deck": ["e_rozbojnicy", "e_rozbojnicy", "e_lucznicy"]},
+    3: {"start": 6, "every": 6, "name": "Rejza krzyżacka", "faction": "tz", "unit": "knight_t",
+        "deck": ["e_knechci", "e_kusznicy_z", "e_rycerze_z"]},
+    4: {"start": 7, "every": 7, "name": "Rejza krzyżacka", "faction": "tz", "unit": "knight_t",
+        "deck": ["e_knechci", "e_kusznicy_z", "e_rycerze_z"]},
+    5: {"start": 5, "every": 6, "name": "Podjazd krzyżacki", "faction": "tz", "unit": "knight_t",
+        "deck": ["e_knechci", "e_kusznicy_z", "e_rycerze_z", "e_knechci"]},
+}
+
 ENDING = [
     "Tak kończy się kronika Damiana Ścisła, doradcy książąt i królów.",
     "Od drewnianych grodów Polan, przez rozbite dzielnice i lokowane miasta, po murowane zamki i potęgę Jagiellonów – "

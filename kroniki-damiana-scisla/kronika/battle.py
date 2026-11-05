@@ -61,7 +61,8 @@ class Battle(Scene):
         self.hand = []
         self.p_max = 20 + world.defense_bonus(defense)
         self.p_hp = self.p_max
-        self.e_max = enemy_morale
+        from .world import DIFF
+        self.e_max = enemy_morale = max(6, int(round(enemy_morale * DIFF[getattr(world, "diff", 1)]["enemy"])))
         self.e_hp = enemy_morale
         self.bonus = 0
         self.ecard = None

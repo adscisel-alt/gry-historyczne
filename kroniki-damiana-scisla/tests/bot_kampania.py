@@ -102,7 +102,10 @@ def bot_map(app, ms):
                 a.recruit(cid)
                 app.pop()
                 return True
-    # 4) wyprawy i bitwa finałowa
+    # 4) zagony, wyprawy i bitwa finałowa
+    if w.raids and w.res["food"] >= 3:
+        ms.intercept(tuple(w.raids[0]["pos"]))
+        return True
     for pos, c in w.camps.items():
         if not c["beaten"] and w.res["food"] >= 4 and len(w.deck) >= 8:
             ms.attack_camp(pos)
@@ -153,7 +156,8 @@ def step(app, stats):
         top.chars = 10 ** 6
         top.go()
     elif isinstance(top, VictoryScene):
-        print("  wygrany rozdział", top.w.idx, "tura", top.w.turn, "res", top.w.res, "talia", len(top.w.deck), flush=True)
+        print("  wygrany rozdział", top.w.idx, "tura", top.w.turn, "res", top.w.res, "talia", len(top.w.deck),
+              "utrzymanie", top.w.upkeep(), flush=True)
         stats["chapters"].append((top.w.idx, top.w.turn, top.stars))
         top.next()
     elif isinstance(top, DefeatScene):

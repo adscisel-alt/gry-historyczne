@@ -386,6 +386,10 @@ class ArmyScene(Scene):
         ui.draw_text(surf, f"Werbunki w tej turze: {max(0, slots)} (po jednym na każdy Dwór drużyny)", (W // 2, 62), 15,
                      ui.INK if slots > 0 else ui.RED, True, center=True)
         ui.draw_text(surf, f"Twoja talia bitewna ({len(self.w.deck)} kart):", (40, 92), 16, ui.INK, True)
+        up = self.w.upkeep()
+        ui.draw_text(surf, f"Utrzymanie: {up} żywności na turę (każdy oddział ponad {len(self.w.deck) - up} kosztuje 1 żywności)",
+                     (W - 40 - ui.font(14, True).size(f"Utrzymanie: {up} żywności na turę (każdy oddział ponad {len(self.w.deck) - up} kosztuje 1 żywności)")[0], 94),
+                     14, ui.RED if up else ui.INK_SOFT, True)
         counts = {}
         for cid in self.w.deck:
             counts[cid] = counts.get(cid, 0) + 1

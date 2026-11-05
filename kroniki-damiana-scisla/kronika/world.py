@@ -108,16 +108,29 @@ def generate_map(cfg):
     return terr, variants, river
 
 
+DIFF = {
+    0: {"name": "Łatwy", "desc": "dla młodszych (10–11 lat): więcej zasobów i tur, słabsi wrogowie, zawsze podpowiedź",
+        "res": 1.35, "turns": 6, "enemy": 0.8, "hidden": 0.0, "raid": 1.5, "hints": 1},
+    1: {"name": "Normalny", "desc": "zrównoważona rozgrywka", "res": 1.0, "turns": 0, "enemy": 1.0, "hidden": 0.3,
+        "raid": 1.0, "hints": 0},
+    2: {"name": "Trudny", "desc": "dla starszych (13–14 lat): mniej zasobów, silniejsi wrogowie, częstsze zagony",
+        "res": 0.85, "turns": -4, "enemy": 1.15, "hidden": 0.5, "raid": 0.7, "hints": 0},
+}
+
+
 class World:
-    def __init__(self, chapter_idx, techs=()):
+    def __init__(self, chapter_idx, techs=(), diff=1):
         self.ch = data.CHAPTERS[chapter_idx]
+        self.diff = diff               # 0 – łatwy, 1 – normalny, 2 – trudny
+        self.deserted = None
         self.idx = chapter_idx
         self.epoch = self.ch["epoch"]
         cfg = self.ch["map"]
         self.terr, self.var, self.river = generate_map(cfg)
-        self.res = dict(self.ch["start_res"])
+        mult = DIFF[diff]["res"]
+        self.res = {k: int(round(v * mult)) for k, v in self.ch["start_res"].items()}
         self.turn = 1
-        self.max_turns = self.ch["turns"]
+        self.max_turns = self.ch["turns"] + DIFF[diff]["turns"]
         self.buildings = {}            # (x,y) -> typ
         self.cap = tuple(cfg["capital"])
         self.buildings[self.cap] = "grod"
@@ -134,6 +147,7 @@ class World:
         self.final_won = False
         self.morale_bonus = 0
         self.stats = {"quiz_ok": 0, "quiz_all": 0, "battles": 0}
+        self.raids = []
         self.dirty = True
         self.update_territory()
 
@@ -145,13 +159,14 @@ class World:
             "techs": sorted(self.techs), "beaten": [c["id"] for c in self.camps.values() if c["beaten"]],
             "deck": self.deck, "recruited": self.recruited_this_turn, "locked": sorted(self.tech_locked),
             "done": sorted(self.done), "final_won": self.final_won, "morale": self.morale_bonus, "stats": self.stats,
-            "extra": getattr(self, "extra", {}),
+            "extra": getattr(self, "extra", {}), "diff": self.diff, "raids": getattr(self, "raids", []),
         }
 
     @classmethod
     def from_dict(cls, d):
-        w = cls(d["idx"])
+        w = cls(d["idx"], diff=d.get("diff", 1))
         w.res = dict(d["res"])
+        w.raids = d.get("raids", [])
         w.turn = d["turn"]
         w.buildings = {(x, y): b for x, y, b in d["buildings"]}
         w.techs = set(d["techs"])
@@ -275,10 +290,24 @@ class World:
     def recruit_slots(self):
         return self.count("koszary") - self.recruited_this_turn
 
+    def upkeep(self):
+        """Utrzymanie wojska: każda karta ponad podstawową talię zjada 1 żywności na turę."""
+        free = len(self.ch["start_deck"]) + (2 if self.diff == 0 else 0)
+        return max(0, len(self.deck) - free)
+
     def end_turn(self):
         prod = self.production()
+        prod["food"] -= self.upkeep()
+        self.deserted = None
         for k, v in prod.items():
             self.res[k] += v
+        if self.res["food"] < 0:
+            self.res["food"] = 0
+            extra = [c for c in self.deck if data.CARDS[c].get("cost")]
+            if extra and len(self.deck) > len(self.ch["start_deck"]):
+                lost = extra[-1]
+                self.deck.remove(lost)
+                self.deserted = data.CARDS[lost]["name"]
         self.turn += 1
         self.recruited_this_turn = 0
         self.tech_locked.clear()
@@ -339,3 +368,83 @@ class World:
         if self.ch.get("siege_turn") and self.final_won:
             return True
         return len(self.done) == len(self.ch["objectives"])
+
+
+# ---------------------------------------------------------------- zagony
+def _cheb(a, b):
+    return max(abs(a[0] - b[0]), abs(a[1] - b[1]))
+
+
+def raid_config(w):
+    return data.RAIDS.get(w.idx)
+
+
+def raid_due(w):
+    cfg = raid_config(w)
+    if not cfg or w.final_won:
+        return False
+    every = max(2, int(round(cfg["every"] * DIFF[w.diff]["raid"])))
+    return w.turn >= cfg["start"] and (w.turn - cfg["start"]) % every == 0 and len(w.raids) < 2
+
+
+def spawn_raid(w):
+    cfg = raid_config(w)
+    origins = [p for p, c in w.camps.items() if not c["beaten"]]
+    if not origins:
+        edge = [(x, y) for x in range(N) for y in range(N) if (x in (0, N - 1) or y in (0, N - 1))
+                and w.terr[y][x] != "water"]
+        edge.sort(key=lambda p: -_cheb(p, w.cap))
+        origins = edge[:6]
+    start = origins[w.turn % len(origins)]
+    r = {"pos": list(start), "name": cfg["name"], "faction": cfg["faction"], "unit": cfg["unit"],
+         "deck": list(cfg["deck"]), "id": w.turn}
+    w.raids.append(r)
+    return r
+
+
+def raid_step(w, pos):
+    """Krok w stronę grodu, omijając wodę."""
+    best, bd = None, None
+    for dx in (-1, 0, 1):
+        for dy in (-1, 0, 1):
+            if dx == dy == 0:
+                continue
+            x, y = pos[0] + dx, pos[1] + dy
+            if not (0 <= x < N and 0 <= y < N) or w.terr[y][x] == "water":
+                continue
+            d = math.hypot(x - w.cap[0], y - w.cap[1])
+            if bd is None or d < bd:
+                best, bd = (x, y), d
+    return best or tuple(pos)
+
+
+def move_raids(w):
+    """Przesuwa zagony o 2 pola. Zwraca listę zdarzeń: (rodzaj, zagon, dodatkowe)."""
+    events = []
+    for r in list(w.raids):
+        for _ in range(2):
+            pos = tuple(r["pos"])
+            # obrona: palisada lub zamek obok
+            guard = [p for p, b in w.buildings.items() if b in ("palisada", "zamek") and _cheb(p, pos) <= 1]
+            if guard:
+                w.raids.remove(r)
+                events.append(("repelled", r, data.BUILDINGS[w.buildings[guard[0]]]["name"]))
+                break
+            if _cheb(pos, w.cap) <= 1:
+                w.raids.remove(r)
+                events.append(("siege", r, None))
+                break
+            nxt = raid_step(w, pos)
+            r["pos"] = list(nxt)
+            b = w.buildings.get(nxt)
+            if b and b not in ("grod", "palisada", "zamek"):
+                del w.buildings[nxt]
+                w.update_territory()
+                events.append(("burned", r, data.BUILDINGS[b]["name"]))
+                break
+    w.dirty = True
+    return events
+
+
+def raid_eta(w, r):
+    return max(1, (_cheb(r["pos"], w.cap) - 1 + 1) // 2)
