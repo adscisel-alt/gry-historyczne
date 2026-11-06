@@ -33,7 +33,9 @@ jobs:
       - name: Import zasobów
         run: godot --headless --path zamosc3d/godot --import || true
       - name: Autotest (przejście 4 rozdziałów)
-        run: godot --headless --path zamosc3d/godot -- --samotest | tee test.log && grep -q "TEST_WYNIK: OK" test.log
+        run: |
+          godot --headless --path zamosc3d/godot -- --samotest | tee test.log
+          grep -q "TEST_WYNIK: OK" test.log
       - name: Eksport EXE dla Windows
         run: |
           mkdir -p zamosc3d/build
