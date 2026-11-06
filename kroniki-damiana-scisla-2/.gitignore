@@ -1,0 +1,7 @@
+build/
+dist/
+zrzuty/
+__pycache__/
+*.pyc
+web_build/
+assets/voice/
