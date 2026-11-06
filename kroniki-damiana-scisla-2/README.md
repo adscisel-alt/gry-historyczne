@@ -1,105 +1,57 @@
-# Kroniki Damiana Ścisła – Doradca książąt i królów (966–1410)
+# Kroniki Damiana Ścisła II: Rzeczpospolita (1454–1795)
 
-Turowa strategia edukacyjna z historii Polski dla uczniów w wieku 10–14 lat – **na Windows (EXE) i w przeglądarce**.
-Grafika to izometryczne **prerenderowane 3D**, tak jak w strategiach z lat 90. (Age of Empires II też miało
-sprite'y wyrenderowane z modeli 3D). Wszystko – kafle terenu, drzewa, budynki, obozy, jednostki z klatkami marszu,
-popiersia 16 postaci, tła bitew i przerywniki filmowe – modeluje i renderuje skrypt **Blendera**
-`tools/blender/render_sprites.py` (ponad 220 obrazów w `assets/3d/`). Klawisz **G** przełącza na alternatywną
-grafikę pikselową rysowaną kodem. Muzyka (5 motywów: menu i 4 epoki) i efekty są syntetyzowane kodem
-(`tools/make_audio.py`), a **lektor** czyta kroniki polskim głosem syntezatora Piper (`tools/make_voice.py`).
+Druga część turowej strategii edukacyjnej z historii Polski dla uczniów w wieku 10–14 lat – **na Windows (EXE)
+i w przeglądarce**. Ta sama mechanika co w części I ([`../kroniki-damiana-scisla`](../kroniki-damiana-scisla)),
+nowa epoka: od wojny trzynastoletniej i złotego wieku, przez husarię, potop i odsiecz wiedeńską, po Konstytucję
+3 maja, insurekcję kościuszkowską i rozbiory.
 
-Gracz jest **Damianem Ścisłem** – wędrownym kronikarzem i doradcą w fioletowym kapturze. Nie dowodzi armią
-bezpośrednio: doradza władcy, co zbudować, jaką wiedzę zdobyć i którą siłę wystawić w bitwie.
+Gracz jest znów **Damianem Ściseł** – kronikarzem i doradcą w fioletowym kapturze, który radzi królom, hetmanom
+i naczelnikom.
 
-![Menu](docs/01_menu.png)
-![Mapa](docs/04_mapa.png)
-![Bitwa](docs/07_bitwa.png)
-![Technologie](docs/06_technologie.png)
+## Kampania – 9 rozdziałów (6 głównych + 3 dodatkowe)
 
-## Kampania – 9 rozdziałów (6 głównych + 3 dodatkowe), 4 epoki
+| Lata | Epoka | Rozdział | Cel |
+|------|-------|----------|-----|
+| 1454–1466 | Złoty wiek | Wojna o morze – wojna trzynastoletnia | skarb na żołd, wykup Malborka, bitwa pod Świecinem |
+| 1520–1521 | Złoty wiek | *dodatkowy:* Astronom na murach | Kopernik broni zamku w Olsztynie (oblężenie) |
+| 1579–1582 | Czasy Batorego i Wazów | Wyprawy Batorego | piechota wybraniecka, Połock, Wielkie Łuki |
+| 1610 | Czasy Batorego i Wazów | *dodatkowy:* Husaria pod Kłuszynem | Żółkiewski i szarża husarii |
+| 1655–1656 | Wiek wojen | Potop | Jasna Góra, wojna szarpana Czarnieckiego, Warka |
+| 1683 | Wiek wojen | Skrzydła nad Wiedniem | zaopatrzenie, czambuł tatarski, odsiecz Wiednia |
+| 1768–1772 | Oświecenie i rozbiory | Konfederaci | Pułaski broni Jasnej Góry (oblężenie), I rozbiór |
+| 1788–1792 | Oświecenie i rozbiory | *dodatkowy:* Konstytucja 3 maja | KEN, Sejm Wielki, targowiczanie |
+| 1794 | Oświecenie i rozbiory | Kosy na sztorc | przysięga Kościuszki, kosynierzy pod Racławicami |
 
-| Rok | Epoka | Rozdział | Cel |
-|-----|-------|----------|-----|
-| 966–967 | Plemienna | Gniezno – „Woda i ogień” | chrzest i pismo, bitwa z Wichmanem |
-| 1000 | Plemienna | *dodatkowy:* Zjazd gnieźnieński | uczta dla Ottona III, arcybiskupstwo |
-| 1109–1138 | Piastowska | *dodatkowy:* Krzywousty i obrona Głogowa | oblężenie przez cesarza Henryka V |
-| 1241 | Piastowska | Legnica – „Burza ze Wschodu” | oblężenie: palisady, zapasy, odliczanie tur |
-| 1257 | Piastowska | Kraków – „Miasto z prawem” | lokacja, targi, żupy solne |
-| 1311–1320 | Zamków | *dodatkowy:* Korona Łokietka | bunt wójta Alberta, koronacja |
-| 1331–1333 | Zamków | Płowce – „Mała postura, wielkie serce” | bitwa pod Płowcami, zamek Kazimierza |
-| 1384–1386 | Jagiellońska | Krewo – „Korona i dwa narody” | dyplomacja, unia polsko-litewska |
-| 1410 | Jagiellońska | Grunwald – „Dwa nagie miecze” | most łyżwowy, zaopatrzenie, wielka bitwa |
+## Co nowego względem części I
 
-Każdy rozdział zaczyna się kroniką czytaną przez lektora, ma mapę 30×30 kafli z prawdziwą geografią
-(Wisła pod Wawelem, Gopło, Kaczawa, Odra, Jezioro Lednickie…) z podpisami i różą wiatrów, zabytki
-z ciekawostkami, wydarzenia fabularne z decyzjami, a przed bitwą finałową – przerywnik filmowy.
+- **Budynki zmieniają styl z epoką** (render 3D w Blenderze): siedziba władcy to kolejno renesansowy zamek
+  z krużgankami i attyką, ratusz z wieżą jak w Zamościu, barokowy pałac z miedzianymi hełmami jak Wilanów
+  i klasycystyczny pałac z portykiem nad stawem jak Łazienki. Kamienice, koszary, kolegia, folwarki (dwór
+  z gankiem) i twierdze bastionowe także mają cztery odmiany.
+- **Nowe jednostki**: husaria ze skrzydłami i skórą lamparta, muszkieterowie, dragoni, armaty, rakiety
+  Siemienowicza, kosynierzy; wrogowie: Zakon, Moskwa, Szwedzi, Turcy i Tatarzy, Rosja XVIII w.
+- **20 nowych technologii** z zagadkami (druk, folwark, spław wiślany, astronomia Kopernika, unia lubelska,
+  wolna elekcja, husaria, bastiony, muszkiet, gazety, KEN, manufaktury, Konstytucja 3 maja, kosy na sztorc…).
+- **128 pytań**, **15 postaci** z popiersiami 3D (Kazimierz Jagiellończyk, Kopernik, Bona Sforza, Batory,
+  Zamoyski, Żółkiewski, Kordecki, Czarniecki, Sobieski, Pułaski, Stanisław August, Kołłątaj, Kościuszko,
+  Głowacki…), 27 pojęć w encyklopedii, nowe zdarzenia (sejmik szlachecki, psucie monety i prawo Kopernika,
+  jarmark dominikański, czambuł tatarski).
+- **Muzyka epok**: pawana, galiarda, barokowy klawesyn i polonez.
+- Mapy z geografią: Wisła i Nogat, Dźwina, Pilica, Dunaj, Warta, Łyna.
 
-## Mechaniki
+Mechaniki (zagony, utrzymanie wojska, dowódcy i taktyki, ukryta karta wroga, poziomy trudności, dziennik
+nauki z dyplomem i CSV, zapis w dowolnym momencie, lektor) działają tak samo jak w części I. Postęp zapisuje
+się osobno (`%APPDATA%\KronikiDamianaScisla2\`).
 
-- **4 zasoby**, 10 typów budynków, granice rosnące z każdą budową; każdy kolejny budynek tego samego
-  typu kosztuje o 25% więcej (koszt krańcowy). **Utrzymanie wojska**: każdy oddział ponad podstawową
-  talię zjada 1 żywności na turę, a głód oznacza dezercję.
-- **Aktywny wróg**: co kilka tur z obozu wyrusza zagon, maszeruje ku grodowi i pali budynki po drodze.
-  Można go przechwycić, a palisady i zamki go odpierają.
-- **Drzewko 20 technologii** – każdą zdobywa się zagadką historyczną; po odkryciu pojawia się ciekawostka.
-- **Bitwy kartami**: pytanie z epoki (pula **152 pytań** bez powtórek), potem wróg wystawia jedną z dwóch
-  kart – jedną widać, druga jest zakryta. Piechota ▶ Jazda ▶ Strzelcy ▶ Piechota (+3).
-  **Dowódca rozdziału** daje premię, a **taktyki historyczne** (Posiłki czeskie, Wycieczka z grodu,
-  Mgła nad Płowcami, Bogurodzica, Pozorowany odwrót…) można użyć raz w bitwie.
-- **Poziomy trudności**: Łatwy (10–11 lat, podpowiedzi), Normalny, Trudny (13–14 lat).
-- **Zdarzenia losowe** z lekcjami ekonomii: zaraza, najazd, poselstwo, susza, jarmark, pożar, urodzaj…
-- **15 postaci historycznych** z popiersiami 3D, życiorysami i ciekawostkami oraz **encyklopedia kronikarza**:
-  78 haseł (pojęcia, miejsca, wynalazki, taktyki) odblokowywanych w trakcie gry.
-- **Zapis w dowolnym momencie** (autozapis co turę, „Kontynuuj” w menu).
-- **Dziennik nauki** dla ucznia i nauczyciela: pytania do powtórki z poprawnymi odpowiedziami, wyniki
-  w każdym rozdziale, **dyplom do druku** (PNG A4 z imieniem) i **eksport wyników do CSV**.
+## Pobranie i uruchomienie
 
-Sterowanie: mysz; strzałki/WASD lub prawy przycisk myszy – przesuwanie mapy; C – powrót do grodu;
-Spacja – koniec tury; T/W/K – technologie/wojsko/encyklopedia; G – grafika 3D/pikselowa; M – muzyka;
-F11 – pełny ekran.
+- EXE: GitHub Actions → „Kroniki Damiana Ścisła II – Windows EXE” → Artifacts.
+- Przeglądarka: po scaleniu do `main` – `…/gry-historyczne/kroniki-damiana-scisla-2/graj/`.
+- Ze źródeł: `python -m pip install -r requirements.txt`, `python main.py`, kompilacja: `build_exe.bat`.
 
-## Gra w przeglądarce
+Narzędzia: `python tests/bot_kampania.py` (bot przechodzi kampanię), `python main.py --screenshots zrzuty`,
+`python tools/blender/render_sprites.py` (grafika 3D części II; kafle, drzewa i tła bitew pochodzą z części I),
+`python tools/make_audio.py`, `python tools/make_voice.py`, `bash tools/build_web.sh`.
 
-Wersję web buduje [pygbag](https://pypi.org/project/pygbag/) (Python → WebAssembly). Po scaleniu do gałęzi
-`main` workflow `pages.yml` publikuje ją pod adresem `…/gry-historyczne/kroniki-damiana-scisla/graj/`.
-Workflow `kroniki-web.yml` buduje ją przy każdej zmianie i sprawdza w Chromium (Playwright), czy menu
-się rysuje. Postęp zapisuje się w pamięci przeglądarki (localStorage).
-
-## Pobranie EXE
-
-Plik `KronikiDamianaScisla.exe` buduje GitHub Actions (`.github/workflows/kroniki-exe.yml`) na Windowsie:
-zakładka **Actions → „Kroniki Damiana Ścisła – Windows EXE” → Artifacts**. Wypchnięcie tagu `kroniki-v1.0`
-publikuje też wydanie (Release) z plikiem EXE.
-
-## Uruchomienie ze źródeł / samodzielna kompilacja
-
-```bat
-python -m pip install -r requirements.txt
-python main.py
-build_exe.bat
-```
-
-Gotowy plik: `dist\KronikiDamianaScisla.exe` (jeden plik, ok. 30 MB, bez instalacji).
-
-Testy i narzędzia:
-
-- `python tests/bot_kampania.py 3` – bot przechodzi całą kampanię (test integracyjny bez okna),
-- `python main.py --screenshots zrzuty` – zapisuje zrzuty kluczowych ekranów,
-- `python tools/make_icon.py` – generuje ikonę `assets/icon.ico`,
-- `python tools/make_audio.py` – syntetyzuje dźwięki i muzykę do `assets/audio/` (wymaga ffmpeg),
-- `python tools/make_voice.py` – nagrania lektora do `assets/voice/` (wymaga `pip install piper-tts`,
-  ffmpeg i dostępu do Hugging Face; w GitHub Actions dzieje się to automatycznie),
-- `bash tools/build_web.sh` – wersja przeglądarkowa (pygbag),
-- `python tools/blender/render_sprites.py` – modeluje i renderuje grafikę 3D (wymaga `pip install bpy`,
-  czyli Blendera 5.x jako modułu Pythona 3.13; ok. 2 min na 4 rdzeniach CPU, silnik Cycles). Można też
-  `blender -b -P tools/blender/render_sprites.py`. Opcja `--only unit` renderuje tylko wybraną grupę.
-
-### Jak powstaje grafika 3D
-
-Każdy model składa się z prymitywów Blendera (sześciany, walce, stożki, sfery) z materiałami
-proceduralnymi (szum i fale → rampa kolorów + wypukłość). Kamera ortograficzna ma obrót 60°/45°,
-więc kwadratowy kafel 1×1 rzutuje się na romb 64×32 px – dokładnie siatkę mapy gry. Punkt zaczepienia
-każdego sprite'a (środek kafla, stopy postaci) ustawiany jest przesunięciem kamery, dzięki czemu
-rendery pasują do silnika gry bez ręcznego dopasowywania.
-
-Czcionka: DejaVu Serif (licencja w `assets/fonts/LICENSE-DejaVu.txt`).
+Silnik jest kopią silnika części I z parametryzacją: tytuł, katalog zapisów i premie technologii
+pochodzą z `kronika/data.py` (`GAME`, `TECH_FX`).

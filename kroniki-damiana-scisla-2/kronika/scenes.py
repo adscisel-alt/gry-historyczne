@@ -11,14 +11,14 @@ from .world import World
 def help_text():
     return ("JAK GRAĆ\n"
             "• Jesteś Damianem Ścisłem – kronikarzem i doradcą. Nie dowodzisz armią, lecz radzisz władcy.\n"
-            "• Kliknij kafel w granicach księstwa (złota linia), by coś zbudować. Budynki co turę dają zasoby: "
+            "• Kliknij kafel w granicach państwa (złota linia), by coś zbudować. Budynki co turę dają zasoby: "
             "żywność, drewno, kamień i srebro. Każdy budynek poszerza granice.\n"
             "• Technologie (T): wybierz odkrycie, zapłać i rozwiąż zagadkę historyczną. Zła odpowiedź? Spróbuj w następnej turze.\n"
-            "• Wojsko (W): w Dworze drużyny werbujesz nowe karty do talii bitewnej.\n"
+            "• Wojsko (W): w koszarach werbujesz nowe karty do talii bitewnej.\n"
             "• Bitwa: wróg odsłania kartę, ty doradzasz, którą wystawić. Piechota ▶ Jazda ▶ Strzelcy ▶ Piechota (+3). "
             "Przed bitwą pytanie z epoki – dobra odpowiedź daje premię.\n"
             "• Zdarzenia losowe: zaraza, najazd, poselstwo, jarmark... Wybieraj mądrze!\n"
-            "• Sterowanie: mysz, strzałki/WASD lub prawy przycisk – przesuwanie mapy, C – wróć do grodu, "
+            "• Sterowanie: mysz, strzałki/WASD lub prawy przycisk – przesuwanie mapy, C – wróć do stolicy, "
             "Spacja – koniec tury, G – grafika 3D/pikselowa, M – muzyka, F11 – pełny ekran.")
 
 
@@ -336,7 +336,7 @@ class TechScene(Scene):
         elif st == "req":
             txt += "Najpierw trzeba poznać: " + ", ".join(data.TECHS[r]["name"] for r in t["req"] if r not in self.w.techs) + "."
         elif tid in self.w.tech_locked:
-            txt += "Mnisi wciąż szukają w księgach. Spróbuj w następnej turze."
+            txt += "Uczeni wciąż szukają w księgach. Spróbuj w następnej turze."
         elif not self.w.has(cost):
             txt += "Brakuje zasobów. Rozbuduj gospodarkę i wróć!"
         else:
@@ -446,9 +446,9 @@ class ArmyScene(Scene):
     def draw(self, surf):
         surf.blit(gfx.parchment(W, H, 66), (0, 0))
         gfx.frame(surf, pygame.Rect(8, 8, W - 16, H - 16))
-        ui.draw_text(surf, "Wojsko księcia", (W // 2, 22), 30, ui.RED, True, center=True)
+        ui.draw_text(surf, "Wojsko Rzeczypospolitej", (W // 2, 22), 30, ui.RED, True, center=True)
         slots = self.w.recruit_slots()
-        ui.draw_text(surf, f"Werbunki w tej turze: {max(0, slots)} (po jednym na każdy Dwór drużyny)", (W // 2, 62), 15,
+        ui.draw_text(surf, f"Werbunki w tej turze: {max(0, slots)} (po jednym na każde koszary)", (W // 2, 62), 15,
                      ui.INK if slots > 0 else ui.RED, True, center=True)
         ui.draw_text(surf, f"Twoja talia bitewna ({len(self.w.deck)} kart):", (40, 92), 16, ui.INK, True)
         up = self.w.upkeep()
@@ -476,7 +476,7 @@ class ArmyScene(Scene):
             ui.draw_text(surf, f"{data.CARD_TYPES[c['type']]['name']} • siła {c['power']}", (r.x + 48, r.y + 25), 12, ui.INK_SOFT)
             ui.draw_cost(surf, c["cost"], (r.x + 170, r.y + 24), self.w.res, 12)
         if self.w.count("koszary") == 0:
-            ui.draw_text(surf, "Zbuduj Dwór drużyny, aby werbować!", (W // 2, 660), 18, ui.RED, True, center=True)
+            ui.draw_text(surf, "Zbuduj koszary, aby werbować!", (W // 2, 660), 18, ui.RED, True, center=True)
         tri = pygame.Rect(880, 330, 360, 210)
         surf.blit(gfx.panel(tri.w, tri.h, 12), tri.topleft)
         ui.draw_text(surf, "Rada Damiana o bitwach", (tri.x + 20, tri.y + 16), 16, ui.PURPLE, True)
@@ -670,7 +670,7 @@ def make_diploma(save):
     ui.draw_text(s, "Niniejszym zaświadcza się, że", (Wd // 2, 340), 34, ui.INK, center=True)
     ui.draw_text(s, name, (Wd // 2, 400), 76, ui.PURPLE, True, center=True)
     pygame.draw.line(s, ui.INK_SOFT, (Wd // 2 - 450, 500), (Wd // 2 + 450, 500), 3)
-    txt = (f"jako doradca książąt i królów przeprowadził(a) księstwo przez dzieje Polski. "
+    txt = (f"jako doradca książąt i królów przeprowadził(a) państwo przez dzieje Polski. "
            f"Ukończone rozdziały kampanii: {done} z {len(data.CHAPTERS)}. Zdobyte gwiazdki: {stars}. "
            f"Trafne odpowiedzi na pytania z historii: {ok} z {n}.")
     ui.draw_text(s, txt, (300, 540), 34, ui.INK, width=Wd - 600, line_h=48)

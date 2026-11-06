@@ -247,7 +247,7 @@ class World:
         if pos in self.buildings or pos in self.camps or pos in self.landmarks:
             return False, "Pole zajęte."
         if pos not in self.territory:
-            return False, "Poza granicami księstwa."
+            return False, "Poza granicami państwa."
         if b.get("req") and b["req"] not in self.techs:
             return False, "Wymaga technologii: " + data.TECHS[b["req"]]["name"]
         if self.terr[y][x] not in b["terrain"]:

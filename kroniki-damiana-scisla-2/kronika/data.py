@@ -5,7 +5,7 @@ epoki, budynki, karty, technologie, pytania, postacie, zdarzenia, rozdziały."""
 GAME = {
     "title": "Kroniki Damiana Ścisła II",
     "subtitle": "Rzeczpospolita • 1454–1795",
-    "tagline": "Od wojny trzynastoletniej po insurekcję kościuszkowską – złoty wiek, potop i rozbiory.",
+    "tagline": "Od wojny trzynastoletniej po Racławice: złoty wiek, potop i rozbiory.",
     "campaign": "Kampania: od Malborka do Racławic",
     "years": ("1454", "1795"),
     "exe": "KronikiDamianaScisla2",

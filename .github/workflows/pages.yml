@@ -30,18 +30,22 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Wersja przeglądarkowa „Kronik Damiana Ścisła” (pygbag)
+      - name: Wersje przeglądarkowe „Kronik Damiana Ścisła” I i II (pygbag)
         run: |
           python -m pip install pygbag piper-tts
           sudo apt-get install -y -q ffmpeg > /dev/null
           (cd kroniki-damiana-scisla && python tools/make_voice.py) || echo "Lektor niedostępny – budowa bez nagrań"
           bash kroniki-damiana-scisla/tools/build_web.sh
+          (cd kroniki-damiana-scisla-2 && python tools/make_voice.py) || echo "Lektor II niedostępny – budowa bez nagrań"
+          bash kroniki-damiana-scisla-2/tools/build_web.sh
       - name: Złożenie strony
         run: |
           mkdir -p ../_site
           rsync -a --exclude .git --exclude web_build ./ ../_site/
           mkdir -p ../_site/kroniki-damiana-scisla/graj
           cp -r kroniki-damiana-scisla/web_build/kroniki-damiana-scisla/build/web/. ../_site/kroniki-damiana-scisla/graj/
+          mkdir -p ../_site/kroniki-damiana-scisla-2/graj
+          cp -r kroniki-damiana-scisla-2/web_build/kroniki-damiana-scisla-2/build/web/. ../_site/kroniki-damiana-scisla-2/graj/
           mv ../_site ./_site
       - uses: actions/upload-pages-artifact@v3
         with:

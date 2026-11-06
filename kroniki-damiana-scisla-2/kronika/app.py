@@ -219,7 +219,8 @@ def screenshots(outdir):
     shot("05_dialog.png", 200)
     app.stack = [ms, TechScene(app, ms)]
     shot("06_technologie.png", 2)
-    b = Battle(app, w, "Bitwa z Wichmanem (967)", data.CHAPTERS[0]["final"]["deck"], 24, False, "forest", ["czesi", "czesi"], "")
+    f0 = data.CHAPTERS[0]["final"]
+    b = Battle(app, w, f0["name"], f0["deck"], 24, False, f0["terrain"], f0.get("allies", []), "")
     b.buttons = []
     b.after_question(True)
     b.hover = 1
@@ -231,7 +232,7 @@ def screenshots(outdir):
     ms2 = MapScene(app, 3)
     ms2.queue.clear()
     app.stack = [ms2]
-    shot("09_mapa_plowce.png", 5)
+    shot("09_mapa_rozdzial4.png", 5)
     app.stack = [ms2, ArmyScene(app, ms2)]
     shot("10_wojsko.png", 2)
     pygame.quit()

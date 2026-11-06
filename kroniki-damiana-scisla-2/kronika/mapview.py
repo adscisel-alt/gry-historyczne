@@ -315,7 +315,7 @@ class MapScene(Scene):
             self.after_change()
         self.app.push(Battle(self.app, self.w, c["name"], c["deck"], self.camp_morale(c), False,
                              "forest" if self.w.terr[pos[1]][pos[0]] == "forest" else "field",
-                             intro=f"Wojsko księcia wyrusza na {c['name'].lower()}. Kronikarz jedzie z tyłu, na najspokojniejszym koniu w stajni.",
+                             intro=f"Wojsko króla wyrusza na: {c['name'].lower()}. Kronikarz jedzie z tyłu, na najspokojniejszym koniu w stajni.",
                              on_end=done))
 
     def raid_at(self, pos):
@@ -340,12 +340,12 @@ class MapScene(Scene):
                 self.say("damian", f"{r['name']} złupił podgrodzie: −{lost_f} żywności, −{lost_s} srebra. "
                                    "Zagon odjechał z łupami...")
             else:
-                self.say("damian", "Nie udało się przechwycić zagonu – wróg wciąż idzie na gród!")
+                self.say("damian", "Nie udało się przechwycić zagonu – wróg wciąż idzie na stolicę!")
                 w.raids.append(r) if r not in w.raids else None
             w.dirty = True
             self.after_change()
         name = r["name"] + (" pod grodem!" if at_gates else " – przechwycenie")
-        intro = ("Zagon dotarł pod gród! Bramy zamknięte, na wałach łucznicy." if at_gates else
+        intro = ("Zagon dotarł pod stolicę! Bramy zamknięte, na wałach strzelcy." if at_gates else
                  "Konni gońcy wskazali drogę zagonu. Zastawiamy zasadzkę na trakcie.")
         self.app.push(Battle(self.app, w, name, r["deck"], 10 + 3 * len(r["deck"]) + 2 * w.epoch, at_gates,
                              "grod" if at_gates else "field", intro=intro, on_end=done))
@@ -416,7 +416,7 @@ class MapScene(Scene):
         if raid_due(w):
             r = spawn_raid(w)
             self.queue.append(lambda r=r: self.app.push(Dialogue(self.app, [{"who": "damian", "title": "Zagon wroga!",
-                "text": f"Zwiadowcy donoszą: {r['name']} wyruszył w stronę grodu! Dotrze za ok. {raid_eta(w, r)} tur. "
+                "text": f"Zwiadowcy donoszą: {r['name']} wyruszył w stronę stolicy! Dotrze za ok. {raid_eta(w, r)} tur. "
                         "Kliknij go na mapie i doradź przechwycenie – albo postaw palisadę na jego drodze."}], w)))
             audio.play("drum")
         self.after_change()
@@ -434,7 +434,7 @@ class MapScene(Scene):
         st = self.ch.get("siege_turn")
         if st and w.turn == st and not w.final_won:
             self.queue.append(lambda: self.app.push(Dialogue(self.app, [{"who": "damian", "title": "Oblężenie!", "text":
-                "Na horyzoncie dymy i tumany kurzu. Mongołowie otaczają gród! Na mury, wszyscy na mury!"}], w,
+                "Na horyzoncie dymy i tumany kurzu. Wróg otacza nasze mury! Na mury, wszyscy na mury!"}], w,
                 on_done=lambda: self.final_battle(True))))
             audio.play("drum")
         elif not sc and w.turn > 2 and random.random() < 0.33:
@@ -491,9 +491,9 @@ class MapScene(Scene):
             tips.append(f"Wojsko zjada {w.upkeep()} żywności na turę, a pola dają za mało! Zbuduj pola albo młyn, "
                         "bo oddziały zaczną dezerterować.")
         if w.count("pole") == 0:
-            tips.append("Zacznij od pól: kliknij łąkę w granicach księstwa (złota linia) i wybierz „Pole uprawne”.")
+            tips.append(f"Zacznij od gospodarki: kliknij łąkę w granicach (złota linia) i wybierz „{data.BUILDINGS['pole']['name']}”.")
         elif w.count("drwal") == 0:
-            tips.append("Drewno przyda się do wszystkiego. Kliknij las w granicach i postaw obóz drwali.")
+            tips.append(f"Drewno przyda się do wszystkiego. Kliknij las w granicach i postaw: {data.BUILDINGS['drwal']['name']}.")
         if not tips:
             for i, o in enumerate(self.ch["objectives"]):
                 if i in w.done:
@@ -508,7 +508,8 @@ class MapScene(Scene):
                         tips.append(f"„{b['name']}” wymaga technologii: {data.TECHS[b['req']]['name']}.")
                     else:
                         lack = [k for k, v in w.build_cost(o[1]).items() if w.res[k] < v]
-                        src = {"food": "Pole uprawne", "wood": "Obóz drwali (w lesie)", "stone": "Kamieniołom (na wzgórzach)", "silver": "Targ"}
+                        B = data.BUILDINGS
+                        src = {"food": B["pole"]["name"], "wood": B["drwal"]["name"] + " (w lesie)", "stone": B["kamieniolom"]["name"] + " (na wzgórzach)", "silver": B["targ"]["name"]}
                         if lack:
                             tips.append(f"Na „{b['name']}” brakuje: {', '.join(data.RES_NAMES[k].lower() for k in lack)}. "
                                         f"Zbuduj: {', '.join(src[k] for k in lack)}.")
@@ -526,7 +527,7 @@ class MapScene(Scene):
                 break
         if w.raids:
             r = w.raids[0]
-            tips.insert(0, f"{r['name']} idzie na gród (za ok. {raid_eta(w, r)} tur)! Kliknij go i doradź przechwycenie "
+            tips.insert(0, f"{r['name']} idzie na stolicę (za ok. {raid_eta(w, r)} tur)! Kliknij go i doradź przechwycenie "
                            "albo postaw palisadę na jego drodze.")
         if self.ch.get("siege_turn") and not w.final_won:
             left = self.ch["siege_turn"] - w.turn
@@ -730,7 +731,7 @@ class MapScene(Scene):
                 prod = self.w.building_prod(b)
                 ps = ", ".join(f"+{v} {data.RES_NAMES[k].lower()}" for k, v in prod.items() if v) or "brak produkcji"
                 yy2 = ui.draw_text(surf, "Na turę: " + ps, (p.x + 16, 332), 13, ui.INK_SOFT, width=p.w - 32)
-                desc = "Serce księstwa. Tu zasiada władca, a kronikarz ma swój kąt przy piecu." if b == "grod" else data.BUILDINGS[b]["desc"]
+                desc = "Serce państwa. Tu zasiada władca, a kronikarz ma swój kąt przy piecu." if b == "grod" else data.BUILDINGS[b]["desc"]
                 ui.draw_text(surf, desc, (p.x + 16, yy2 + 6), 13, ui.INK, width=p.w - 32)
             elif pos in self.w.camps:
                 c = self.w.camps[pos]
@@ -744,7 +745,7 @@ class MapScene(Scene):
                 if t == "water":
                     ui.draw_text(surf, "Ryby, łodzie i... nic do budowania.", (p.x + 16, 334), 13, ui.INK_SOFT)
                 elif pos not in self.w.territory:
-                    ui.draw_text(surf, "Poza granicami. Buduj bliżej grodu, by poszerzyć ziemie.", (p.x + 16, 334), 13, ui.INK_SOFT, width=p.w - 32)
+                    ui.draw_text(surf, "Poza granicami. Buduj bliżej stolicy, by poszerzyć ziemie.", (p.x + 16, 334), 13, ui.INK_SOFT, width=p.w - 32)
                 else:
                     ui.draw_text(surf, "Co tu zbudować?", (p.x + 16, 334), 13, ui.INK_SOFT)
         mpos = pygame.mouse.get_pos()

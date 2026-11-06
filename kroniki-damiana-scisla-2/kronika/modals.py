@@ -176,7 +176,7 @@ class Quiz(Scene):
             en = self.chosen is None and i not in self.removed
             if self.chosen is not None:
                 col = (50, 130, 60) if i == self.ok else ((170, 50, 40) if i == self.chosen else (120, 112, 100))
-            lab = ("ABCD"[i] + ")  " + a) if i not in self.removed else "— (mnisi skreślili tę odpowiedź) —"
+            lab = ("ABCD"[i] + ")  " + a) if i not in self.removed else "— (uczeni skreślili tę odpowiedź) —"
             self.buttons.append(ui.Button((b.x + 60, y0 + i * 52, b.w - 120, 44), lab, lambda i=i: self.pick(i),
                                           size=16, enabled=en or self.chosen is not None, color=col))
         if self.chosen is not None:

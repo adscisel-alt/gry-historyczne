@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Blender: modeluje i renderuje grafikę 3D gry „Kroniki Damiana Ścisła”.
+"""Blender: modeluje i renderuje grafikę 3D gry „Kroniki Damiana Ścisła II: Rzeczpospolita”.
 
 Tak jak w klasycznych strategiach z lat 90. (np. Age of Empires II) grafika jest
 prerenderowanym 3D: modele low-poly budowane są tu z prymitywów Blendera,
@@ -39,6 +39,11 @@ FACTION = {
     "mg": {"tunic": (150, 100, 50), "trim": (90, 60, 30), "shield": (120, 80, 40), "emb": (200, 170, 90)},
     "tz": {"tunic": (238, 238, 232), "trim": (20, 20, 20), "shield": (238, 238, 232), "emb": (20, 20, 20)},
     "lt": {"tunic": (150, 30, 40), "trim": (60, 120, 70), "shield": (150, 30, 40), "emb": (240, 240, 240)},
+    "ru": {"tunic": (60, 110, 70), "trim": (180, 40, 40), "shield": (180, 40, 40), "emb": (230, 200, 80)},
+    "sv": {"tunic": (50, 80, 160), "trim": (230, 200, 60), "shield": (50, 80, 160), "emb": (230, 200, 60)},
+    "tr": {"tunic": (170, 40, 40), "trim": (240, 240, 230), "shield": (60, 120, 70), "emb": (240, 220, 120)},
+    "rs": {"tunic": (40, 90, 60), "trim": (180, 40, 40), "shield": (40, 90, 60), "emb": (230, 230, 230)},
+    "au": {"tunic": (235, 235, 228), "trim": (180, 40, 40), "shield": (235, 235, 228), "emb": (40, 40, 40)},
 }
 SKIN = (232, 186, 150)
 STEEL = (170, 176, 186)
@@ -579,9 +584,75 @@ UNIT_ROT = (80, 0, 32)
 UNIT_PPU = 64
 
 
+def hat(fac, kind, z0):
+    """Nakrycia głowy XV–XVIII w. zależne od frakcji i rodzaju oddziału."""
+    z = z0 + 0.84
+    steel = mat(STEEL, 0.35, 0.85)
+    black = mat((30, 30, 32), 0.8)
+    if kind == "hussar":
+        sph(0, 0, z0 + 0.82, 0.12, steel, sub=2, scale=(1, 1, 0.75), smooth=True)
+        box(-0.07, 0, z0 + 0.72, 0.06, 0.22, 0.1, steel)
+        rod((0.1, 0, z0 + 0.86), (0.12, 0, z0 + 0.72), 0.008, steel)
+        return
+    if fac == "tz" or kind in ("knight", "knight_t", "knight_w"):
+        cyl(0, 0, z0 + 0.72, 0.115, 0.17, steel, v=12)
+        box(0.11, 0, z0 + 0.8, 0.012, 0.12, 0.018, mat((20, 20, 20)))
+        return
+    if kind == "scythe":
+        cyl(0, 0, z - 0.02, 0.17, 0.015, black, v=16)
+        cyl(0, 0, z - 0.02, 0.1, 0.07, black, v=12)
+        for k, c in enumerate([(200, 40, 40), (60, 120, 200), (240, 200, 60)]):
+            rod((0, 0.06 - k * 0.04, z + 0.04), (-0.12, 0.08 - k * 0.04, z + 0.16), 0.008, mat(c))
+        return
+    if fac == "mg":
+        cyl(0, 0, z, 0.115, 0.07, mat((110, 80, 50)), v=10)
+        cone(0, 0, z + 0.06, 0.08, 0.0, 0.08, mat((150, 100, 50)), v=8)
+    elif fac == "ru":
+        cyl(0, 0, z - 0.02, 0.1, 0.16, mat((170, 40, 40)), v=12)
+        cyl(0, 0, z - 0.03, 0.115, 0.05, mat((90, 60, 40), 1.0), v=12)
+    elif fac == "sv":
+        cyl(0, 0, z - 0.02, 0.2, 0.015, black, v=18)
+        cyl(0, 0, z - 0.02, 0.1, 0.11, black, v=12)
+    elif fac == "tr":
+        sph(0, 0, z + 0.02, 0.13, mat((240, 238, 228), 0.9), sub=2, scale=(1, 1, 0.75), smooth=True)
+        cone(0, 0, z + 0.06, 0.05, 0.0, 0.08, mat((170, 40, 40)), v=8)
+    elif fac in ("rs", "au"):
+        cone(0, 0, z - 0.02, 0.19, 0.13, 0.07, black, v=3)
+    elif fac == "en":
+        cone(0, 0, z - 0.01, 0.11, 0.0, 0.15, steel, v=10)
+    else:   # pl, lt, cz – kołpak z piórem
+        cyl(0, 0, z - 0.02, 0.112, 0.08, mat((90, 62, 40), 1.0), v=12)
+        cyl(0, 0, z + 0.05, 0.095, 0.04, mat(FACTION[fac]["tunic"]), v=12)
+        rod((-0.02, 0.06, z + 0.04), (-0.12, 0.08, z + 0.22), 0.01, mat((245, 245, 240)))
+
+
+def hussar_model():
+    """Husarz: koń w czapraku, zbroja, skóra lamparta, skrzydła i kopia z proporcem."""
+    leopard = noise_mat((205, 140, 60), (60, 40, 20), scale=30, seed=5, bump=0.1, c3=(205, 140, 60), ramp_pos=(0.55, 0.62))
+    horse((80, 60, 50), (160, 30, 40))
+    human("pl", "hussar", z0=0.42, legs=False, weapon=False)
+    steel = mat(STEEL, 0.3, 0.85)
+    box(0.05, 0, 0.42 + 0.36, 0.2, 0.28, 0.22, steel)
+    sph(-0.08, 0, 0.42 + 0.55, 0.17, leopard, sub=2, scale=(0.6, 1.2, 1.3), smooth=True)
+    white = mat((248, 248, 245), 0.6)
+    for y in (-0.07, 0.07):
+        prev = None
+        for t in range(9):
+            a = t / 8
+            x = -0.14 - 0.12 * math.sin(a * 1.6)
+            z = 0.42 + 0.55 + a * 0.75
+            if prev:
+                rod(prev, (x, y, z), 0.012, mat((120, 90, 50)))
+            box(x - 0.03, y, z, 0.07, 0.012, 0.035, white, ry=-0.4)
+            prev = (x, y, z)
+    rod((-0.3, 0.2, 0.85), (1.15, 0.2, 1.2), 0.02, mat((200, 170, 120)))
+    box(0.95, 0.2, 1.16, 0.18, 0.01, 0.05, mat((235, 235, 235)))
+    box(0.95, 0.2, 1.11, 0.18, 0.01, 0.05, mat((200, 30, 40)))
+
+
 def human(fac, kind, z0=0.0, legs=True, weapon=True):
     t = FACTION[fac]
-    tun = mat(t["tunic"])
+    tun = mat(t["tunic"] if kind != "scythe" else (226, 220, 204))
     if legs:
         ph = ANIM["walk"]
         for j, y in enumerate((-0.06, 0.06)):
@@ -601,20 +672,11 @@ def human(fac, kind, z0=0.0, legs=True, weapon=True):
     sph(0.085, -0.035, z0 + 0.81, 0.012, mat((30, 20, 20)), sub=1)
     sph(0.085, 0.035, z0 + 0.81, 0.012, mat((30, 20, 20)), sub=1)
     steel = mat(STEEL, 0.35, 0.85)
-    if fac == "mg":
-        cyl(0, 0, z0 + 0.84, 0.115, 0.07, mat((110, 80, 50)), v=10)
-        cone(0, 0, z0 + 0.9, 0.08, 0.0, 0.08, mat((150, 100, 50)), v=8)
-    elif fac == "tz" or kind in ("knight", "knight_t", "knight_w"):
-        cyl(0, 0, z0 + 0.72, 0.115, 0.17, steel, v=12)
-        box(0.11, 0, z0 + 0.8, 0.012, 0.12, 0.018, mat((20, 20, 20)))
-        if kind == "knight":
-            sph(0, 0, z0 + 0.92, 0.04, mat((200, 40, 40)), sub=1, scale=(1, 0.5, 1.5))
-    else:
-        cone(0, 0, z0 + 0.83, 0.11, 0.0, 0.15, steel, v=10)
+    hat(fac, kind, z0)
     if not weapon:
         return
     wood = mat((120, 90, 50))
-    if kind in ("spear", "sword", "xbow") or kind.startswith("knight") or kind in ("horse", "horse_lt"):
+    if kind in ("spear", "sword", "xbow") or kind.startswith("knight") or kind in ("horse_lt",):
         sh = cyl(0.13, -0.19, z0 + 0.48, 0.15, 0.03, mat(t["shield"], 0.6), v=14, rot=(0, math.pi / 2, 0), center=True)
         cyl(0.15, -0.19, z0 + 0.48, 0.06, 0.02, mat(t["emb"], 0.6), v=10, rot=(0, math.pi / 2, 0), center=True)
     if kind == "spear":
@@ -635,6 +697,13 @@ def human(fac, kind, z0=0.0, legs=True, weapon=True):
     elif kind == "xbow":
         box(0.2, 0.19, z0 + 0.46, 0.4, 0.04, 0.04, wood)
         box(0.36, 0.19, z0 + 0.46, 0.03, 0.34, 0.02, mat((80, 60, 40)))
+    elif kind == "musket":
+        rod((0.12, 0.18, z0 + 0.45), (-0.22, 0.18, z0 + 1.1), 0.02, mat((40, 40, 44), 0.4, 0.8))
+        rod((0.18, 0.18, z0 + 0.36), (0.08, 0.18, z0 + 0.55), 0.035, wood)
+        box(-0.05, -0.15, z0 + 0.36, 0.06, 0.04, 0.08, mat((110, 80, 40)))
+    elif kind == "scythe":
+        rod((0.1, 0.19, z0 + 0.0), (0.1, 0.19, z0 + 1.1), 0.017, wood)
+        box(0.1, 0.19, z0 + 1.08, 0.05, 0.01, 0.42, mat((200, 205, 215), 0.3, 0.9), ry=0.05)
 
 
 def horse(col, cloth=None, cross=None):
@@ -658,7 +727,9 @@ def horse(col, cloth=None, cross=None):
 def unit(kind, fac, walk=None):
     reset()
     ANIM["walk"] = walk
-    if kind in ("spear", "sword", "pike", "bow", "xbow"):
+    if kind == "hussar":
+        hussar_model()
+    elif kind in ("spear", "sword", "pike", "bow", "xbow", "musket", "scythe"):
         human(fac, kind)
     elif kind in ("horse", "horse_lt", "horse_mg", "knight", "knight_t", "knight_w"):
         col = {"horse": (110, 76, 46), "horse_lt": (70, 50, 40), "horse_mg": (150, 120, 80)}.get(kind, (90, 70, 60))
@@ -671,8 +742,9 @@ def unit(kind, fac, walk=None):
             rod((-0.3, 0.2, 0.85), (1.0, 0.2, 1.15), 0.018, mat((130, 100, 60)))
             cone(1.0, 0.2, 1.15, 0.03, 0, 0.1, mat(STEEL, 0.4, 0.8), v=4, rot=(0, math.radians(77), 0))
             t = FACTION["lt" if kind == "horse_lt" else fac]
-            cyl(0.13, -0.19, 0.9, 0.14, 0.03, mat(t["shield"], 0.6), v=14, rot=(0, math.pi / 2, 0), center=True)
-            cyl(0.15, -0.19, 0.9, 0.055, 0.02, mat(t["emb"], 0.6), v=10, rot=(0, math.pi / 2, 0), center=True)
+            if kind != "horse":
+                cyl(0.13, -0.19, 0.9, 0.14, 0.03, mat(t["shield"], 0.6), v=14, rot=(0, math.pi / 2, 0), center=True)
+                cyl(0.15, -0.19, 0.9, 0.055, 0.02, mat(t["emb"], 0.6), v=10, rot=(0, math.pi / 2, 0), center=True)
         else:
             bpy.ops.mesh.primitive_torus_add(major_radius=0.3, minor_radius=0.014, location=(0.2, 0.12, 0.95),
                                              rotation=(math.pi / 2, 0, 0))
@@ -699,6 +771,272 @@ def unit(kind, fac, walk=None):
     suffix = "" if walk is None else f"_w{walk}"
     render(f"unit_{kind}_{fac}{suffix}", 96, 88, 40, 82, ppu=UNIT_PPU, rot=UNIT_ROT)
     ANIM["walk"] = None
+
+
+# ------------------------------------------------------------------ ARCHITEKTURA EPOK (część II)
+EP = {   # ściany, dach, detale, akcent
+    0: {"wall": (234, 226, 206), "roof": (172, 66, 48), "det": (205, 192, 168), "acc": (190, 160, 70)},   # renesans
+    1: {"wall": (232, 206, 160), "roof": (170, 70, 50), "det": (200, 170, 130), "acc": (150, 60, 50)},    # manieryzm, Zamość
+    2: {"wall": (226, 186, 120), "roof": (80, 104, 96), "det": (240, 232, 214), "acc": (90, 150, 128)},   # barok, miedziane hełmy
+    3: {"wall": (238, 228, 186), "roof": (118, 120, 128), "det": (248, 246, 238), "acc": (210, 200, 160)},  # klasycyzm
+}
+
+
+def hip(x, y, z, w, d, h, m, over=0.03):
+    """Dach czterospadowy nad prostokątem w x d."""
+    w2, d2 = w / 2 + over, d / 2 + over
+    if w >= d:
+        r = w2 - d2 * 0.9
+        v = [(x - w2, y - d2, z), (x + w2, y - d2, z), (x + w2, y + d2, z), (x - w2, y + d2, z), (x - r, y, z + h), (x + r, y, z + h)]
+        f = [(0, 1, 5, 4), (2, 3, 4, 5), (0, 4, 3), (1, 2, 5), (0, 3, 2, 1)]
+    else:
+        r = d2 - w2 * 0.9
+        v = [(x - w2, y - d2, z), (x + w2, y - d2, z), (x + w2, y + d2, z), (x - w2, y + d2, z), (x, y - r, z + h), (x, y + r, z + h)]
+        f = [(0, 1, 4), (2, 3, 5), (1, 2, 5, 4), (3, 0, 4, 5), (0, 3, 2, 1)]
+    return mesh(v, f, m, "Dach4")
+
+
+def windows(x, y, z, w, d, h, floors=2, per=3, col=(60, 70, 90)):
+    """Okna na dwóch widocznych ścianach (+x i -y)."""
+    m = mat(col, 0.2)
+    for fl in range(floors):
+        zz = z + h * (fl + 0.35) / floors
+        for k in range(per):
+            t = (k + 0.5) / per
+            box(x - w / 2 + w * t, y - d / 2 - 0.004, zz, w / per * 0.35, 0.01, h / floors * 0.38, m)
+            box(x + w / 2 + 0.004, y - d / 2 + d * t, zz, 0.01, d / per * 0.35, h / floors * 0.38, m)
+
+
+def attic(x, y, z, w, d, m, n=6):
+    """Polska attyka renesansowa: grzebień ze sterczynkami nad gzymsem."""
+    for (x0, y0, x1, y1) in [(-w / 2, -d / 2, w / 2, -d / 2), (w / 2, -d / 2, w / 2, d / 2)]:
+        box(x + (x0 + x1) / 2, y + (y0 + y1) / 2, z, abs(x1 - x0) + 0.02, abs(y1 - y0) + 0.02, 0.06, m)
+        for k in range(n):
+            t = k / (n - 1)
+            px, py = x + x0 + (x1 - x0) * t, y + y0 + (y1 - y0) * t
+            cone(px, py, z + 0.06, 0.018, 0.0, 0.06, m, v=4)
+
+
+def helmet(x, y, z, r, m):
+    """Barokowy hełm wieży: cebula + latarnia + iglica."""
+    sph(x, y, z + r * 0.6, r, m, sub=2, scale=(1, 1, 0.8), smooth=True)
+    cyl(x, y, z + r * 1.3, r * 0.35, r * 0.6, m, v=10)
+    sph(x, y, z + r * 2.0, r * 0.45, m, sub=2, smooth=True)
+    cone(x, y, z + r * 2.3, r * 0.12, 0, r * 1.2, mat(GOLD, 0.3, 0.8), v=6)
+
+
+def dome(x, y, z, r, m, lantern=True):
+    sph(x, y, z, r, m, sub=3, scale=(1, 1, 0.85), smooth=True)
+    if lantern:
+        cyl(x, y, z + r * 0.8, r * 0.25, r * 0.4, mat((240, 236, 226)), v=10)
+        sph(x, y, z + r * 1.25, r * 0.28, m, sub=2, smooth=True)
+
+
+def portico(x, y, z, w, h, cols=4, face="y"):
+    """Klasycystyczny portyk: kolumny i trójkątny fronton na ścianie -y."""
+    white = mat((248, 246, 238), 0.6)
+    for k in range(cols):
+        cx = x - w / 2 + w * (k + 0.5) / cols
+        cyl(cx, y - 0.06, z, 0.025, h, white, v=10)
+    box(x, y - 0.06, z + h, w + 0.04, 0.12, 0.04, white)
+    mesh([(x - w / 2 - 0.02, y - 0.12, z + h + 0.04), (x + w / 2 + 0.02, y - 0.12, z + h + 0.04), (x, y - 0.12, z + h + 0.16),
+          (x - w / 2 - 0.02, y, z + h + 0.04), (x + w / 2 + 0.02, y, z + h + 0.04), (x, y, z + h + 0.16)],
+         [(0, 1, 2), (3, 5, 4), (0, 3, 4, 1), (1, 4, 5, 2), (2, 5, 3, 0)], white, "Fronton")
+
+
+def styled_block(x, y, w, d, h, ep, floors=2, wall=None, roof="hip"):
+    e = EP[ep]
+    box(x, y, 0, w, d, h, mat(wall or e["wall"]))
+    windows(x, y, 0, w, d, h, floors, max(2, int(w / 0.12)))
+    box(x, y, h, w + 0.03, d + 0.03, 0.025, mat(e["det"]))
+    if ep == 0:
+        attic(x, y, h + 0.025, w, d, mat(e["wall"]))
+        hip(x, y, h + 0.025, w * 0.9, d * 0.9, 0.12, mat(e["roof"], 0.7))
+    elif ep == 1:
+        attic(x, y, h + 0.025, w, d, mat(e["det"]), n=5)
+        hip(x, y, h + 0.025, w, d, 0.16, mat(e["roof"], 0.7))
+    elif ep == 2:   # dach mansardowy
+        hip(x, y, h + 0.025, w + 0.04, d + 0.04, 0.09, mat(e["roof"], 0.6), over=0.0)
+        hip(x, y, h + 0.115, w * 0.7, d * 0.7, 0.08, mat(e["roof"], 0.6), over=0.0)
+    else:
+        hip(x, y, h + 0.025, w, d, 0.07, mat(e["roof"], 0.6))
+        for k in range(int(w / 0.08)):   # balustrada
+            cyl(x - w / 2 + 0.04 + k * 0.08, y - d / 2, h + 0.025, 0.008, 0.05, mat(e["det"]), v=6)
+
+
+def b_grod2(ep):
+    """Siedziba władcy w czterech stylach: zamek renesansowy, ratusz z wieżą, pałac barokowy, pałac klasycystyczny."""
+    reset()
+    random.seed(ep)
+    e = EP[ep]
+    if ep == 0:     # zamek renesansowy z krużgankami (jak Wawel)
+        for (x, y, w, d) in [(-0.05, 0.25, 0.7, 0.22), (0.25, -0.05, 0.22, 0.5), (-0.33, -0.05, 0.14, 0.5)]:
+            styled_block(x, y, w, d, 0.32, 0, floors=2)
+        for k in range(5):   # arkady krużganków od dziedzińca
+            box(-0.25 + k * 0.1, 0.14 - 0.002, 0.03, 0.05, 0.01, 0.12, mat((70, 60, 55)))
+        box(0.27, -0.33, 0, 0.17, 0.17, 0.55, mat(e["wall"]))
+        attic(0.27, -0.33, 0.55, 0.17, 0.17, mat(e["wall"]), n=4)
+        dome(0.27, -0.33, 0.6, 0.08, mat(GOLD, 0.3, 0.8))
+        flag(-0.33, 0.2, 0.32, 0.4, (235, 235, 235), (200, 30, 40))
+    elif ep == 1:   # ratusz z wieżą (jak w Zamościu)
+        styled_block(0, 0.05, 0.6, 0.36, 0.34, 1, floors=2, wall=(236, 196, 150))
+        box(0, -0.12, 0, 0.14, 0.14, 0.9, mat((236, 196, 150)))
+        windows(0, -0.12, 0.34, 0.14, 0.14, 0.5, 2, 1)
+        attic(0, -0.12, 0.9, 0.14, 0.14, mat(e["det"]), n=3)
+        cone(0, -0.12, 0.96, 0.1, 0.0, 0.32, mat(e["roof"], 0.6), v=8)
+        for k in range(4):   # wachlarzowe schody
+            box(0, -0.26 - k * 0.04, 0, 0.3 - k * 0.04, 0.05, 0.12 - k * 0.03, mat((200, 190, 175)))
+        flag(0, -0.12, 1.25, 0.18, (235, 235, 235), (200, 30, 40), size=0.16)
+    elif ep == 2:   # pałac barokowy (jak Wilanów)
+        styled_block(0.02, 0.12, 0.62, 0.24, 0.3, 2, floors=2)
+        for x in (-0.24, 0.28):
+            styled_block(x, -0.18, 0.14, 0.38, 0.26, 2, floors=2)
+            box(x, -0.36, 0, 0.16, 0.16, 0.42, mat(e["wall"]))
+            helmet(x, -0.36, 0.42, 0.09, mat(e["acc"], 0.5, 0.3))
+        box(0.02, -0.01, 0, 0.18, 0.04, 0.34, mat(e["det"]))
+        flag(0.02, 0.12, 0.42, 0.35, (235, 235, 235), (200, 30, 40))
+    else:           # pałac klasycystyczny (jak Łazienki) nad stawem
+        box(0.0, -0.33, 0, 0.9, 0.24, 0.015, mat((70, 120, 170), 0.1))
+        styled_block(0, 0.05, 0.56, 0.34, 0.32, 3, floors=2)
+        portico(0, -0.12, 0, 0.32, 0.3, cols=6)
+        for k in range(5):
+            cyl(-0.22 + k * 0.11, -0.12, 0.42, 0.018, 0.08, mat((240, 238, 230)), v=8)
+        flag(0, 0.12, 0.4, 0.35, (235, 235, 235), (200, 30, 40))
+    suffix = "_f1" if ANIM["wave"] else ""
+    render(f"building_grod_{ep}{suffix}", 80, 112, 40, 96, ppu=PPU_BLD)
+
+
+def b_epoch(kind, ep):
+    """Budynki zależne od epoki."""
+    reset()
+    random.seed(kind + str(ep))
+    e = EP[ep]
+    if kind == "pole":      # folwark: dwór z gankiem, stodoła, pola
+        box(0, 0, 0, 0.9, 0.9, 0.02, noise_mat((150, 120, 60), (220, 190, 96), scale=5, seed=2, kind="wave", bump=0.5))
+        dworek_wall = (240, 236, 226) if ep < 3 else (238, 228, 186)
+        box(-0.15, 0.12, 0.02, 0.4, 0.24, 0.16, mat(dworek_wall))
+        windows(-0.15, 0.12, 0.02, 0.4, 0.24, 0.16, 1, 4)
+        roofc = (90, 70, 55) if ep < 2 else ((80, 104, 96) if ep == 2 else (118, 120, 128))
+        hip(-0.15, 0.12, 0.18, 0.4, 0.24, 0.17, mat(roofc, 0.8), over=0.04)
+        portico(-0.15, 0.0, 0.02, 0.12, 0.13, cols=2)
+        box(0.25, 0.25, 0.02, 0.26, 0.18, 0.15, mat(WOOD))
+        gable(0.25, 0.25, 0.17, 0.26, 0.18, 0.12, mat(THATCH, 0.95))
+        for _ in range(3):
+            cone(random.uniform(0.1, 0.38), random.uniform(-0.38, -0.1), 0.02, 0.07, 0, 0.16, mat((212, 180, 80)), v=8)
+    elif kind == "targ":    # kamienice z rynkiem
+        pastel = [(232, 200, 150), (200, 220, 200), (230, 190, 190), (220, 210, 160)]
+        for k in range(3):
+            x = -0.26 + k * 0.17
+            col = pastel[(k + ep) % 4] if ep in (1, 2) else e["wall"]
+            box(x, 0.12, 0, 0.16, 0.32, 0.42, mat(col))
+            windows(x, 0.12, 0, 0.16, 0.32, 0.42, 3, 2)
+            if ep == 0:
+                attic(x, 0.12, 0.42, 0.16, 0.32, mat(col), n=3)
+                gable(x, 0.12, 0.42, 0.14, 0.3, 0.1, mat(e["roof"], 0.7), axis="y")
+            elif ep == 1:
+                for a in range(2):
+                    box(x - 0.04 + a * 0.08, -0.04 - 0.002, 0, 0.05, 0.01, 0.12, mat((70, 60, 55)))
+                attic(x, 0.12, 0.42, 0.16, 0.32, mat(e["det"]), n=3)
+                gable(x, 0.12, 0.42, 0.14, 0.3, 0.12, mat(e["roof"], 0.7), axis="y")
+            elif ep == 2:
+                box(x, -0.04, 0.42, 0.1, 0.02, 0.12, mat(col))
+                sph(x, -0.04, 0.56, 0.035, mat(e["det"]), sub=1)
+                hip(x, 0.12, 0.42, 0.16, 0.32, 0.1, mat(e["roof"], 0.6))
+            else:
+                portico(x, -0.04, 0.27, 0.12, 0.12, cols=2)
+                hip(x, 0.12, 0.42, 0.16, 0.32, 0.06, mat(e["roof"], 0.6))
+        box(0.27, -0.1, 0, 0.12, 0.22, 0.12, mat(WOOD))
+        for k in range(3):
+            sph(0.27 - 0.04 + k * 0.04, -0.22, 0.14, 0.025, mat([(230, 80, 60), (240, 200, 60), (120, 200, 90)][k]), sub=1)
+    elif kind == "koszary":
+        styled_block(-0.02, 0.08, 0.7, 0.26, 0.3, ep, floors=2)
+        box(-0.02, -0.06, 0, 0.1, 0.02, 0.14, mat((60, 45, 35)))
+        if ep >= 2:
+            portico(-0.02, -0.05, 0, 0.24, 0.26, cols=4)
+        for k in range(3):
+            cyl(0.2 + k * 0.06, -0.3, 0, 0.012, 0.36, mat((100, 70, 40)), v=6)
+        flag(-0.32, -0.28, 0, 0.8, (200, 30, 40), (235, 235, 235))
+    elif kind == "kosciol":  # kolegium i drukarnia
+        if ep == 0:   # kaplica ze złotą kopułą (jak Kaplica Zygmuntowska)
+            styled_block(0.15, 0.12, 0.34, 0.3, 0.26, 0, floors=1)
+            box(-0.18, 0.0, 0, 0.26, 0.26, 0.34, mat(e["wall"]))
+            windows(-0.18, 0.0, 0, 0.26, 0.26, 0.34, 1, 2)
+            cyl(-0.18, 0.0, 0.34, 0.11, 0.08, mat(e["wall"]), v=16)
+            dome(-0.18, 0.0, 0.42, 0.12, mat(GOLD, 0.25, 0.85))
+        elif ep == 1:
+            styled_block(0.12, 0.1, 0.4, 0.3, 0.3, 1, floors=1)
+            box(-0.2, -0.05, 0, 0.16, 0.16, 0.7, mat(e["wall"]))
+            attic(-0.2, -0.05, 0.7, 0.16, 0.16, mat(e["det"]), n=3)
+            cone(-0.2, -0.05, 0.76, 0.09, 0, 0.35, mat(e["roof"], 0.6), v=8)
+        elif ep == 2:  # barokowa fasada z dwiema wieżami
+            box(0.08, 0.15, 0, 0.36, 0.42, 0.34, mat(e["wall"]))
+            gable(0.08, 0.15, 0.34, 0.36, 0.42, 0.18, mat(e["roof"], 0.6), axis="y")
+            for x in (-0.07, 0.23):
+                box(x, -0.08, 0, 0.12, 0.12, 0.56, mat(e["wall"]))
+                helmet(x, -0.08, 0.56, 0.07, mat(e["acc"], 0.5, 0.3))
+            box(0.08, -0.08, 0.3, 0.18, 0.03, 0.12, mat(e["det"]))
+            sph(0.08, -0.08, 0.44, 0.04, mat(e["det"]), sub=1)
+        else:          # klasycystyczny kościół z portykiem i kopułą
+            box(0, 0.1, 0, 0.44, 0.44, 0.34, mat(e["wall"]))
+            portico(0, -0.12, 0, 0.3, 0.3, cols=4)
+            cyl(0, 0.1, 0.34, 0.15, 0.1, mat(e["wall"]), v=20)
+            dome(0, 0.1, 0.44, 0.16, mat((110, 130, 128), 0.5, 0.3))
+        gold_cross(-0.18 if ep == 0 else 0, 0.0, 0.62 if ep == 0 else 0.0, 0.6) if ep == 0 else None
+    elif kind == "zamek":   # twierdza bastionowa
+        brick = mat((170, 90, 60), 0.9) if ep < 2 else noise_mat((80, 120, 60), (110, 150, 80), scale=10, seed=4)
+        pts = []
+        for k in range(10):
+            a = k * math.tau / 10 + math.pi / 10
+            r = 0.48 if k % 2 == 0 else 0.3
+            pts.append((math.cos(a) * r, math.sin(a) * r))
+        v = [(x, y, 0) for x, y in pts] + [(x * 0.88, y * 0.88, 0.16) for x, y in pts]
+        n = len(pts)
+        f = [(i, (i + 1) % n, n + (i + 1) % n, n + i) for i in range(n)] + [tuple(range(n, 2 * n))]
+        mesh(v, f, brick, "Bastiony")
+        box(0, 0, 0.16, 0.6, 0.6, 0.004, mat((150, 130, 100)))
+        styled_block(0.02, 0.05, 0.3, 0.2, 0.22, ep, floors=1)
+        for k in range(5):
+            a = k * math.tau / 5 + math.pi / 10
+            x, y = math.cos(a) * 0.4, math.sin(a) * 0.4
+            rod((x, y, 0.2), (x * 1.18, y * 1.18, 0.22), 0.025, mat((40, 40, 44), 0.3, 0.8))
+        flag(0.02, 0.05, 0.22, 0.4, (235, 235, 235), (200, 30, 40))
+    elif kind == "palisada":    # szańce z działami
+        earth = noise_mat((100, 120, 60), (130, 110, 70), scale=12, seed=6)
+        for (x, y, w, d) in [(0, -0.36, 0.8, 0.14), (0.36, 0, 0.14, 0.8), (0, 0.36, 0.8, 0.14), (-0.36, 0, 0.14, 0.8)]:
+            box(x, y, 0, w, d, 0.14, earth)
+        for k in range(6):
+            a = k * math.tau / 6
+            cyl(math.cos(a) * 0.36, math.sin(a) * 0.36, 0.14, 0.04, 0.08, mat((130, 100, 60)), v=8)
+        for (x, y, rz) in [(0.1, -0.43, -math.pi / 2), (0.43, 0.08, 0)]:
+            rod((x, y, 0.18), (x + math.cos(rz) * 0.18, y + math.sin(rz) * 0.18, 0.2), 0.035, mat((50, 50, 54), 0.3, 0.8))
+        flag(-0.3, -0.3, 0.14, 0.5, (235, 235, 235), (200, 30, 40), size=0.16)
+    elif kind == "zupa":    # żupa i huta: szyb, piec z kominem, hałda
+        w = mat((110, 76, 40))
+        for (x, y) in [(-0.35, -0.1), (-0.05, -0.1), (-0.35, 0.15), (-0.05, 0.15)]:
+            rod((x, y, 0), (-0.2, 0.02, 0.75), 0.018, w)
+        cyl(-0.2, 0.02, 0.75, 0.09, 0.03, mat((80, 60, 40)), v=12, rot=(math.pi / 2, 0, 0), center=True)
+        box(0.2, 0.15, 0, 0.3, 0.24, 0.2, mat((170, 100, 70)))
+        cyl(0.3, 0.2, 0, 0.05, 0.75, mat((150, 80, 60)), v=8)
+        sph(0.3, 0.2, 0.82, 0.06, mat((180, 180, 175), 1.0, alpha=0.7), sub=2)
+        salt = mat((244, 244, 248), 0.5)
+        for (x, y, s_) in [(0.2, -0.22, 0.1), (0.05, -0.32, 0.08)]:
+            cone(x, y, 0, s_, 0, s_ * 1.3, salt, v=8)
+    suffix = "_f1" if ANIM["wave"] and kind in ("koszary", "zamek") else ""
+    render(f"building_{kind}_e{ep}{suffix}", 80, 112, 40, 96, ppu=PPU_BLD)
+
+
+def b_camp2(fac):
+    """Obozy wrogów części II: Szwedzi, Moskwa, Rosja XVIII w."""
+    reset()
+    col, fc1, fc2 = {"sv": ((70, 100, 170), (60, 90, 170), (240, 200, 60)),
+                     "ru": ((90, 130, 90), (170, 40, 40), (230, 200, 80)),
+                     "rs": ((236, 234, 226), (240, 240, 240), (60, 90, 170))}[fac]
+    for (x, y) in [(-0.2, 0.18), (0.18, 0.15), (0.0, -0.2)]:
+        cone(x, y, 0, 0.16, 0, 0.3, mat(col), v=6)
+    flag(0.3, -0.3, 0, 0.8, fc1, fc2)
+    rod((0.25, -0.05, 0.0), (0.25, -0.05, 0.06), 0.012, mat((90, 60, 30)))
+    sph(0.25, -0.05, 0.05, 0.035, mat((250, 150, 40), emit=6.0), sub=1)
+    render(f"camp_{fac}" + ("_f1" if ANIM["wave"] else ""), 80, 112, 40, 96, ppu=PPU_BLD)
 
 
 # ------------------------------------------------------------------ klatki animacji
@@ -786,7 +1124,9 @@ def bust(p):
     for x in (-0.11, 0.11):
         sph(x, -0.16, 0.45, 0.03, mat((240, 160, 140), 0.7), sub=1, scale=(1, 0.4, 0.8))
     # włosy
-    covered = head in ("hood", "veil", "crown_veil", "mitre", "helmet")
+    covered = head in ("hood", "veil", "crown_veil", "mitre", "helmet", "habit", "veil_dark")
+    if head == "wig":
+        hair = mat((236, 236, 232), 0.9)
     if not covered:
         sph(0, 0.03, 0.6, 0.21, hair, sub=3, scale=(0.98, 0.98, 0.72), smooth=True)
         sph(0, 0.09, 0.5, 0.2, hair, sub=3, scale=(0.97, 0.75, 1.0), smooth=True)
@@ -802,6 +1142,10 @@ def bust(p):
     elif b == "mustache":
         for x in (-0.05, 0.05):
             sph(x, -0.19, 0.415, 0.03, hair, sub=2, scale=(1.6, 0.7, 0.6), smooth=True)
+    elif b == "mustache_big":
+        for x in (-0.07, 0.07):
+            sph(x, -0.185, 0.4, 0.04, hair, sub=2, scale=(1.9, 0.7, 0.8), smooth=True)
+            sph(x * 1.6, -0.17, 0.36, 0.025, hair, sub=2, scale=(1, 0.7, 1.6), smooth=True)
     # nakrycia głowy
     gold = mat(GOLD, 0.3, 0.8)
     if head in ("crown_b", "crown_s", "crown_veil"):
@@ -843,6 +1187,45 @@ def bust(p):
     if head == "fur":
         cyl(0, 0, 0.6, 0.215, 0.12, mat((100, 70, 44), 1.0), v=20)
         sph(0, 0, 0.72, 0.17, mat((40, 110, 70), 0.8), sub=2, scale=(1, 1, 0.6), smooth=True)
+    if head == "kolpak":          # kołpak futrzany z piórem i klejnotem
+        cyl(0, 0.0, 0.6, 0.215, 0.13, mat((95, 65, 42), 1.0), v=20)
+        sph(0, 0.02, 0.74, 0.18, cloth, sub=2, scale=(1, 1, 0.55), smooth=True)
+        sph(0, -0.2, 0.68, 0.03, mat((200, 30, 40), 0.2), sub=1)
+        rod((0.0, -0.18, 0.7), (-0.06, -0.1, 0.98), 0.02, mat((248, 248, 245), 0.7))
+    if head == "beret":           # renesansowy beret
+        cyl(0, 0.02, 0.66, 0.24, 0.05, mat((30, 30, 34), 0.9), v=24)
+        sph(0, 0.02, 0.7, 0.2, mat((30, 30, 34), 0.9), sub=2, scale=(1, 1, 0.3), smooth=True)
+        sph(0, 0.06, 0.5, 0.2, hair, sub=3, scale=(1.1, 0.8, 1.05), smooth=True)
+    if head == "wig":             # peruka pudrowana
+        for x in (-0.17, 0.17):
+            for z in (0.48, 0.56):
+                sph(x, 0.02, z, 0.05, hair, sub=2, smooth=True)
+        box(0, 0.2, 0.42, 0.04, 0.03, 0.12, mat((30, 30, 30)))
+    if head == "rogatywka":       # konfederatka
+        cyl(0, 0, 0.6, 0.215, 0.07, mat((70, 50, 35), 1.0), v=20)
+        box(0, 0, 0.67, 0.34, 0.34, 0.1, cloth, rz=math.pi / 4)
+        sph(0, -0.2, 0.64, 0.025, mat(GOLD, 0.3, 0.8), sub=1)
+    if head == "habit":           # biały habit paulina
+        white = mat((236, 234, 226), 0.9)
+        sph(0, 0.06, 0.53, 0.25, white, sub=3, scale=(1, 0.95, 1.15), smooth=True)
+        bpy.ops.mesh.primitive_torus_add(major_radius=0.19, minor_radius=0.04, location=(0, -0.1, 0.51),
+                                         rotation=(math.pi / 2, 0, 0))
+        o = _fin(bpy.context.active_object, white)
+        o.scale = (1, 1.2, 1)
+    if head == "kapelusz":        # kapelusz krakowski z piórami
+        black = mat((30, 30, 32), 0.8)
+        cyl(0, 0, 0.62, 0.3, 0.02, black, v=24)
+        cyl(0, 0, 0.62, 0.17, 0.1, black, v=20)
+        for k, c in enumerate([(200, 40, 40), (60, 120, 200), (240, 200, 60)]):
+            rod((0.1, 0.05 - k * 0.04, 0.68), (0.2, 0.08 - k * 0.04, 0.9), 0.012, mat(c))
+    if head == "collar":          # koloratka i czarna sutanna
+        box(0, -0.12, 0.2, 0.12, 0.02, 0.04, mat((245, 245, 245)))
+    if head == "veil_dark":       # czepiec renesansowej królowej
+        dark = mat((40, 30, 30), 0.8)
+        sph(0, 0.06, 0.55, 0.23, dark, sub=3, scale=(1, 0.95, 1.05), smooth=True)
+        bpy.ops.mesh.primitive_torus_add(major_radius=0.17, minor_radius=0.02, location=(0, -0.09, 0.55),
+                                         rotation=(math.pi / 2, 0, 0))
+        _fin(bpy.context.active_object, mat((240, 236, 220), 0.3, 0.2))
 
 
 def portraits():
@@ -1060,109 +1443,160 @@ def _tent(x, y, c1, c2, s_=1.0):
     box(x + 0.3, y, 3.6 * s_, 0.6, 0.02, 0.35, mat((200, 30, 40)))
 
 
+def _hussars(x0, y0, cols, rows, face, seed):
+    r = random.Random(seed)
+    for i in range(cols):
+        for j in range(rows):
+            place(hussar_model, x0 + i * 1.3 + r.uniform(-.2, .2), y0 + j * 1.5 + r.uniform(-.2, .2), face)
+
+
+def _cannon(x, y, rz, sc=1.4):
+    def mk():
+        w = mat((120, 84, 50))
+        box(0, 0, 0.12, 0.7, 0.24, 0.08, w)
+        for yy in (-0.16, 0.16):
+            cyl(-0.12, yy, 0.14, 0.14, 0.04, mat((80, 60, 40)), v=12, rot=(math.pi / 2, 0, 0), center=True)
+        rod((-0.2, 0, 0.3), (0.5, 0, 0.46), 0.09, mat((70, 72, 78), 0.4, 0.8), v=12)
+    place(mk, x, y, rz, sc)
+
+
+def _wall_ring(cx, cy, rx, ry, h, m, n=46):
+    for i in range(n):
+        a = i / n * math.tau
+        x, y = cx + math.cos(a) * rx, cy + math.sin(a) * ry
+        cyl(x, y, 0, 0.18, h, m, v=7)
+        cone(x, y, h, 0.18, 0, 0.35, m, v=7)
+
+
+def _church_tower(x, y, h, wall, roof):
+    box(x, y, 0, 1.6, 1.6, h, mat(wall))
+    for k in range(int(h / 1.4)):
+        box(x, y - 0.81, 0.8 + k * 1.4, 0.35, 0.02, 0.6, mat((60, 60, 80), 0.2))
+    helmet(x, y, h, 0.8, mat(roof, 0.5, 0.3))
+
+
 def cutscenes():
-    # Grunwald 1: dwa nagie miecze przed namiotem królewskim
-    reset(); _sky((90, 140, 200), (240, 220, 170)); _ground()
-    _forest(60, 30, 70, seed=4)
-    _tent(-2.5, 9, (240, 236, 226), (190, 40, 44), 1.2)
-    _tent(3.5, 12, (240, 236, 226), (60, 120, 70), 0.9)
-    steel = mat((215, 220, 230), 0.15, 1.0)
-    for k, x in enumerate((-0.45, 0.45)):
-        rot = (0, math.radians(8 if k else -8), 0)
-        bpy.ops.mesh.primitive_cube_add(size=1, location=(x, 2.5, 0.75), rotation=rot)
-        o = _fin(bpy.context.active_object, steel); o.scale = (0.09, 0.02, 1.5)
-        box(x + (0.1 if k else -0.1), 2.5, 1.5, 0.5, 0.06, 0.06, mat((120, 90, 40), 0.4, 0.6), ry=rot[1])
-        box(x + (0.12 if k else -0.12), 2.5, 1.56, 0.07, 0.07, 0.3, mat((90, 60, 30)), ry=rot[1])
-    place(lambda: human("tz", "spear", weapon=False), -2.0, 3.8, math.radians(-60), 1.6)
-    place(lambda: human("tz", "spear", weapon=False), 2.2, 4.2, math.radians(-120), 1.6)
-    _army("knight", "pl", -9, 14, 7, 2, 1.2, 1.4, face=math.radians(-90), seed=2, banner=((235, 235, 235), (200, 30, 40), None))
-    _shot("cut_grunwald_1", (0, -4.5, 1.6), (84, 0, 0), lens=32)
-    # Grunwald 2: dwa wojska naprzeciw siebie
-    reset(); _sky((110, 150, 200), (235, 215, 170)); _ground()
-    _forest(50, 40, 75, seed=7)
-    _army("knight", "pl", -13, 4, 10, 2, 1.1, 1.3, face=0.0, seed=3, banner=((235, 235, 235), (200, 30, 40), None))
-    _army("knight_t", "tz", 2.5, 4, 10, 2, 1.1, 1.3, face=math.pi, seed=5, banner=((240, 240, 240), None, (20, 20, 20)))
-    _army("spear", "pl", -13, 7.5, 12, 2, 0.8, 1.0, face=0.0, seed=6)
-    _army("pike", "tz", 2.5, 7.5, 12, 2, 0.8, 1.0, face=math.pi, seed=8)
-    _shot("cut_grunwald_2", (0, -7, 3.0), (78, 0, 0), lens=28)
-    # Legnica: gród o zmierzchu, zagony mongolskie
-    reset(); _sky((45, 30, 50), (230, 120, 70)); _ground((60, 80, 45), (90, 110, 60))
-    wall = mat((126, 88, 50))
-    for i in range(46):
-        a = i / 46 * math.tau
-        x, y = math.cos(a) * 5, 16 + math.sin(a) * 3
-        cyl(x, y, 0, 0.18, 2.4, wall, v=7); cone(x, y, 2.4, 0.18, 0, 0.35, wall, v=7)
-    box(0, 16, 0, 3, 2, 2.2, mat(WOOD)); gable(0, 16, 2.2, 3, 2, 1.4, mat(THATCH, 0.95))
-    for k, (x, y) in enumerate([(-7, 22), (8, 24), (3, 28)]):
+    brick = mat((170, 90, 60), 0.9)
+    # Świecino 1462: tabor i rycerze zakonu
+    reset(); _sky((90, 130, 180), (230, 215, 175)); _ground(); _forest(70, 20, 70, seed=21)
+    for k in range(9):
+        place(lambda: unit_body_wagon(), -6 + k * 1.5, 5, math.radians(5), 1.6)
+    _army("musket", "pl", -6, 6.5, 9, 1, 1.5, 1, face=math.radians(-90), seed=22)
+    _army("knight_t", "tz", -6, 15, 8, 2, 1.4, 1.5, face=math.radians(-90), seed=23, banner=((240, 240, 240), None, (20, 20, 20)))
+    _shot("cut_swiecino_1", (0, -6, 3.0), (78, 0, 0), lens=30)
+    # Wielkie Łuki 1580: płonące drewniane mury
+    reset(); _sky((60, 40, 50), (230, 130, 70)); _ground((70, 90, 50), (100, 120, 60))
+    wood = mat((126, 88, 50))
+    _wall_ring(0, 16, 6, 3, 2.6, wood)
+    for (x, y) in [(-3, 14), (2, 14.5), (4, 17)]:
         for j in range(5):
-            sph(x + j * 0.4, y, 3 + j * 1.8, 0.8 + j * 0.4, mat((60, 55, 55), 1.0, alpha=0.6), sub=2, smooth=True)
-    _army("horse_mg", "mg", -8, 4, 8, 2, 1.4, 1.5, face=math.radians(80), seed=9)
-    _shot("cut_legnica_1", (0, -6, 2.0), (82, 0, 0), lens=30)
-    # Płowce: szarża we mgle
-    reset(); _sky((180, 185, 190), (225, 225, 220)); _ground((90, 110, 70), (120, 136, 90), hills=False)
-    _forest(30, 25, 60, seed=11)
-    _army("knight", "pl", -8, 3, 8, 2, 1.2, 1.4, face=math.radians(15), seed=12, banner=((235, 235, 235), (200, 30, 40), None))
-    _army("knight_t", "tz", -2, 15, 8, 2, 1.2, 1.4, face=math.radians(200), seed=13, banner=((240, 240, 240), None, (20, 20, 20)))
+            sph(x + j * 0.3, y, 2.5 + j * 1.6, 0.7 + j * 0.35, mat((60, 55, 55), 1.0, alpha=0.6), sub=2, smooth=True)
+        sph(x, y - 0.3, 2.4, 0.5, mat((250, 140, 40), emit=8.0), sub=2, smooth=True)
+    _army("pike", "cz", -7, 4, 10, 2, 0.9, 1.1, face=math.radians(80), seed=24)
+    _cannon(5, 5, math.radians(80)); _cannon(7, 6, math.radians(80))
+    _shot("cut_luki_1", (0, -6, 2.2), (82, 0, 0), lens=30)
+    # Warka 1656: Szwedzi przy przeprawie przez Pilicę
+    reset(); _sky((110, 150, 200), (235, 220, 180)); _ground(); _forest(90, 6, 60, seed=25)
+    box(0, 12, 0.01, 80, 4, 0.02, mat((60, 110, 170), 0.1))
+    _army("musket", "sv", -6, 11, 10, 2, 0.9, 1.0, face=math.radians(-90), seed=26, banner=((50, 80, 160), (230, 200, 60), None))
+    _hussars(-9, 3, 5, 1, math.radians(15), 27)
+    _shot("cut_warka_1", (-2, -7, 2.8), (80, 0, -8), lens=30)
+    # Wiedeń 1683: szarża husarii ku obozowi tureckiemu
+    reset(); _sky((90, 140, 200), (240, 220, 170)); _ground()
+    for k in range(18):
+        x, y = -14 + (k % 9) * 3.4, 22 + (k // 9) * 4
+        cyl(x, y, 0, 1.0, 1.0, mat((236, 232, 220)), v=12)
+        cone(x, y, 1.0, 1.05, 0, 1.0, mat([(170, 40, 40), (60, 120, 70)][k % 2]), v=12)
+    _hussars(-8, 4, 8, 2, math.radians(70), 28)
+    _army("musket", "tr", -6, 15, 10, 1, 1.2, 1, face=math.radians(-90), seed=29)
+    _shot("cut_wieden_1", (-3, -4, 3.2), (80, 0, -14), lens=28)
+    reset(); _sky((120, 150, 200), (240, 225, 180)); _ground()
+    _tent(0, 9, (236, 232, 220), (170, 40, 40), 1.6)
+    for k, c in enumerate([(170, 40, 40), (60, 120, 70), (240, 200, 60)]):
+        cyl(-2.5 + k * 2.5, 6, 0, 0.04, 3.5, mat((120, 90, 50)), v=6)
+        box(-2.5 + k * 2.5 + 0.5, 6, 2.6, 1.0, 0.03, 0.8, mat(c))
+    _hussars(-6, 2.5, 4, 1, math.radians(60), 30)
+    _shot("cut_wieden_2", (0, -5, 2.2), (82, 0, 0), lens=30)
+    # Jasna Góra 1771: klasztor zimą i rosyjskie armaty
+    reset(); _sky((150, 160, 180), (225, 228, 235)); _ground((225, 228, 232), (245, 246, 248))
+    box(0, 18, 0, 8, 5, 2.4, mat((220, 214, 196))); hip(0, 18, 2.4, 8, 5, 1.2, mat((150, 60, 50)))
+    _church_tower(0, 15, 9, (230, 224, 206), (90, 150, 128))
+    for k in range(4):
+        _cannon(-6 + k * 3.5, 6, math.radians(85))
+    _army("musket", "rs", -8, 3.5, 12, 1, 1.4, 1, face=math.radians(85), seed=31)
+    _shot("cut_jasna_1", (0, -6, 2.4), (80, 0, 0), lens=28)
+    # Racławice 1794: kosynierzy biegną na armaty
+    reset(); _sky((110, 150, 200), (235, 225, 190)); _ground()
+    for k in range(4):
+        _cannon(-4 + k * 2.6, 14, math.radians(-90))
+    _army("musket", "rs", -6, 16, 10, 1, 1.2, 1, face=math.radians(-90), seed=32)
+    _army("scythe", "pl", -7, 3, 12, 3, 1.0, 1.2, face=math.radians(80), seed=33)
+    _shot("cut_raclawice_1", (0, -6, 2.0), (82, 0, 0), lens=30)
+    # Olsztyn 1521: ceglany zamek zimą
+    reset(); _sky((140, 150, 175), (220, 224, 232)); _ground((225, 228, 232), (245, 246, 248))
+    box(0, 16, 0, 9, 3, 4.5, brick); gable(0, 16, 4.5, 9, 3, 2.0, mat((150, 60, 50)))
+    cyl(4.2, 14.5, 0, 1.2, 8, brick, v=16); cone(4.2, 14.5, 8, 1.3, 0, 2.4, mat((150, 60, 50)), v=16)
+    for k in range(8):
+        box(-4 + k * 1.1, 14.4, 2.0, 0.4, 0.05, 0.9, mat((50, 50, 60), 0.2))
+    _army("knight_t", "tz", -6, 6, 8, 1, 1.5, 1, face=math.radians(80), seed=34)
+    _shot("cut_olsztyn_1", (-1, -5, 2.6), (80, 0, -6), lens=30)
+    # Kłuszyn 1610: szarża husarii
+    reset(); _sky((180, 170, 160), (245, 220, 170)); _ground(); _forest(60, 25, 70, seed=35)
     for k in range(10):
-        bpy.ops.mesh.primitive_plane_add(size=80, location=(0, 8 + k * 3.5, 0.6 + k * 0.15))
-        _fin(bpy.context.active_object, mat((220, 222, 222), 1.0, alpha=0.18))
-    _shot("cut_plowce_1", (0, -6, 2.6), (80, 0, 0), lens=30)
-    # Wichman: Polanie i jazda czeska na skraju puszczy
-    reset(); _sky((90, 130, 180), (225, 215, 175)); _ground()
-    _forest(90, 12, 60, seed=14)
-    _army("spear", "pl", -6, 3, 9, 2, 0.8, 1.0, face=math.radians(10), seed=15)
-    _army("horse", "cz", 2, 6, 5, 2, 1.3, 1.4, face=math.radians(10), seed=16, banner=((200, 40, 40), (240, 240, 240), None))
-    _shot("cut_wichman_1", (-1, -5, 1.8), (84, 0, -6), lens=30)
-    # Głogów: obrońcy na wałach i cesarska wieża oblężnicza
-    reset(); _sky((80, 100, 140), (210, 190, 160)); _ground()
-    for i in range(30):
-        x = -12 + i * 0.6
-        cyl(x, 4, 0, 0.3, 3.0, wall, v=7); cone(x, 4, 3.0, 0.3, 0, 0.4, wall, v=7)
-    box(-10, 4.2, 0, 2.4, 2.4, 4.6, mat(WOOD)); pyramid(-10, 4.2, 4.6, 3.0, 1.6, mat(THATCH, 0.95))
-    for i in range(8):
-        place(lambda: human("pl", "bow"), -10 + i * 1.3, 4.6, math.radians(90), 1.0, z=3.0)
-    box(6, 16, 0, 2.2, 2.2, 6.5, mat((110, 80, 50)))
-    for z in (1.5, 3.0, 4.5):
-        box(6, 14.88, z, 2.25, 0.05, 0.12, mat((80, 58, 34)))
-    _army("spear", "en", 0, 18, 12, 2, 0.8, 1.0, face=math.radians(-90), seed=17, banner=((240, 200, 60), None, (20, 20, 20)))
-    _shot("cut_glogow_1", (0, -6, 6.2), (72, 0, 8), lens=28)
+        box(-12 + k * 2.6, 9, 0, 2.0, 0.08, 0.7, mat((120, 90, 60)))
+    _hussars(-9, 3, 8, 2, math.radians(15), 36)
+    _army("musket", "ru", -8, 14, 12, 1, 1.3, 1, face=math.radians(-90), seed=37)
+    _shot("cut_kluszyn_1", (-2, -5, 2.6), (80, 0, -10), lens=28)
     _reset_world()
 
 
+def unit_body_wagon():
+    box(0, 0, 0.2, 0.8, 0.36, 0.16, mat((130, 92, 52)))
+    for x in (-0.25, 0.25):
+        for y in (-0.2, 0.2):
+            cyl(x, y, 0.13, 0.13, 0.03, mat((70, 50, 30)), v=12, rot=(math.pi / 2, 0, 0), center=True)
+    box(0, 0, 0.36, 0.8, 0.3, 0.25, mat((150, 110, 70)))
+
+
 # ------------------------------------------------------------------ główny program
+def needed_units():
+    """Pary (rodzaj, frakcja) używane w treści gry – tylko te renderujemy."""
+    sys.path.insert(0, os.path.normpath(os.path.join(HERE, "..", "..")))
+    from kronika import data as gdata
+    pairs = {(c["unit"], c["faction"]) for c in gdata.CARDS.values()}
+    pairs |= {(r["unit"], r["faction"]) for r in gdata.RAIDS.values()}
+    pairs |= {(k, "pl") for k in ("pike", "musket", "horse", "hussar")}
+    return sorted(pairs), sorted({(r["unit"], r["faction"]) for r in gdata.RAIDS.values()})
+
+
 def main():
+    """Część II: nowe budynki epok, jednostki, portrety i przerywniki.
+    Kafle terenu, drzewa, skały, tła bitew i postać Damiana pochodzą z części I (assets/3d)."""
     os.makedirs(OUT, exist_ok=True)
     setup_scene()
     print("Renderowanie do", OUT)
-    for kind in TERRAIN:
-        for v in range(4):
-            for f in range(3 if kind == "water" else 1):
-                terrain_tile(kind, v, f)
-    for v in range(6):
-        tree(v)
-    for v in range(4):
-        rocks(v)
-    for v in range(2):
-        reeds(v)
-    for e in range(3):
-        b_grod(e)
-    for k in ["pole", "drwal", "kamieniolom", "targ", "koszary", "palisada", "kosciol", "mlyn", "zupa", "zamek"]:
-        b_simple(k)
-    for f in ["en", "mg", "tz"]:
-        b_camp(f)
-    b_landmark()
-    for kind in ["spear", "sword", "pike", "bow", "xbow", "horse", "horse_lt", "horse_mg", "knight", "knight_t", "knight_w"]:
-        for fac in FACTION:
-            unit(kind, fac)
-    for kind in ["cannon", "wagon", "smoke"]:
-        for fac in FACTION:
-            unit(kind, fac)
-    animations()
-    hero()
+    units, walkers = needed_units()
+    for ep in range(4):
+        b_grod2(ep)
+        for k in ["pole", "targ", "koszary", "kosciol", "zamek", "palisada", "zupa"]:
+            b_epoch(k, ep)
+    ANIM["wave"] = 1
+    for ep in range(4):
+        b_grod2(ep)
+        b_epoch("koszary", ep)
+        b_epoch("zamek", ep)
+    for f in ["sv", "ru", "rs"]:
+        b_camp2(f)
+    ANIM["wave"] = 0
+    for f in ["sv", "ru", "rs"]:
+        b_camp2(f)
+    for kind, fac in units:
+        unit(kind, fac)
+    for kind, fac in walkers + [("pike", "pl"), ("musket", "pl"), ("hussar", "pl")]:
+        for ph in range(4):
+            unit(kind, fac, ph)
     portraits()
     cutscenes()
-    for k in ["field", "forest", "grod"]:
-        battle_bg(k)
     print("Gotowe.")
 
 

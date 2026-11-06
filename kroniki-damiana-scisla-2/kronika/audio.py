@@ -132,37 +132,34 @@ def _noise_hits(count, dur, vol, low=False, gap=0.09):
 # skala dorycka d (dawne pieśni) – indeksy w melodiach
 SCALE = [146.83, 164.81, 174.61, 196.0, 220.0, 246.94, 261.63, 293.66, 329.63, 349.23, 392.0, 440.0]
 
+# nuta: indeks skali albo (indeks, długość w taktach-uderzeniach)
+POLONEZ_A = [(7, 2), (9, 1), (8, 1), (7, 2), (6, 2), (5, 2), (4, 2), (5, 2), (7, 1), (6, 1), (5, 2), (4, 4), (4, 2)]
+POLONEZ_B = [(9, 2), (11, 1), (10, 1), (9, 2), (8, 2), (7, 2), (8, 2), (9, 2), (7, 1), (8, 1), (7, 2), (6, 4), (7, 2)]
 THEMES = {
-    # menu: lutnia i burdon
-    "music": {"beat": 0.28, "inst": "lute", "drum": 4, "drone": (73.42, 110.0), "phrases": [
-        [7, 8, 9, 8, 7, 6, 7, 4, 5, 6, 7, 6, 5, 4, 3, 4],
-        [4, 5, 7, 7, 8, 7, 6, 5, 4, 5, 6, 5, 4, 3, 2, 0],
-        [7, 9, 10, 9, 8, 7, 8, 9, 7, 6, 5, 6, 7, 5, 4, 4],
-        [4, 3, 4, 5, 7, 6, 5, 4, 3, 4, 2, 3, 1, 2, 0, 0]]},
-    # Epoka Plemienna: piszczałka pasterska i bęben ramowy
-    "music_0": {"beat": 0.32, "inst": "flute", "drum": 2, "drone": (73.42,), "phrases": [
-        [4, 7, 7, 8, 7, 4, 3, 4, 4, 7, 9, 8, 7, 7, 4, 4],
-        [8, 9, 11, 9, 8, 7, 8, 7, 4, 3, 4, 7, 4, 3, 0, 0],
-        [4, 7, 7, 8, 7, 4, 3, 4, 7, 8, 9, 8, 7, 4, 3, 4],
-        [3, 4, 3, 0, 3, 4, 7, 4, 3, 0, 3, 2, 0, 0, 0, 0]]},
-    # Epoka Piastowska: chorał przy organach
-    "music_1": {"beat": 0.42, "inst": "organ", "drum": 0, "drone": (73.42, 110.0), "phrases": [
-        [0, 2, 3, 4, 4, 3, 4, 7, 7, 6, 4, 3, 4, 3, 2, 0],
-        [4, 7, 7, 8, 7, 6, 4, 4, 3, 4, 6, 4, 3, 2, 0, 0],
-        [7, 8, 9, 8, 7, 7, 6, 4, 6, 7, 6, 4, 3, 4, 3, 2],
-        [3, 4, 3, 2, 0, 2, 3, 4, 3, 2, 1, 0, 0, 0, 0, 0]]},
-    # Epoka Zamków: żywa estampida, lutnia i tamburyn
-    "music_2": {"beat": 0.2, "inst": "lute", "drum": 1, "drone": (73.42, 110.0), "phrases": [
-        [7, 7, 9, 7, 8, 9, 10, 9, 8, 7, 8, 9, 7, 6, 5, 4],
-        [7, 7, 9, 7, 8, 9, 10, 9, 11, 10, 9, 8, 7, 8, 7, 7],
-        [4, 5, 6, 7, 6, 5, 4, 3, 4, 5, 6, 5, 4, 3, 2, 0],
-        [4, 5, 6, 7, 8, 9, 10, 9, 8, 7, 6, 5, 4, 3, 4, 4]]},
-    # Epoka Jagiellońska: uroczyste trąby i kotły
-    "music_3": {"beat": 0.3, "inst": "brass", "drum": 2, "drone": (73.42, 110.0, 146.83), "phrases": [
-        [4, 4, 7, 7, 8, 7, 6, 7, 4, 4, 7, 8, 9, 8, 7, 7],
-        [9, 9, 10, 9, 8, 7, 8, 9, 7, 6, 4, 6, 7, 6, 4, 4],
-        [4, 4, 7, 7, 8, 7, 6, 7, 9, 10, 11, 10, 9, 8, 7, 7],
-        [7, 6, 4, 3, 4, 6, 7, 6, 4, 3, 2, 3, 4, 4, 4, 4]]},
+    # menu: polonez – rytm ósemka, dwie szesnastki
+    "music": {"beat": 0.2, "inst": "lute", "drum": 6, "drone": (73.42, 110.0),
+              "phrases": [POLONEZ_A, POLONEZ_B, POLONEZ_A, [(4, 2), (5, 1), (6, 1), (7, 2), (5, 2), (4, 2), (3, 2), (4, 6), (4, 6)]]},
+    # Złoty wiek: renesansowa pawana na lutni
+    "music_0": {"beat": 0.36, "inst": "lute", "drum": 4, "drone": (73.42,), "phrases": [
+        [(7, 2), 7, 8, (9, 2), 8, 7, (6, 2), 7, 5, (4, 4)],
+        [(4, 2), 5, 6, (7, 2), 6, 5, (4, 2), 3, 2, (0, 4)],
+        [(9, 2), 9, 10, (11, 2), 10, 9, (8, 2), 9, 7, (6, 4)],
+        [(7, 2), 6, 5, (4, 2), 5, 6, (5, 2), 3, 2, (4, 4)]]},
+    # Czasy Batorego i Wazów: żywa galiarda z bębenkiem
+    "music_1": {"beat": 0.2, "inst": "lute", "drum": 3, "drone": (73.42, 110.0), "phrases": [
+        [7, 7, 9, (10, 2), 9, 8, 7, (8, 2), 9, 7, 6, (7, 3)],
+        [4, 5, 6, (7, 2), 6, 5, 4, (5, 2), 4, 3, 2, (4, 3)],
+        [9, 9, 11, (10, 2), 9, 8, 9, (10, 2), 11, 9, 8, (9, 3)],
+        [7, 6, 5, (4, 2), 5, 6, 7, (6, 2), 5, 4, 3, (4, 3)]]},
+    # Wiek wojen: barokowy klawesyn, motoryczny rytm
+    "music_2": {"beat": 0.16, "inst": "harpsichord", "drum": 0, "drone": (73.42,), "phrases": [
+        [7, 4, 9, 4, 10, 4, 9, 4, 7, 4, 8, 4, 6, 4, 7, 4],
+        [9, 5, 10, 5, 11, 5, 10, 5, 9, 5, 8, 5, 7, 5, 9, 5],
+        [7, 4, 9, 4, 10, 4, 9, 4, 8, 3, 7, 3, 6, 3, 5, 3],
+        [4, 2, 5, 2, 6, 2, 7, 2, 6, 4, 5, 4, (4, 2), (4, 2)]]},
+    # Oświecenie i rozbiory: uroczysty polonez na trąbkach
+    "music_3": {"beat": 0.22, "inst": "brass", "drum": 6, "drone": (73.42, 110.0, 146.83),
+                "phrases": [POLONEZ_B, POLONEZ_A, POLONEZ_B, [(9, 2), (8, 1), (7, 1), (6, 2), (7, 2), (5, 2), (4, 2), (4, 6), (4, 6)]]},
 }
 
 
@@ -175,6 +172,10 @@ def _voice(inst, f, tt):
         env = min(1, tt * 6) * math.exp(-tt * 0.9)
         return (math.sin(math.tau * f * tt) + 0.5 * math.sin(math.tau * 2 * f * tt) + 0.3 * math.sin(math.tau * 3 * f * tt)
                 + 0.2 * math.sin(math.tau * 4 * f * tt)) * env * 0.6
+    if inst == "harpsichord":
+        env = math.exp(-tt * 7.0)
+        return (math.sin(math.tau * f * 2 * tt) + 0.6 * math.sin(math.tau * 4 * f * tt) + 0.35 * math.sin(math.tau * 6 * f * tt)
+                + 0.2 * math.sin(math.tau * 8 * f * tt)) * env * 0.6
     if inst == "brass":
         env = min(1, tt * 14) * math.exp(-tt * 1.6)
         v = 0.0
@@ -187,20 +188,20 @@ def _voice(inst, f, tt):
 
 def _music(theme="music"):
     th = THEMES[theme]
-    beat, inst, phrases = th["beat"], th["inst"], th["phrases"]
-    total = int(RATE * beat * 16 * len(phrases))
+    beat, inst = th["beat"], th["inst"]
+    phrases = [[n if isinstance(n, tuple) else (n, 1) for n in ph] for ph in th["phrases"]]
+    total_beats = sum(sum(d for _, d in ph) for ph in phrases)
+    total = int(RATE * beat * total_beats)
     buf = [0.0] * total
-    t0 = 0
+    t0 = 0.0
     for ph in phrases:
-        for k, idx in enumerate(ph):
-            if k and ph[k - 1] == idx and inst in ("organ",):
-                continue
+        for idx, d in ph:
             f = SCALE[idx]
-            n = int(RATE * beat * (3 if k == len(ph) - 1 else 2))
-            start = t0 + int(RATE * beat * k)
+            start = int(RATE * beat * t0)
+            n = int(RATE * beat * (d + 1.5))
             for i in range(min(n, total - start)):
                 buf[start + i] += _voice(inst, f, i / RATE) * 0.16
-        t0 += int(RATE * beat * 16)
+            t0 += d
     for i in range(total):
         tt = i / RATE
         buf[i] += 0.04 * sum(math.sin(math.tau * d * tt) * (0.6 ** j) for j, d in enumerate(th["drone"]))
@@ -208,10 +209,9 @@ def _music(theme="music"):
         step = int(RATE * beat * th["drum"])
         r = random.Random(5)
         for k, b in enumerate(range(0, total, step)):
-            low = k % 2 == 0 or th["drum"] > 1
             for i in range(int(RATE * 0.15)):
                 if b + i < total:
-                    if low:
+                    if k % 2 == 0 or th["drum"] > 3:
                         buf[b + i] += math.sin(math.tau * 60 * i / RATE) * math.exp(-i / RATE * 25) * 0.25
                     else:
                         buf[b + i] += r.uniform(-1, 1) * math.exp(-i / RATE * 40) * 0.08

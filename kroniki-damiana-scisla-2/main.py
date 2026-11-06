@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Kroniki Damiana Ścisła – strategia turowa z historii Polski 966–1410.
+"""Kroniki Damiana Ścisła II: Rzeczpospolita – strategia turowa z historii Polski 1454–1795.
 
 Uruchomienie:  python main.py
 Zrzuty ekranu: python main.py --screenshots katalog
