@@ -14,6 +14,8 @@ https://adscisel-alt.github.io/gry-historyczne/
   uzależnienie od ekranu), 12 złotych kłódek z poradami, finał z Phisherem i certyfikat do druku
 - `zamosc/` — „Jan Zamoyski i Miasto Idealne”, gra strategiczna pixel-art (Python + Pygame) dla 10–12 lat,
   kompilowana do `ZamoyskiMiastoIdealne.exe` (Windows) przez `.github/workflows/zamosc-exe.yml`
+- `zamosc3d/` — „Jan Zamoyski i Miasto Idealne 3D”: ta sama gra w 3D (modele z Blendera, silnik Godot 4.3),
+  eksport do `ZamoyskiMiastoIdealne3D.exe` przez `.github/workflows/zamosc3d-exe.yml`
 
 Wszystkie strony są samowystarczalne (działają offline, bez zależności sieciowych).
 Deploy: `.github/workflows/pages.yml` publikuje główną gałąź przy każdym pushu.
