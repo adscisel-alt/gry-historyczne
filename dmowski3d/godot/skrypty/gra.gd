@@ -54,6 +54,21 @@ var znacznik: Node3D
 var mat_dzialka: StandardMaterial3D
 var wezly_b := []
 var swiat_rozdzial := -1
+const SKALA_POSTACI := 1.6
+const KINO := Vector3(0, 0, -600)
+var slonce: DirectionalLight3D
+var srodowisko: Environment
+var niebo_mat: ProceduralSkyMaterial
+var zycie_wezel: Node3D
+var zycie := []
+var deszcz: CPUParticles3D
+var faza_kroku := 0.0
+var kino: Node3D
+var kino_nazwa := ""
+var kino_i := 0
+var kino_ujecia := []
+var kino_koniec := Callable()
+var minigra = null
 
 
 # ===================================================================== start
@@ -64,7 +79,7 @@ func _ready() -> void:
 	kamera.fov = 50
 	kamera.far = 500
 	add_child(kamera)
-	for n in ["budynki_wezel", "dzialki_wezel", "npc_wezel", "dekor_wezel"]:
+	for n in ["budynki_wezel", "dzialki_wezel", "npc_wezel", "dekor_wezel", "zycie_wezel"]:
 		var w := Node3D.new()
 		add_child(w)
 		set(n, w)
@@ -98,12 +113,14 @@ func _otoczenie() -> void:
 	sm.ground_horizon_color = Color(0.55, 0.6, 0.5)
 	sm.ground_bottom_color = Color(0.25, 0.32, 0.22)
 	niebo.sky_material = sm
+	niebo_mat = sm
 	env.background_mode = Environment.BG_SKY
 	env.sky = niebo
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	env.ambient_light_color = Color(0.62, 0.68, 0.8)
 	env.ambient_light_energy = 0.45
 	env.tonemap_mode = Environment.TONE_MAPPER_LINEAR
+	srodowisko = env
 	var we := WorldEnvironment.new()
 	we.environment = env
 	add_child(we)
@@ -114,6 +131,7 @@ func _otoczenie() -> void:
 	sl.shadow_enabled = true
 	sl.directional_shadow_max_distance = 90
 	add_child(sl)
+	slonce = sl
 
 
 func _materialy() -> void:
@@ -217,6 +235,8 @@ func zbuduj_swiat() -> void:
 		_zbuduj_teren()
 		_dekoracje()
 		_npc()
+		_oswietlenie()
+		_zycie_miasta()
 	odswiez_swiat()
 
 
@@ -396,7 +416,7 @@ func _postac_bohatera() -> void:
 	bohater = Node3D.new()
 	var m := instancja("postac_dmowski")
 	m.name = "model"
-	m.scale = Vector3.ONE * 1.35
+	m.scale = Vector3.ONE * SKALA_POSTACI
 	bohater.add_child(m)
 	add_child(bohater)
 	strzalka = instancja("strzalka")
@@ -414,20 +434,20 @@ func _npc() -> void:
 		var n := Node3D.new()
 		var mm := instancja("postac_" + k)
 		mm.name = "model"
-		mm.scale = Vector3.ONE * 1.35
+		mm.scale = Vector3.ONE * SKALA_POSTACI
 		n.add_child(mm)
 		var poz = R.npc[k]
 		n.position = Vector3((poz[0] + 0.5) * T, 0, (poz[1] + 0.5) * T)
-		var imie := etykieta(D.postacie[k].imie, 36, Color(1, 0.95, 0.8))
-		imie.position.y = 2.9
+		var imie := etykieta(D.postacie[k].imie, 46, Color(1, 0.95, 0.8))
+		imie.position.y = 3.35
 		n.add_child(imie)
-		var wyk := etykieta("!", 110, Color(1, 0.82, 0.2))
+		var wyk := etykieta("!", 120, Color(1, 0.82, 0.2))
 		wyk.name = "wykrzyknik"
-		wyk.position.y = 3.7
+		wyk.position.y = 4.2
 		n.add_child(wyk)
-		var e := etykieta("[E] rozmowa", 34, Color(1, 1, 1))
+		var e := etykieta("[E] rozmowa", 40, Color(1, 1, 1))
 		e.name = "podpowiedz"
-		e.position.y = 2.5
+		e.position.y = 2.95
 		n.add_child(e)
 		npc_wezel.add_child(n)
 		npc_wezly[k] = n
@@ -889,6 +909,12 @@ func rozmawiaj(npc: String) -> void:
 			daj_przedmiot(r.nagroda)
 			for k in r.karty:
 				odkryj(k)
+		if r.has("minigra"):
+			var po_minigrze := func():
+				koniec.call()
+				pokaz_przerywnik(r.minigra, Callable())
+			otworz_dialog(r.kwestie, null, func(): rozpocznij_przemowienie(po_minigrze))
+			return
 		otworz_dialog(r.kwestie, q, koniec, func(pierwsza): pw_za_zagadke(pierwsza, 5))
 		return
 	var pula = D.zagadki.get(npc, [])
@@ -1025,7 +1051,10 @@ func zakoncz_rozdzial() -> void:
 			_ustaw_start()
 			zbuduj_swiat()
 			zacznij_rozdzial()
-	otworz_dialog(R.koniec, null, dalej)
+	if R.has("przerywnik"):
+		pokaz_przerywnik(R.przerywnik, func(): otworz_dialog(R.koniec, null, dalej))
+	else:
+		otworz_dialog(R.koniec, null, dalej)
 
 
 func uzyj_przedmiotu(p: String) -> void:
@@ -1169,6 +1198,18 @@ func _klawisz(k: int) -> void:
 		return
 	if scena != "gra":
 		return
+	if nakladka == "kino":
+		if k in [KEY_SPACE, KEY_ENTER, KEY_E]:
+			dalej_kino()
+		elif k == KEY_ESCAPE:
+			zakoncz_kino()
+		return
+	if nakladka == "przemowienie":
+		if k in [KEY_1, KEY_2, KEY_3]:
+			wybierz_argument(k - KEY_1)
+		elif k in [KEY_SPACE, KEY_ENTER]:
+			dalej_przemowienie()
+		return
 	if nakladka == "dialog":
 		if k in [KEY_SPACE, KEY_ENTER, KEY_E]:
 			dalej_dialog()
@@ -1235,6 +1276,10 @@ func _klik_swiat() -> void:
 # ===================================================================== pętla
 func _process(dt: float) -> void:
 	t += dt
+	if nakladka == "kino":
+		_kamera_kino(dt)
+		return
+	_aktualizuj_zycie(dt)
 	_aktualizuj_kamere(dt)
 	_aktualizuj_postacie()
 	_aktualizuj_kompas()
@@ -1307,23 +1352,24 @@ func _aktualizuj_postacie() -> void:
 	bohater.position = Vector3(stan.bohater[0], 0, stan.bohater[1])
 	var m: Node3D = bohater.get_node("model")
 	if idzie and scena == "gra" and nakladka == "":
-		m.position.y = abs(sin(t * 11)) * 0.12
-		m.rotation.z = sin(t * 11) * 0.06
+		faza_kroku += get_process_delta_time() * 10.0
+		m.position.y = abs(sin(faza_kroku)) * 0.06
+		animuj(m, faza_kroku, 1.0)
 	else:
 		m.position.y = 0
-		m.rotation.z = 0
+		animuj(m, t * 1.5, 0.08)
 	var obok := npc_obok() if scena == "gra" and nakladka == "" else ""
 	for k in npc_wezly:
 		var n: Node3D = npc_wezly[k]
 		var mm: Node3D = n.get_node("model")
-		mm.position.y = abs(sin(t * 2 + k.length())) * 0.04
+		animuj(mm, t * 1.6 + k.length(), 0.1)
 		var hp := bohater.position - n.position
 		if hp.length() < 8:
 			n.rotation.y = lerp_angle(n.rotation.y, atan2(hp.x, hp.z), 0.08)
 		var klucz := "%s:%d" % [k, int(stan.rozdzial)]
 		var wyk: Label3D = n.get_node("wykrzyknik")
 		wyk.visible = D.rozmowy.has(klucz) and not ("rozm_%s_%d" % [k, int(stan.rozdzial)]) in stan.flagi
-		wyk.position.y = 3.7 + sin(t * 5) * 0.15
+		wyk.position.y = 4.2 + sin(t * 5) * 0.15
 		n.get_node("podpowiedz").visible = obok == k
 
 
@@ -1362,6 +1408,428 @@ func _aktualizuj_kompas() -> void:
 	znacznik.rotation.y = t
 	var s := 1.3 + sin(t * 4) * 0.15
 	znacznik.scale = Vector3(s, s, s)
+
+
+# ===================================================================== animacja postaci
+func animuj(model: Node3D, faza: float, sila: float) -> void:
+	## Postacie z Blendera mają osobne części: noga_l, noga_p, reka_l, reka_p (punkt obrotu w stawie).
+	if not model.has_meta("czesci"):
+		var cz := {}
+		for n in ["noga_l", "noga_p", "reka_l", "reka_p"]:
+			var w := model.find_child(n, true, false)
+			if w:
+				cz[n] = w
+		model.set_meta("czesci", cz)
+	var cz: Dictionary = model.get_meta("czesci")
+	var s := sin(faza)
+	if cz.has("noga_l"):
+		cz.noga_l.rotation.x = s * 0.6 * sila
+		cz.noga_p.rotation.x = -s * 0.6 * sila
+	if cz.has("reka_l"):
+		cz.reka_p.rotation.x = s * 0.5 * sila
+		if not model.has_meta("gest"):
+			cz.reka_l.rotation.x = -s * 0.5 * sila
+
+
+# ===================================================================== światło i pogoda kampanii
+func _oswietlenie() -> void:
+	var r := int(stan.rozdzial)
+	var u := {
+		1: [Vector3(-46, -35, 0), 0.95, Color(1, 0.92, 0.8), Color(0.62, 0.66, 0.76), 0.45, Color(0.36, 0.5, 0.74), Color(0.86, 0.82, 0.74), 0.002],
+		2: [Vector3(-55, -20, 0), 1.05, Color(1, 0.98, 0.93), Color(0.6, 0.68, 0.82), 0.5, Color(0.22, 0.48, 0.9), Color(0.8, 0.86, 0.92), 0.0015],
+		3: [Vector3(-60, -30, 0), 0.55, Color(0.86, 0.88, 0.94), Color(0.7, 0.72, 0.78), 0.75, Color(0.5, 0.53, 0.58), Color(0.7, 0.72, 0.74), 0.012],
+		4: [Vector3(-26, -62, 0), 1.0, Color(1, 0.82, 0.6), Color(0.72, 0.64, 0.62), 0.45, Color(0.34, 0.44, 0.74), Color(1, 0.8, 0.62), 0.003],
+	}.get(r)
+	slonce.rotation_degrees = u[0]
+	slonce.light_energy = u[1]
+	slonce.light_color = u[2]
+	srodowisko.ambient_light_color = u[3]
+	srodowisko.ambient_light_energy = u[4]
+	niebo_mat.sky_top_color = u[5]
+	niebo_mat.sky_horizon_color = u[6]
+	srodowisko.fog_enabled = true
+	srodowisko.fog_light_color = u[6].lerp(Color(0.8, 0.8, 0.82), 0.5)
+	srodowisko.fog_density = u[7]
+
+
+# ===================================================================== życie miasta
+func _zycie_miasta() -> void:
+	_wyczysc(zycie_wezel)
+	zycie = []
+	deszcz = null
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 1100 + int(stan.rozdzial)
+	var r := int(stan.rozdzial)
+	var ulice := []
+	for y in map_h:
+		for x in map_w:
+			if mapa[y][x] in ["=", "B"]:
+				ulice.append(Vector2i(x, y))
+	var modele_pieszych: Array = {1: [0, 1, 2, 0], 2: [0, 1, 5, 1], 3: [3, 3, 3, 0], 4: [1, 2, 5, 5]}[r]
+	for i in 14:
+		if ulice.is_empty():
+			break
+		var start: Vector2i = ulice[rng.randi_range(0, ulice.size() - 1)]
+		var w := Node3D.new()
+		var m := instancja("przechodzien_%d" % modele_pieszych[i % modele_pieszych.size()])
+		m.name = "model"
+		m.scale = Vector3.ONE * SKALA_POSTACI * rng.randf_range(0.92, 1.05)
+		w.add_child(m)
+		w.position = Vector3((start.x + 0.5) * T, 0, (start.y + 0.5) * T)
+		zycie_wezel.add_child(w)
+		zycie.append({"typ": "pieszy", "w": w, "pole": start, "cel": w.position, "kier": Vector2i(1, 0),
+			"v": rng.randf_range(1.2, 1.9), "faza": rng.randf() * TAU})
+	# pojazdy jeżdżą po długich prostych ulicach
+	var pojazdy: Array = {1: ["tramwaj", "dorozka"], 2: ["dorozka", "automobil"], 3: ["automobil"], 4: ["automobil", "dorozka", "automobil"]}[r]
+	var trasy := _trasy()
+	for i in min(pojazdy.size(), trasy.size()):
+		var tr: Array = trasy[i]
+		var w := instancja(pojazdy[i])
+		w.scale = Vector3.ONE * 1.3
+		zycie_wezel.add_child(w)
+		zycie.append({"typ": "pojazd", "w": w, "a": tr[0], "b": tr[1], "s": rng.randf(), "v": 3.2, "kier": 1})
+	# dym z kominów
+	if r != 2:
+		var licz := 0
+		for y in map_h:
+			for x in map_w:
+				if mapa[y][x] == "K" and (x * 5 + y * 3) % 9 == 0 and licz < 14:
+					licz += 1
+					zycie_wezel.add_child(_dym(Vector3((x + 0.5) * T + 0.4, 5.2, (y + 0.5) * T)))
+	# ptaki
+	for i in 6:
+		var p := instancja("ptak")
+		p.scale = Vector3.ONE * 2.2
+		zycie_wezel.add_child(p)
+		zycie.append({"typ": "ptak", "w": p, "r": rng.randf_range(14, 26), "h": rng.randf_range(12, 18),
+			"f": rng.randf() * TAU, "v": rng.randf_range(0.15, 0.3)})
+	if r == 3:
+		deszcz = _deszcz()
+		zycie_wezel.add_child(deszcz)
+
+
+func _trasy() -> Array:
+	var trasy := []
+	for y in map_h:
+		var run := 0
+		for x in map_w + 1:
+			if x < map_w and mapa[y][x] in ["=", "#"]:
+				run += 1
+			else:
+				if run >= 14:
+					trasy.append([Vector3((x - run + 0.5) * T, 0, (y + 0.5) * T + 0.5), Vector3((x - 0.5) * T, 0, (y + 0.5) * T + 0.5)])
+				run = 0
+	for x in map_w:
+		var run2 := 0
+		for y in map_h + 1:
+			if y < map_h and mapa[y][x] in ["=", "#"]:
+				run2 += 1
+			else:
+				if run2 >= 14:
+					trasy.append([Vector3((x + 0.5) * T - 0.5, 0, (y - run2 + 0.5) * T), Vector3((x + 0.5) * T - 0.5, 0, (y - 0.5) * T)])
+				run2 = 0
+	return trasy
+
+
+func _dym(poz: Vector3) -> CPUParticles3D:
+	var p := CPUParticles3D.new()
+	var sm := SphereMesh.new()
+	sm.radius = 0.35
+	sm.height = 0.7
+	sm.radial_segments = 8
+	sm.rings = 4
+	var m := StandardMaterial3D.new()
+	m.albedo_color = Color(0.8, 0.8, 0.82, 0.55)
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	sm.material = m
+	p.mesh = sm
+	p.amount = 8
+	p.lifetime = 4.0
+	p.direction = Vector3.UP
+	p.spread = 12
+	p.gravity = Vector3(0.4, 0.6, 0)
+	p.initial_velocity_min = 0.6
+	p.initial_velocity_max = 1.0
+	p.scale_amount_min = 0.6
+	p.scale_amount_max = 1.6
+	p.position = poz
+	return p
+
+
+func _deszcz() -> CPUParticles3D:
+	var p := CPUParticles3D.new()
+	var bm := BoxMesh.new()
+	bm.size = Vector3(0.03, 0.7, 0.03)
+	var m := StandardMaterial3D.new()
+	m.albedo_color = Color(0.75, 0.82, 0.95, 0.5)
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	bm.material = m
+	p.mesh = bm
+	p.amount = 700
+	p.lifetime = 1.0
+	p.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+	p.emission_box_extents = Vector3(26, 0.5, 26)
+	p.direction = Vector3.DOWN
+	p.spread = 3
+	p.gravity = Vector3(0, -30, 0)
+	p.initial_velocity_min = 8
+	p.initial_velocity_max = 10
+	p.local_coords = false
+	return p
+
+
+func _aktualizuj_zycie(dt: float) -> void:
+	for z in zycie:
+		var w: Node3D = z.w
+		match z.typ:
+			"pieszy":
+				var d: Vector3 = z.cel - w.position
+				if d.length() < 0.1:
+					z.pole = _nastepne_pole(z.pole, z.kier)
+					var nowy: Vector2i = z.pole
+					z.kier = nowy - Vector2i(floori(w.position.x / T), floori(w.position.z / T))
+					z.cel = Vector3((nowy.x + 0.5) * T + randf_range(-0.4, 0.4), 0, (nowy.y + 0.5) * T + randf_range(-0.4, 0.4))
+				else:
+					w.position += d.normalized() * min(d.length(), z.v * dt)
+					w.rotation.y = lerp_angle(w.rotation.y, atan2(d.x, d.z), 0.2)
+				z.faza += dt * z.v * 5.5
+				animuj(w.get_node("model"), z.faza, 0.9)
+			"pojazd":
+				var dl: float = z.a.distance_to(z.b)
+				z.s += z.kier * z.v * dt / dl
+				if z.s > 1.0 or z.s < 0.0:
+					z.kier = -z.kier
+					z.s = clampf(z.s, 0.0, 1.0)
+				var kier: Vector3 = (z.b - z.a) * z.kier
+				var bok := Vector3(kier.z, 0, -kier.x).normalized() * 0.6
+				w.position = z.a.lerp(z.b, z.s) + bok
+				w.rotation.y = atan2(kier.x, kier.z)
+			"ptak":
+				z.f += z.v * dt
+				var c := Vector3(map_w * T / 2, 0, map_h * T / 2)
+				w.position = c + Vector3(cos(z.f) * z.r, z.h + sin(z.f * 3) * 0.6, sin(z.f) * z.r)
+				w.rotation.y = -z.f
+				w.scale.x = 2.2 * (0.6 + 0.4 * abs(sin(t * 8 + z.r)))
+	if deszcz:
+		deszcz.position = Vector3(kamera.position.x, 18, kamera.position.z - 8)
+
+
+func _nastepne_pole(p: Vector2i, kier: Vector2i) -> Vector2i:
+	var opcje := []
+	for d in [kier, Vector2i(kier.y, kier.x), Vector2i(-kier.y, -kier.x), Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0), Vector2i(0, -1)]:
+		var n: Vector2i = p + d
+		if teren_w(n.x, n.y) in ["=", "B"] and d != Vector2i.ZERO:
+			opcje.append(n)
+	if opcje.is_empty():
+		return p
+	if randf() < 0.7:
+		return opcje[0]
+	return opcje[randi() % opcje.size()]
+
+
+# ===================================================================== przerywniki filmowe
+func pokaz_przerywnik(nazwa: String, na_koniec: Callable) -> void:
+	if tryb == "test":
+		if na_koniec.is_valid():
+			na_koniec.call()
+		return
+	kino_nazwa = nazwa
+	kino_i = 0
+	kino_koniec = na_koniec
+	if kino:
+		kino.queue_free()
+	kino = Node3D.new()
+	kino.position = KINO
+	add_child(kino)
+	slonce.shadow_enabled = false
+	match nazwa:
+		"przemowienie":
+			_kino_model("sala_rady", Vector3.ZERO, 0)
+			_kino_postac("postac_dmowski", Vector3(-3.6, 0, 1.2), Vector3(0, 0, -1.5), true)
+			_kino_postac("postac_clemenceau", Vector3(-1.2, 0, -2.6), Vector3(-3.6, 0, 1.2))
+			_kino_postac("postac_wilson", Vector3(1.2, 0, -2.6), Vector3(-3.6, 0, 1.2))
+			_kino_postac("przechodzien_5", Vector3(3.2, 0, -2.6), Vector3(-3.6, 0, 1.2))
+			_kino_postac("przechodzien_5", Vector3(-3.0, 0, -2.4), Vector3(-3.6, 0, 1.2))
+			_kino_swiatlo(Vector3(0, 4.5, 0))
+			kino_ujecia = [[Vector3(0, 3.8, 7.5), Vector3(0, 1.0, -1)], [Vector3(-2.0, 2.0, 3.6), Vector3(-3.6, 1.6, 1.2)],
+				[Vector3(1.6, 3.0, 4.2), Vector3(-4.6, 1.6, 1.5)], [Vector3(-0.6, 2.0, -0.2), Vector3(-1.2, 1.6, -2.6)],
+				[Vector3(0, 5.0, 8.5), Vector3(0, 1.0, -2)]]
+		"listopad":
+			var ziemia := MeshInstance3D.new()
+			var bm := BoxMesh.new()
+			bm.size = Vector3(80, 0.1, 80)
+			var mz := StandardMaterial3D.new()
+			mz.albedo_color = Color(0.6, 0.57, 0.53)
+			bm.material = mz
+			ziemia.mesh = bm
+			ziemia.position.y = -0.05
+			kino.add_child(ziemia)
+			_kino_model("zamek", Vector3(0, 0, -13), 0)
+			_kino_model("kolumna", Vector3(-7, 0, -6), 0)
+			for i in 9:
+				_kino_model("kamienica_wwa_%d" % (i % 3), Vector3(-15, 0, -14 + i * 3.2), PI / 2)
+				_kino_model("kamienica_wwa_%d" % ((i + 1) % 3), Vector3(15, 0, -14 + i * 3.2), -PI / 2)
+			var rng := RandomNumberGenerator.new()
+			rng.seed = 1111
+			for i in 28:
+				var nr: int = [4, 4, 0, 1, 3, 4, 2][i % 7]
+				var p := Vector3(rng.randf_range(-8, 8), 0, rng.randf_range(-3, 5))
+				_kino_postac("przechodzien_%d" % nr, p, Vector3(0, 0, -8) + Vector3(rng.randf_range(-2, 2), 0, 0))
+			_kino_postac("postac_pilsudski", Vector3(0, 0, -6.5), Vector3(0, 0, 4))
+			kino_ujecia = [[Vector3(0, 7, 17), Vector3(0, 2, -6)], [Vector3(7, 2.4, 5), Vector3(0, 1.5, 0)],
+				[Vector3(-4, 2.2, -1.5), Vector3(0, 1.8, -8)], [Vector3(0, 2.0, -3.6), Vector3(0, 1.7, -6.5)],
+				[Vector3(0, 13, 22), Vector3(0, 2, -8)]]
+		"traktat":
+			_kino_model("sala_lustrzana", Vector3.ZERO, 0)
+			_kino_postac("postac_paderewski", Vector3(-1.7, 0, -1.4), Vector3(0, 0, -1.4), true)
+			_kino_postac("postac_dmowski", Vector3(-1.7, 0, -0.1), Vector3(0, 0, -0.1))
+			_kino_postac("postac_clemenceau", Vector3(0, 0, -5.8), Vector3(0, 0, 0))
+			_kino_postac("postac_wilson", Vector3(1.7, 0, -3.2), Vector3(0, 0, -3.2))
+			_kino_postac("przechodzien_5", Vector3(1.7, 0, -1.6), Vector3(0, 0, -1.6))
+			_kino_postac("przechodzien_5", Vector3(1.7, 0, 0.0), Vector3(0, 0, 0))
+			var rng2 := RandomNumberGenerator.new()
+			rng2.seed = 1919
+			for i in 14:
+				var p2 := Vector3(rng2.randf_range(-3.5, 3.5), 0, rng2.randf_range(4, 12))
+				_kino_postac("przechodzien_5", p2, Vector3(0, 0, -2))
+			for z in [-12.0, -4.0, 4.0, 12.0]:
+				_kino_swiatlo(Vector3(0, 5.5, z))
+			kino_ujecia = [[Vector3(0, 3.4, 16), Vector3(0, 2.6, -10)], [Vector3(2.5, 3.6, 8), Vector3(-1.5, 1.2, -3)],
+				[Vector3(0, 2.4, -8.0), Vector3(0, 1.4, -1)], [Vector3(0.7, 2.3, -1.4), Vector3(-1.7, 1.6, -1.4)],
+				[Vector3(0.7, 2.3, -0.1), Vector3(-1.7, 1.6, -0.1)], [Vector3(3.8, 6.0, 11), Vector3(0, 1.0, -3)]]
+	nakladka = "kino"
+	kamera.position = KINO + kino_ujecia[0][0]
+	kamera.look_at(KINO + kino_ujecia[0][1])
+	ui.odswiez_kino()
+
+
+func _kino_model(nazwa: String, poz: Vector3, rot: float) -> void:
+	var m := instancja(nazwa)
+	m.position = poz
+	m.rotation.y = rot
+	kino.add_child(m)
+
+
+func _kino_postac(nazwa: String, poz: Vector3, patrzy_na: Vector3, gest := false) -> void:
+	var m := instancja(nazwa)
+	m.position = poz
+	var d := patrzy_na - poz
+	m.rotation.y = atan2(d.x, d.z)
+	kino.add_child(m)
+	if gest:
+		m.set_meta("gest", true)
+		var r := m.find_child("reka_l", true, false)
+		if r:
+			r.rotation.x = -1.3
+
+
+func _kino_swiatlo(poz: Vector3) -> void:
+	var l := OmniLight3D.new()
+	l.position = poz
+	l.omni_range = 18
+	l.light_energy = 1.2
+	l.light_color = Color(1, 0.9, 0.75)
+	kino.add_child(l)
+
+
+func dalej_kino() -> void:
+	if nakladka != "kino":
+		return
+	kino_i += 1
+	if kino_i >= D.przerywniki[kino_nazwa].size():
+		zakoncz_kino()
+	else:
+		ui.odswiez_kino()
+
+
+func zakoncz_kino() -> void:
+	nakladka = ""
+	slonce.shadow_enabled = true
+	if kino:
+		kino.queue_free()
+		kino = null
+	ui.odswiez_kino()
+	var cb := kino_koniec
+	kino_koniec = Callable()
+	if cb.is_valid():
+		cb.call()
+
+
+func _kamera_kino(dt: float) -> void:
+	var u: Array = kino_ujecia[min(kino_i, kino_ujecia.size() - 1)]
+	var dryf := Vector3(sin(t * 0.3) * 0.25, 0, cos(t * 0.25) * 0.2)
+	var cel_poz: Vector3 = KINO + u[0] + dryf
+	kamera.position = kamera.position.lerp(cel_poz, 1.0 if tryb != "" else min(1.0, dt * 1.2))
+	var patrz: Vector3 = KINO + u[1]
+	var obecny := -kamera.global_transform.basis.z
+	var docelowy := (patrz - kamera.position).normalized()
+	kamera.look_at(kamera.position + obecny.lerp(docelowy, 1.0 if tryb != "" else min(1.0, dt * 2.0)))
+
+
+# ===================================================================== mini-gra: przemówienie
+func rozpocznij_przemowienie(na_koniec: Callable) -> void:
+	minigra = {"runda": 0, "punkty": 0, "stan": "pytanie", "kolejnosc": [], "ostatnie": 0, "koniec": na_koniec}
+	_tasuj_odpowiedzi()
+	if tryb == "test":
+		minigra.punkty = 125
+		zakoncz_przemowienie()
+		return
+	nakladka = "przemowienie"
+	ui.odswiez_przemowienie()
+
+
+func _tasuj_odpowiedzi() -> void:
+	var k := [0, 1, 2]
+	k.shuffle()
+	minigra.kolejnosc = k
+
+
+func wybierz_argument(i: int) -> void:
+	if minigra == null or minigra.stan != "pytanie":
+		return
+	var runda = D.przemowienie[minigra.runda]
+	var pkt := int(runda.odpowiedzi[minigra.kolejnosc[i]][1])
+	minigra.punkty += pkt
+	minigra.ostatnie = pkt
+	minigra.stan = "reakcja"
+	dzwiek("dobrze" if pkt >= 20 else "zle")
+	ui.odswiez_przemowienie()
+
+
+func dalej_przemowienie() -> void:
+	if minigra == null:
+		return
+	if minigra.stan == "reakcja":
+		minigra.runda += 1
+		if minigra.runda >= D.przemowienie.size():
+			minigra.stan = "wynik"
+			dzwiek("fanfara")
+		else:
+			minigra.stan = "pytanie"
+			_tasuj_odpowiedzi()
+		ui.odswiez_przemowienie()
+	elif minigra.stan == "wynik":
+		zakoncz_przemowienie()
+
+
+func gwiazdki() -> int:
+	var p: int = minigra.punkty if minigra != null else 0
+	return 3 if p >= 100 else (2 if p >= 70 else 1)
+
+
+func zakoncz_przemowienie() -> void:
+	var g := gwiazdki()
+	stan.pw += g * 3
+	stan.zasoby.poparcie += minigra.punkty / 2
+	ui.toast("Przemówienie: %s  (+%d PW, +%d poparcia)" % ["★".repeat(g), g * 3, minigra.punkty / 2])
+	var cb: Callable = minigra.koniec
+	minigra = null
+	nakladka = ""
+	ui.odswiez_przemowienie()
+	if cb.is_valid():
+		cb.call()
 
 
 # ===================================================================== zrzuty i test
@@ -1481,6 +1949,24 @@ func _zrzuty() -> void:
 	ui.czytaj_karte("przemowienie")
 	await zrob("10_ksiega")
 	ui.zamknij_okno()
+	rozpocznij_przemowienie(Callable())
+	minigra.runda = 1
+	minigra.punkty = 25
+	ui.odswiez_przemowienie()
+	await zrob("12_przemowienie_minigra")
+	minigra.punkty = 125
+	minigra.stan = "wynik"
+	ui.odswiez_przemowienie()
+	await zrob("13_przemowienie_wynik")
+	minigra = null
+	nakladka = ""
+	ui.odswiez_przemowienie()
+	for k in [["przemowienie", 1, "14_kino_rada"], ["listopad", 0, "15_kino_11_listopada"], ["traktat", 3, "16_kino_sala_lustrzana"]]:
+		pokaz_przerywnik(k[0], Callable())
+		kino_i = k[1]
+		ui.odswiez_kino()
+		await zrob(k[2])
+		zakoncz_kino()
 	scena = "koniec"
 	stan.przeczytane = D.wiedza_kolejnosc.slice(0, 20)
 	ui.pokaz_ekran()

@@ -815,6 +815,158 @@ func _okno_pomoc() -> void:
 		vb.add_child(lab)
 
 
+# ===================================================================== przerywniki filmowe
+var kino_w: Control
+
+
+func odswiez_kino() -> void:
+	if kino_w:
+		kino_w.queue_free()
+		kino_w = null
+	if g.nakladka != "kino":
+		hud.visible = g.scena == "gra"
+		toasty.visible = hud.visible
+		return
+	hud.visible = false
+	toasty.visible = false
+	kino_w = Control.new()
+	kino_w.set_anchors_preset(Control.PRESET_FULL_RECT)
+	kino_w.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	korzen.add_child(kino_w)
+	for gora in [true, false]:
+		var pas := ColorRect.new()
+		pas.color = Color(0, 0, 0)
+		pas.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		pas.set_anchors_preset(Control.PRESET_TOP_WIDE if gora else Control.PRESET_BOTTOM_WIDE)
+		pas.custom_minimum_size.y = 70 if gora else 170
+		if not gora:
+			pas.offset_top = -170
+		kino_w.add_child(pas)
+	var napis = g.D.przerywniki[g.kino_nazwa][g.kino_i]
+	var hb := HBoxContainer.new()
+	hb.position = Vector2(60, 720 - 155)
+	hb.custom_minimum_size = Vector2(1160, 140)
+	hb.add_theme_constant_override("separation", 18)
+	kino_w.add_child(hb)
+	if ResourceLoader.exists("res://ui/portret_%s.png" % napis[0]):
+		var por := TextureRect.new()
+		por.texture = load("res://ui/portret_%s.png" % napis[0])
+		por.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		por.custom_minimum_size = Vector2(120, 120)
+		hb.add_child(por)
+	var vb := VBoxContainer.new()
+	vb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hb.add_child(vb)
+	var kto: String = g.D.postacie[napis[0]].imie if g.D.postacie.has(napis[0]) else ""
+	vb.add_child(_label(kto, 22, C_ZLOTY))
+	var tekst := _label(napis[1], 23, C_JASNY)
+	tekst.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	tekst.custom_minimum_size.x = 860
+	vb.add_child(tekst)
+	var b := _btn("Dalej »", func(): g.dalej_kino(), "", 18)
+	b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	hb.add_child(b)
+	var tytul := _label({"przemowienie": "Paryż, 29 stycznia 1919", "listopad": "Warszawa, 11 listopada 1918",
+		"traktat": "Wersal, 28 czerwca 1919"}.get(g.kino_nazwa, ""), 22, C_ZLOTY)
+	tytul.position = Vector2(60, 22)
+	kino_w.add_child(tytul)
+	var pomin := _btn("Pomiń (Esc)", func(): g.zakoncz_kino(), "", 15)
+	pomin.position = Vector2(1120, 18)
+	kino_w.add_child(pomin)
+
+
+# ===================================================================== mini-gra: przemówienie
+var mini_w: Control
+
+
+func odswiez_przemowienie() -> void:
+	if mini_w:
+		mini_w.queue_free()
+		mini_w = null
+	var m = g.minigra
+	if m == null or g.nakladka != "przemowienie":
+		return
+	mini_w = Control.new()
+	mini_w.set_anchors_preset(Control.PRESET_FULL_RECT)
+	korzen.add_child(mini_w)
+	var cien := ColorRect.new()
+	cien.color = Color(0.04, 0.02, 0.06, 0.6)
+	cien.set_anchors_preset(Control.PRESET_FULL_RECT)
+	mini_w.add_child(cien)
+	var p := PanelContainer.new()
+	p.position = Vector2(170, 60)
+	p.custom_minimum_size = Vector2(940, 560)
+	mini_w.add_child(p)
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 12)
+	p.add_child(vb)
+	var t := _label("Przemówienie przed Radą Dziesięciu", 30, C_CZERW)
+	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vb.add_child(t)
+	var hm := HBoxContainer.new()
+	hm.add_child(_label("Przekonanie Rady:  ", 18))
+	var pb := ProgressBar.new()
+	pb.max_value = 125
+	pb.value = m.punkty
+	pb.show_percentage = false
+	pb.custom_minimum_size = Vector2(600, 22)
+	pb.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	hm.add_child(pb)
+	hm.add_child(_label("  %d / 125" % m.punkty, 18))
+	vb.add_child(hm)
+	var rundy: Array = g.D.przemowienie
+	if m.stan == "wynik":
+		var gw: int = g.gwiazdki()
+		var hs := HBoxContainer.new()
+		hs.alignment = BoxContainer.ALIGNMENT_CENTER
+		for i in 3:
+			var s := _label("★", 72, C_ZLOTY if i < gw else Color(0.6, 0.55, 0.5))
+			s.add_theme_color_override("font_outline_color", Color("3c2616"))
+			s.add_theme_constant_override("outline_size", 8)
+			hs.add_child(s)
+		vb.add_child(hs)
+		var opis := _label(["", "Rada słuchała uprzejmie, ale nie dała się w pełni przekonać.",
+			"Dobre przemówienie! Wielu delegatów kiwa głowami.",
+			"Wspaniale! Delegaci wstają i gratulują znajomości sprawy."][gw], 22)
+		opis.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		opis.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		vb.add_child(opis)
+		var info := _label("Prawdziwe przemówienie Dmowskiego 29 stycznia 1919 r. trwało około 5 godzin. Mówił na zmianę po francusku i po angielsku, korzystając z map i danych.", 18, C_SZARY)
+		info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		info.custom_minimum_size.x = 880
+		vb.add_child(info)
+		var b := _btn("Zakończ przemówienie »", func(): g.dalej_przemowienie(), "", 20)
+		b.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		vb.add_child(b)
+		return
+	var r = rundy[m.runda]
+	vb.add_child(_label("Pytanie %d/%d — %s" % [m.runda + 1, rundy.size(), r.pytajacy], 18, C_SZARY))
+	var q := _label(r.pytanie, 23)
+	q.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	q.custom_minimum_size.x = 880
+	vb.add_child(q)
+	if m.stan == "pytanie":
+		vb.add_child(_label("Wybierz najlepszy argument (1, 2, 3):", 17, C_SZARY))
+		for i in 3:
+			var odp = r.odpowiedzi[m.kolejnosc[i]]
+			var b := _btn("%d.  %s" % [i + 1, odp[0]], func(): g.wybierz_argument(i), "", 18)
+			b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+			b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			b.custom_minimum_size = Vector2(880, 52)
+			vb.add_child(b)
+	else:
+		var dobre: bool = m.ostatnie >= 20
+		vb.add_child(_label("Oklaski! Trafny argument." if dobre else "Delegaci kręcą głowami…", 24,
+			C_ZIELONY if dobre else C_CZERW))
+		var re := _label(r.reakcja, 19)
+		re.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		re.custom_minimum_size.x = 880
+		vb.add_child(re)
+		var b2 := _btn("Następne pytanie »" if m.runda + 1 < rundy.size() else "Podsumowanie »", func(): g.dalej_przemowienie(), "", 20)
+		b2.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		vb.add_child(b2)
+
+
 # ===================================================================== widżety rysowane
 class KompasWidget extends Control:
 	var g

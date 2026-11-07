@@ -451,7 +451,7 @@ ROZDZIALY = {
                               "Teraz trzeba wywalczyć jej granice."],
                 ["haller", "Moi żołnierze są gotowi wrócić do Ojczyzny. Panie Dmowski — teraz pana kolej: Paryż!"],
                 ["narrator", "Otrzymujesz: Telegram z 11 listopada. Codziennie +1 Punkt Wiedzy."]],
-        nagroda="telegram", karty=["listopad", "pilsudski"]),
+        nagroda="telegram", karty=["listopad", "pilsudski"], przerywnik="listopad"),
     4: dict(
         tytul="Kampania IV: Konferencja w Paryżu", lata="1919", miejsce="Paryż i Wersal",
         mapa=mapa_paryz(), styl="kamienica_paryz", start=[13, 7],
@@ -481,7 +481,7 @@ ROZDZIALY = {
                 ["paderewski", "Panie Romanie, podpiszmy razem. To podpis za całą Polskę."],
                 ["dmowski", "Po 123 latach niewoli Polska wraca na mapę Europy."],
                 ["narrator", "Otrzymujesz: Pióro z Sali Lustrzanej."]],
-        nagroda="pioro", karty=["traktat", "spor"]),
+        nagroda="pioro", karty=["traktat", "spor"], przerywnik="traktat"),
 }
 
 ROZMOWY = {
@@ -520,9 +520,9 @@ ROZMOWY = {
         kwestie=[["clemenceau", "Monsieur Dmowski, Rada Dziesięciu czeka. Ma pan głos."],
                  ["dmowski", "Panowie, Polska była przez wieki tarczą Europy. Pokażę wam na mapie, gdzie mieszkają "
                              "Polacy, i wyjaśnię, dlaczego wolna Polska jest potrzebna dla trwałego pokoju."],
-                 ["narrator", "29 stycznia 1919 r. Dmowski mówi godzinami, na zmianę po francusku i po angielsku."],
-                 ["clemenceau", "Impressionnant! Ale zanim zdecydujemy — powiedz mi, jak długo pan mówił?"]],
-        nagroda="paczka", karty=["przemowienie"],
+                 ["clemenceau", "Delegaci będą zadawać pytania. Wybieraj najlepsze argumenty — "
+                                "liczą się fakty, mapy i spokój."]],
+        nagroda="paczka", karty=["przemowienie"], minigra="przemowienie",
         po=[["clemenceau", "Przygotujcie memoriały o każdej spornej ziemi. Rada je rozpatrzy."]]),
     "wilson:4": dict(
         kwestie=[["wilson", "Mister Dmowski, I remember you. Spotkaliśmy się w Ameryce w 1918 roku."],
@@ -540,6 +540,72 @@ LUZNE = {
     "clemenceau": [["clemenceau", "Pokój jest trudniejszy do wygrania niż wojna."]],
     "wilson": [["wilson", "Open diplomacy — dyplomacja powinna być jawna."]],
 }
+
+# ------------------------------------------------------------------ przerywniki filmowe
+PRZERYWNIKI = {
+    "przemowienie": [
+        ["narrator", "29 stycznia 1919 r., Paryż, Quai d'Orsay. Obraduje Rada Dziesięciu — przywódcy i ministrowie "
+                     "zwycięskich mocarstw."],
+        ["dmowski", "Panowie, Polska była przez wieki wielkim państwem. Rozbiory odebrały jej wolność, ale nie "
+                    "odebrały Polakom poczucia, że są narodem."],
+        ["narrator", "Dmowski mówi godzinami, na zmianę po francusku i po angielsku. Pokazuje na mapach, gdzie "
+                     "mieszkają Polacy."],
+        ["clemenceau", "Monsieur Dmowski zna sprawę swojego kraju lepiej niż ktokolwiek z nas."],
+        ["narrator", "Rada powołuje komisję do spraw polskich. Teraz trzeba przygotować memoriały o każdej ziemi."],
+    ],
+    "listopad": [
+        ["narrator", "11 listopada 1918 r. Niemcy podpisują rozejm. Wielka wojna dobiega końca."],
+        ["narrator", "W Warszawie mieszkańcy rozbrajają niemieckich żołnierzy. Na ulicach powiewają "
+                     "biało-czerwone flagi."],
+        ["narrator", "Rada Regencyjna przekazuje Józefowi Piłsudskiemu dowództwo nad wojskiem."],
+        ["pilsudski", "Polska jest wolna. Teraz musimy ją obronić i wywalczyć jej granice."],
+        ["narrator", "Po 123 latach niewoli Polska wraca na mapę. Dziś 11 listopada to Narodowe Święto "
+                     "Niepodległości."],
+    ],
+    "traktat": [
+        ["narrator", "28 czerwca 1919 r. — dokładnie 5 lat po zamachu w Sarajewie, od którego zaczęła się wojna."],
+        ["narrator", "Sala Lustrzana w Wersalu. To tu w 1871 r. ogłoszono powstanie Cesarstwa Niemieckiego. "
+                     "Dziś Niemcy podpisują traktat pokojowy."],
+        ["clemenceau", "Zapraszam delegację Polski do podpisania traktatu."],
+        ["paderewski", "Podpisuję w imieniu Rzeczypospolitej Polskiej."],
+        ["dmowski", "I ja. Po 123 latach Polska znów jest na mapie Europy."],
+        ["narrator", "Traktat potwierdził niepodległość Polski i przyznał jej m.in. Wielkopolskę i większość Pomorza "
+                     "z dostępem do morza."],
+    ],
+}
+
+# ------------------------------------------------------------------ mini-gra: przemówienie przed Radą Dziesięciu
+PRZEMOWIENIE = [
+    dict(pytajacy="Delegat francuski",
+         pytanie="Delegaci mówią po francusku i po angielsku. W jakim języku pan przemówi?",
+         odpowiedzi=[["Po francusku i po angielsku — na zmianę, żeby rozumieli wszyscy", 25],
+                     ["Tylko po polsku — niech szukają tłumacza", 0],
+                     ["Nie będę mówić, pokażę tylko mapę", 5]],
+         reakcja="Dmowski znał świetnie oba języki — mógł mówić bezpośrednio do wszystkich delegatów."),
+    dict(pytajacy="Delegat brytyjski", pytanie="Czy Polacy mają prawo do własnego państwa?",
+         odpowiedzi=[["Polska istniała przez ponad 800 lat, aż do rozbiorów. Polacy przez cały czas zachowali "
+                      "język, kulturę i wolę wolności.", 25],
+                     ["Bo Polacy pięknie tańczą poloneza.", 0],
+                     ["Bo tak chcę i już.", 0]],
+         reakcja="Argument historyczny przekonuje — Polska nie była nowym wymysłem, tylko odradzającym się państwem."),
+    dict(pytajacy="Delegat amerykański", pytanie="Gdzie powinna przebiegać granica Polski na zachodzie?",
+         odpowiedzi=[["Tam, gdzie mieszka większość Polaków — mam mapy i dane ze spisów ludności.", 25],
+                     ["Jak najdalej, nieważne, kto tam mieszka.", 0],
+                     ["Niech zdecyduje rzut monetą.", 0]],
+         reakcja="Dane i mapy to mocny argument — tak pracowali eksperci polskiej delegacji."),
+    dict(pytajacy="Delegat włoski", pytanie="Po co Polsce dostęp do morza?",
+         odpowiedzi=[["Wisła płynie do Bałtyku. Bez portu Polska nie mogłaby swobodnie handlować — obiecał to też "
+                      "13. punkt prezydenta Wilsona.", 25],
+                     ["Żeby polscy marynarze mieli gdzie pływać dla przyjemności.", 5],
+                     ["Morze nie jest Polsce potrzebne.", 0]],
+         reakcja="Odwołanie do 14 punktów Wilsona trafia do Amerykanów."),
+    dict(pytajacy="Delegat japoński", pytanie="Czy Polacy pomogli aliantom w tej wojnie?",
+         odpowiedzi=[["Tak — Armia Polska we Francji walczyła u boku aliantów, a ochotnicy przybyli nawet z Ameryki.",
+                      25],
+                     ["Nie, Polacy tylko czekali.", 0],
+                     ["To nie ma znaczenia.", 5]],
+         reakcja="Błękitna Armia generała Hallera była dowodem, że Polacy walczyli razem z aliantami."),
+]
 
 POMOC = [
     "STEROWANIE",
@@ -564,7 +630,7 @@ def main():
         postacie=POSTACIE, zasoby=ZASOBY, budynki=BUDYNKI, model_sprawy=MODEL_SPRAWY, zasoby_nazwy=ZASOBY_NAZWY,
         przedmioty=PRZEDMIOTY, wiedza={k: list(v) for k, v in WIEDZA.items()}, wiedza_kolejnosc=list(WIEDZA),
         karty_startowe=KARTY_STARTOWE, karta_budynku=KARTA_BUDYNKU, rangi=RANGI, quiz_glowny=QUIZ_GLOWNY,
-        zagadki=ZAGADKI, rozmowy=ROZMOWY, luzne=LUZNE, pomoc=POMOC, start_ekwipunek=["kompas", "datki", "paczka"],
+        zagadki=ZAGADKI, rozmowy=ROZMOWY, przerywniki=PRZERYWNIKI, przemowienie=PRZEMOWIENIE, luzne=LUZNE, pomoc=POMOC, start_ekwipunek=["kompas", "datki", "paczka"],
         rozdzialy={str(k): dict(v, mapa=["".join(w) for w in v["mapa"]]) for k, v in ROZDZIALY.items()},
         liczba_rozdzialow=len(ROZDZIALY),
     )

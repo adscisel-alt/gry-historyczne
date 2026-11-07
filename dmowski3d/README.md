@@ -6,6 +6,8 @@ Edukacyjna gra strategiczna 3D o odzyskaniu niepodległości przez Polskę (1914
 
 ![Paryż 1919](zrzuty/08_paryz.png)
 
+![Sala Lustrzana — przerywnik](zrzuty/16_kino_sala_lustrzana.png)
+
 ## Kampanie
 
 | Kampania | Miejsce i lata | Cele |
@@ -18,6 +20,18 @@ Edukacyjna gra strategiczna 3D o odzyskaniu niepodległości przez Polskę (1914
 Postacie: Roman Dmowski (bohater, z teczką memoriałów), Maurycy Zamoyski, gen. Józef Haller,
 Ignacy Jan Paderewski, Georges Clemenceau, Woodrow Wilson, Józef Piłsudski (telegram z 11 listopada)
 i Hanna — sekretarka Komitetu (postać fikcyjna).
+
+**Nowości w tej wersji:**
+- **Animowane postacie** — modele z Blendera mają ruchome ręce i nogi; postacie są większe i lepiej podpisane.
+- **Żywe miasta** — przechodnie, tramwaj konny w Warszawie, dorożki i automobile, ptaki, dym z kominów,
+  żołnierze Błękitnej Armii; własne oświetlenie każdej kampanii (deszcz i mgła na froncie w Szampanii,
+  złote popołudnie w Paryżu).
+- **Przerywniki filmowe 3D** — przemówienie przed Radą Dziesięciu (29 I 1919), Warszawa 11 listopada 1918
+  i podpisanie traktatu w Sali Lustrzanej w Wersalu (28 VI 1919), z napisami i portretami.
+- **Mini-gra „Przemówienie”** — 5 pytań delegatów; wybierasz najlepsze argumenty, a miernik
+  „Przekonanie Rady” i 1–3 gwiazdki decydują o nagrodzie.
+- **Wersja przeglądarkowa (HTML5)** — po scaleniu z gałęzią `main` strona GitHub Pages buduje grę
+  i udostępnia ją pod adresem `…/dmowski3d/graj/` (bez instalowania EXE).
 
 Mechaniki: 4 zasoby (fundusze, poparcie aliantów, prasa, ochotnicy), działacze do obsługi placówek,
 **ekwipunek** (11 przedmiotów z działaniem), **Punkty Wiedzy** (24 karty Księgi Wiedzy, 23 zagadki, rangi

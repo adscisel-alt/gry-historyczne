@@ -23,7 +23,15 @@ blender -b -P blender/generuj_modele.py          # modele i rendery (-- --bez-re
 godot --headless --path godot -- --samotest      # autotest: oczekiwane "TEST_WYNIK: OK"
 godot --path godot -- --zrzuty ../zrzuty         # 11 zrzutów ekranu
 godot --headless --path godot --export-release "Windows" ../build/DmowskiDrogaDoWersalu3D.exe
+godot --headless --path godot --export-release "Web" ../build/web/index.html   # wersja przeglądarkowa
 ```
+
+## Animacje, przerywniki, mini-gra
+
+- Postacie (`postac_*`, `przechodzien_*`) eksportowane są z osobnymi częściami `cialo`, `noga_l`, `noga_p`,
+  `reka_l`, `reka_p` (punkt obrotu w stawie) — `animuj()` w `gra.gd` porusza nimi przy chodzeniu.
+- Przerywniki: teksty w `PRZERYWNIKI` (`dane.py`), dekoracje i ujęcia kamery w `pokaz_przerywnik()` (`gra.gd`).
+- Mini-gra „Przemówienie”: pytania i punktacja argumentów w `PRZEMOWIENIE` (`dane.py`).
 
 ## Jak dodać kampanię lub budynek
 

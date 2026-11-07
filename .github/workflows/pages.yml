@@ -36,10 +36,28 @@ jobs:
           sudo apt-get install -y -q ffmpeg > /dev/null
           (cd kroniki-damiana-scisla && python tools/make_voice.py) || echo "Lektor niedostępny – budowa bez nagrań"
           bash kroniki-damiana-scisla/tools/build_web.sh
+      - name: Wersje przeglądarkowe gier 3D z Godota (Zamość 3D, Dmowski 3D)
+        run: |
+          base=https://github.com/godotengine/godot/releases/download/4.3-stable
+          curl -sSL -o /tmp/godot.zip "$base/Godot_v4.3-stable_linux.x86_64.zip"
+          unzip -q /tmp/godot.zip -d /tmp && sudo mv /tmp/Godot_v4.3-stable_linux.x86_64 /usr/local/bin/godot
+          curl -sSL -o /tmp/szablony.tpz "$base/Godot_v4.3-stable_export_templates.tpz"
+          d=~/.local/share/godot/export_templates/4.3.stable && mkdir -p $d
+          unzip -joq /tmp/szablony.tpz templates/web_nothreads_release.zip templates/web_nothreads_debug.zip templates/version.txt -d $d
+          rm -f /tmp/godot.zip /tmp/szablony.tpz
+          for g in zamosc3d dmowski3d; do
+            godot --headless --path $g/godot --import || true
+            mkdir -p "$PWD/web_godot/$g"
+            godot --headless --path $g/godot --export-release "Web" "$PWD/web_godot/$g/index.html"
+            ls -la "web_godot/$g"
+          done
       - name: Złożenie strony
         run: |
           mkdir -p ../_site
-          rsync -a --exclude .git --exclude web_build ./ ../_site/
+          rsync -a --exclude .git --exclude web_build --exclude web_godot --exclude '*/godot/.godot' ./ ../_site/
+          for g in zamosc3d dmowski3d; do
+            mkdir -p ../_site/$g/graj && cp -r web_godot/$g/. ../_site/$g/graj/
+          done
           mkdir -p ../_site/kroniki-damiana-scisla/graj
           cp -r kroniki-damiana-scisla/web_build/kroniki-damiana-scisla/build/web/. ../_site/kroniki-damiana-scisla/graj/
           mv ../_site ./_site

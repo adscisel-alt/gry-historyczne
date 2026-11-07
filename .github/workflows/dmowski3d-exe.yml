@@ -28,7 +28,7 @@ jobs:
           unzip -q godot.zip && sudo mv Godot_v${GODOT_VERSION}-stable_linux.x86_64 /usr/local/bin/godot
           curl -sSL -o szablony.tpz "$base/Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
           d=~/.local/share/godot/export_templates/${GODOT_VERSION}.stable && mkdir -p $d
-          unzip -joq szablony.tpz templates/windows_release_x86_64.exe templates/windows_debug_x86_64.exe templates/version.txt -d $d
+          unzip -joq szablony.tpz templates/windows_release_x86_64.exe templates/windows_debug_x86_64.exe templates/web_nothreads_release.zip templates/web_nothreads_debug.zip templates/version.txt -d $d
           sudo apt-get update -qq && sudo apt-get install -y -qq xvfb mesa-utils libgl1-mesa-dri > /dev/null
       - name: Import zasobów
         run: godot --headless --path dmowski3d/godot --import || true
@@ -41,12 +41,21 @@ jobs:
           mkdir -p dmowski3d/build
           godot --headless --path dmowski3d/godot --export-release "Windows" ../build/DmowskiDrogaDoWersalu3D.exe
           ls -la dmowski3d/build
+      - name: Eksport wersji przeglądarkowej (HTML5)
+        run: |
+          mkdir -p dmowski3d/build/web
+          godot --headless --path dmowski3d/godot --export-release "Web" ../build/web/index.html
+          ls -la dmowski3d/build/web
       - name: Zrzuty ekranu
         run: xvfb-run -a -s "-screen 0 1280x720x24" godot --path dmowski3d/godot --rendering-driver opengl3 --resolution 1280x720 -- --zrzuty "$PWD/zrzuty3d"
       - uses: actions/upload-artifact@v4
         with:
           name: DmowskiDrogaDoWersalu3D-Windows
           path: dmowski3d/build/DmowskiDrogaDoWersalu3D.exe
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DmowskiDrogaDoWersalu3D-przegladarka
+          path: dmowski3d/build/web/
       - uses: actions/upload-artifact@v4
         with:
           name: zrzuty-ekranu-3d

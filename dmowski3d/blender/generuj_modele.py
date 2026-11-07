@@ -375,15 +375,85 @@ POSTACIE = {
 }
 
 
-def m_postac(p, ox=0, oy=0):
+class Grupa:
+    """Zbiera obiekty utworzone w bloku `with` w jedną część z punktem obrotu (staw) — do animacji w Godocie."""
+
+    def __init__(self, nazwa, pivot, aktywna=True):
+        self.nazwa, self.pivot, self.aktywna = nazwa, pivot, aktywna
+
+    def __enter__(self):
+        self.przed = set(bpy.context.scene.objects)
+        return self
+
+    def __exit__(self, *a):
+        if not self.aktywna:
+            return
+        nowe = [o for o in bpy.context.scene.objects if o not in self.przed and o.type == "MESH"]
+        polacz(nowe, self.nazwa, self.pivot)
+
+
+def polacz(obiekty, nazwa, pivot):
+    bpy.ops.object.select_all(action="DESELECT")
+    for o in obiekty:
+        o.select_set(True)
+    bpy.context.view_layer.objects.active = obiekty[0]
+    bpy.ops.object.transform_apply(location=False, rotation=True, scale=True)
+    if len(obiekty) > 1:
+        bpy.ops.object.join()
+    o = bpy.context.view_layer.objects.active
+    o.name = nazwa
+    o.data.name = nazwa
+    bpy.context.scene.cursor.location = pivot
+    bpy.ops.object.origin_set(type="ORIGIN_CURSOR")
+    bpy.ops.object.shade_flat()
+    o.select_set(False)
+    return o
+
+
+CZESCI = ("noga_l", "noga_p", "reka_l", "reka_p")
+
+
+def eksportuj_postac(nazwa):
+    """Postać z osobnymi częściami (cialo, noga_l/p, reka_l/p) — Godot porusza nimi przy chodzeniu."""
+    reszta = [o for o in bpy.context.scene.objects if o.type == "MESH" and o.name not in CZESCI]
+    polacz(reszta, "cialo", (0, 0, 0))
+    sciezka = os.path.join(MODELE, nazwa + ".glb")
+    bpy.ops.export_scene.gltf(filepath=sciezka, export_format="GLB", use_selection=False, export_apply=True,
+                              export_yup=True)
+    print("model:", nazwa)
+
+PRZECHODNIE = [
+    dict(stroj="garnitur", kolor=(90, 80, 70), spodnie=(70, 66, 60), krawat=None, skora=SKORA, wlosy=(80, 60, 40),
+         fryzura="krotkie", wasy="male", broda=False, kapelusz="kaszkiet", kapelusz_kol=(70, 66, 60),
+         okulary=False, trzyma="brak", buty=(40, 30, 24)),
+    dict(stroj="sukienka", kolor=(130, 60, 80), spodnie=(130, 60, 80), krawat=None, skora=(244, 206, 172),
+         wlosy=(90, 60, 40), fryzura="kok", wasy=None, broda=False, kapelusz="damski", kapelusz_kol=(230, 220, 200),
+         okulary=False, trzyma="brak", buty=(40, 30, 28), bluzka=(236, 226, 214)),
+    dict(stroj="garnitur", kolor=(110, 90, 60), spodnie=(80, 70, 56), krawat=None, skora=(244, 206, 172),
+         wlosy=(140, 100, 60), fryzura="krotkie", wasy=None, broda=False, kapelusz="kaszkiet",
+         kapelusz_kol=(90, 80, 60), okulary=False, trzyma="gazety", buty=(50, 36, 26)),
+    dict(stroj="mundur", kolor=BLEKIT, spodnie=BLEKIT, krawat=None, skora=(232, 190, 150), wlosy=(90, 70, 50),
+         fryzura="krotkie", wasy="male", broda=False, kapelusz="rogatywka", kapelusz_kol=BLEKIT, okulary=False,
+         trzyma="brak", buty=(70, 46, 30)),
+    dict(stroj="garnitur", kolor=(60, 60, 70), spodnie=(60, 60, 70), krawat=(150, 30, 40), skora=SKORA,
+         wlosy=(70, 54, 44), fryzura="krotkie", wasy="male", broda=False, kapelusz="kaszkiet",
+         kapelusz_kol=(50, 50, 56), okulary=False, trzyma="flaga", buty=(30, 24, 22)),
+    dict(stroj="garnitur", kolor=(36, 36, 44), spodnie=(36, 36, 44), krawat=(30, 30, 40), skora=(236, 200, 170),
+         wlosy=(150, 140, 130), fryzura="lysiejace", wasy="male", broda=False, kapelusz=None, kapelusz_kol=None,
+         okulary=False, trzyma="papiery", buty=(26, 22, 22)),
+]
+
+
+def m_postac(p, ox=0, oy=0, czesci=False):
     st = p["stroj"]
     sk = p["skora"]
     # nogi i buty
     wys_butow = 0.36 if st == "mundur" else 0.1
     for sx in (-0.1, 0.1):
-        box(ox + sx, oy - 0.03, 0, 0.13, 0.24, wys_butow, p["buty"])
-        if st != "sukienka":
-            cyl(ox + sx, oy, wys_butow, 0.08, 0.78 - wys_butow, p["spodnie"], v=8)
+        with Grupa("noga_l" if sx < 0 else "noga_p", (ox + sx, oy, 0.78), czesci):
+            box(ox + sx, oy - 0.03, 0, 0.13, 0.24, wys_butow, p["buty"])
+            if st != "sukienka":
+                cyl(ox + sx, oy, wys_butow, 0.08, 0.78 - wys_butow, p["spodnie"], v=8)
     if st == "sukienka":
         stozek(ox, oy, 0.08, 0.32, 0.2, 0.72, p["kolor"], v=12)
     if st == "plaszcz":
@@ -404,10 +474,14 @@ def m_postac(p, ox=0, oy=0):
         box(ox, oy, 1.22, 0.3, 0.3, 0.07, p["kolor"])                       # kołnierz
     # ręce
     for s in (-1, 1):
-        bpy.ops.mesh.primitive_cylinder_add(vertices=6, radius=0.065, depth=0.5,
-                                            location=(ox + s * 0.27, oy - 0.04, 0.98), rotation=(0.15, -s * 0.12, 0))
-        _nadaj(bpy.context.active_object, gora)
-        kula(ox + s * 0.3, oy - 0.08, 0.72, 0.065, p.get("rekawiczki", sk), seg=6, ringi=4)
+        with Grupa("reka_l" if s < 0 else "reka_p", (ox + s * 0.27, oy - 0.04, 1.22), czesci):
+            bpy.ops.mesh.primitive_cylinder_add(vertices=6, radius=0.065, depth=0.5,
+                                                location=(ox + s * 0.27, oy - 0.04, 0.98),
+                                                rotation=(0.15, -s * 0.12, 0))
+            _nadaj(bpy.context.active_object, gora)
+            kula(ox + s * 0.3, oy - 0.08, 0.72, 0.065, p.get("rekawiczki", sk), seg=6, ringi=4)
+            if s > 0:
+                przedmiot_w_dloni(p, ox, oy)
     # głowa
     cyl(ox, oy, 1.24, 0.075, 0.08, sk, v=8)
     kula(ox, oy, 1.43, 0.18, sk, seg=10, ringi=8, skala=(1, 0.95, 1.05))
@@ -458,11 +532,24 @@ def m_postac(p, ox=0, oy=0):
         box(ox, oy, 1.67, 0.32, 0.32, 0.06, c, rot=(0, 0, math.pi / 4))
         box(ox, oy - 0.2, 1.56, 0.26, 0.12, 0.03, (40, 30, 24), rot=(-0.25, 0, 0))
         kula(ox, oy - 0.2, 1.64, 0.03, (230, 230, 230), seg=6, ringi=4)       # orzełek
+    elif k == "kaszkiet":
+        cyl(ox, oy, 1.55, 0.2, 0.09, c, v=10)
+        box(ox, oy - 0.17, 1.56, 0.3, 0.16, 0.03, c, rot=(-0.2, 0, 0))
+    elif k == "damski":
+        cyl(ox, oy, 1.56, 0.32, 0.025, c, v=14)
+        kula(ox, oy, 1.58, 0.15, c, seg=10, ringi=5, skala=(1, 1, 0.7))
+        kula(ox + 0.12, oy - 0.1, 1.66, 0.05, (200, 80, 90), seg=6, ringi=4)
     elif k == "maciejowka":
         cyl(ox, oy, 1.55, 0.2, 0.16, c, v=10)
         cyl(ox, oy, 1.7, 0.22, 0.04, c, v=10)
         box(ox, oy - 0.2, 1.56, 0.26, 0.12, 0.03, (40, 30, 24), rot=(-0.25, 0, 0))
         kula(ox, oy - 0.2, 1.64, 0.03, (230, 230, 230), seg=6, ringi=4)
+    if p["trzyma"] == "szabla":
+        box(ox - 0.26, oy + 0.05, 0.3, 0.03, 0.06, 0.6, (170, 170, 176), rot=(0.25, 0, 0), metal=0.6)
+        box(ox - 0.26, oy - 0.02, 0.86, 0.05, 0.12, 0.05, ZLOTO)
+
+
+def przedmiot_w_dloni(p, ox, oy):
     t = p["trzyma"]
     hx, hy = ox + 0.32, oy - 0.1
     if t == "teczka":
@@ -474,9 +561,12 @@ def m_postac(p, ox=0, oy=0):
     elif t == "laska":
         cyl(hx + 0.03, hy - 0.05, 0.0, 0.02, 0.75, (60, 40, 26), v=6)
         kula(hx + 0.03, hy - 0.05, 0.76, 0.035, ZLOTO, seg=6, ringi=4)
-    elif t == "szabla":
-        box(ox - 0.26, oy + 0.05, 0.3, 0.03, 0.06, 0.6, (170, 170, 176), rot=(0.25, 0, 0), metal=0.6)
-        box(ox - 0.26, oy - 0.02, 0.86, 0.05, 0.12, 0.05, ZLOTO)
+    elif t == "gazety":
+        box(hx, hy - 0.05, 0.55, 0.12, 0.3, 0.22, (236, 232, 220))
+    elif t == "flaga":
+        cyl(hx, hy - 0.05, 0.4, 0.015, 1.2, (90, 70, 50), v=6)
+        box(hx + 0.2, hy - 0.05, 1.4, 0.38, 0.02, 0.12, BIEL)
+        box(hx + 0.2, hy - 0.05, 1.28, 0.38, 0.02, 0.12, CZERWONY_FL)
 
 
 # ================================================================= BUDYNKI
@@ -610,18 +700,25 @@ def m_kwatera_glowna():
 
 
 def m_pozycja():
-    for i in range(9):  # wał z worków z piaskiem (łuk od frontu)
-        a = -0.9 + i * 0.225
-        x, y = math.sin(a) * 1.4, -math.cos(a) * 1.2
-        for j in range(3):
-            box(x, y, j * 0.2, 0.42, 0.26, 0.2, WORKI if (i + j) % 2 else (160, 140, 100), rot=(0, 0, a))
-    box(0, 0.4, 0, 3.6, 1.6, 0.04, (110, 86, 58))
-    walec_lezacy(0, -0.6, 0.55, 0.09, 1.2, (70, 74, 70), os_="y")          # działo
-    for sx in (-0.3, 0.3):
-        walec_lezacy(sx, -0.1, 0.32, 0.3, 0.07, DREWNO_C, os_="x")
-    box(1.1, 0.7, 0, 0.6, 0.4, 0.3, DREWNO)
-    flaga(-1.2, 0.6, 0, h=2.4)
-
+    """Okop: wał z zaokrąglonych worków z piaskiem, działo polowe, skrzynie i flaga."""
+    for warstwa in range(3):
+        n = 10 - warstwa
+        for i in range(n):
+            a = -1.0 + (i + 0.5 * (warstwa % 2)) * (2.0 / n)
+            x, y = math.sin(a) * 1.45, -math.cos(a) * 1.25
+            kol = WORKI if (i + warstwa) % 2 else (162, 142, 102)
+            kula(x, y, 0.11 + warstwa * 0.19, 0.2, kol, seg=8, ringi=5, skala=(1.25, 0.75, 0.55))
+            bpy.context.active_object.rotation_euler = (0, 0, a)
+    box(0, 0.35, 0, 3.6, 1.7, 0.04, (110, 86, 58))
+    walec_lezacy(0, -0.65, 0.58, 0.08, 1.3, (70, 74, 70), os_="y")
+    box(0, -0.05, 0.45, 0.5, 0.6, 0.18, (70, 74, 70))
+    box(0, -0.25, 0.55, 0.9, 0.06, 0.55, (90, 96, 88))            # tarcza działa
+    for sx in (-0.38, 0.38):
+        walec_lezacy(sx, 0.0, 0.34, 0.32, 0.07, DREWNO_C, os_="x", v=14)
+    box(0, 0.75, 0.12, 0.1, 1.2, 0.08, DREWNO_C)                  # ogon lawety
+    for i in range(2):
+        box(1.15, 0.6 + i * 0.05, i * 0.3, 0.6, 0.4, 0.3, DREWNO)
+    flaga(-1.25, 0.6, 0, h=2.4)
 
 def m_delegacja():
     kolor = (232, 220, 194)
@@ -711,21 +808,58 @@ def m_katedra():
 
 
 def m_wieza_eiffla():
-    br = (120, 84, 60)
-    for sx in (-1, 1):
-        for sy in (-1, 1):
-            box(sx * 2.0, sy * 2.0, 0, 0.5, 0.5, 6.0, br, rot=(-sy * 0.3, sx * 0.3, 0))
-    box(0, 0, 4.6, 3.6, 3.6, 0.35, br)
-    for sx in (-1, 1):
-        for sy in (-1, 1):
-            box(sx * 0.9, sy * 0.9, 4.9, 0.3, 0.3, 5.6, br, rot=(-sy * 0.13, sx * 0.13, 0))
-    box(0, 0, 10.2, 1.8, 1.8, 0.3, br)
-    stozek(0, 0, 10.5, 0.75, 0.2, 6.0, br, v=4, rot=(0, 0, math.pi / 4))
-    cyl(0, 0, 16.5, 0.08, 1.4, br, v=6)
-    bpy.ops.mesh.primitive_torus_add(major_radius=1.6, minor_radius=0.2, major_segments=16, minor_segments=4,
-                                     location=(0, -2.1, 2.6), rotation=(math.pi / 2, 0, 0))
-    _nadaj(bpy.context.active_object, br)
+    """Wieża Eiffla: 4 zbiegające się nogi z kratownicą, łuki, 3 tarasy i iglica."""
+    br = (124, 88, 62)
+    br2 = (150, 110, 78)
 
+    def noga(sx, sy, z0, z1, r0, r1, grub):
+        # słup od (r0,r0,z0) do (r1,r1,z1) w narożniku (sx, sy)
+        a = Vector((sx * r0, sy * r0, z0))
+        b = Vector((sx * r1, sy * r1, z1))
+        d = b - a
+        bpy.ops.mesh.primitive_cube_add(size=1, location=(a + b) / 2)
+        o = bpy.context.active_object
+        o.scale = (grub, grub, d.length)
+        o.rotation_euler = d.to_track_quat("Z", "Y").to_euler()
+        _nadaj(o, br)
+
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            for dx in (-0.25, 0.25):
+                noga(sx, sy, 0, 5.0, 3.0 + dx, 1.55 + dx * 0.6, 0.22)
+            for z in (1.2, 2.5, 3.8):            # kratownica między słupkami nogi
+                f = z / 5.0
+                r = 3.0 + (1.55 - 3.0) * f
+                box(sx * r, sy * r, z, 0.7 - f * 0.25, 0.7 - f * 0.25, 0.08, br2, rot=(0, 0, math.pi / 4))
+    for sx, sy, rot in [(0, -1, 0), (0, 1, 0), (-1, 0, math.pi / 2), (1, 0, math.pi / 2)]:   # łuki
+        bpy.ops.mesh.primitive_torus_add(major_radius=2.05, minor_radius=0.16, major_segments=20, minor_segments=4,
+                                         location=(sx * 2.5, sy * 2.5, 1.2), rotation=(math.pi / 2, 0, rot))
+        o = bpy.context.active_object
+        o.scale = (1, 0.75, 1)
+        _nadaj(o, br)
+    box(0, 0, 4.9, 4.2, 4.2, 0.4, br2)                      # 1. taras
+    for z in (5.3,):
+        for sx in (-1, 1):
+            box(sx * 2.05, 0, z, 0.06, 4.2, 0.3, br)
+            box(0, sx * 2.05, z, 4.2, 0.06, 0.3, br)
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            noga(sx, sy, 5.3, 10.6, 1.45, 0.62, 0.18)
+    for z in (6.8, 8.6):
+        f = (z - 5.3) / 5.3
+        r = 1.45 + (0.62 - 1.45) * f
+        box(0, 0, z, r * 2 + 0.2, r * 2 + 0.2, 0.08, br2)
+    box(0, 0, 10.6, 1.7, 1.7, 0.3, br2)                     # 2. taras
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            noga(sx, sy, 10.9, 17.0, 0.62, 0.18, 0.14)
+    for z in (12.5, 14.2, 15.6):
+        f = (z - 10.9) / 6.1
+        r = 0.62 + (0.18 - 0.62) * f
+        box(0, 0, z, r * 2 + 0.12, r * 2 + 0.12, 0.06, br2)
+    box(0, 0, 17.0, 0.7, 0.7, 0.5, br2)                     # szczyt
+    cyl(0, 0, 17.5, 0.06, 1.8, br, v=6)
+    kula(0, 0, 19.3, 0.08, (220, 60, 60), emisja=0.8)
 
 def m_quai_dorsay():
     box(0, 0, 0, 11.4, 5.4, 4.0, (232, 220, 190))
@@ -760,8 +894,10 @@ def m_wersal():
 
 
 def m_gora():
-    stozek(0, 0, 0, 3.2, 0.0, 6.5, (110, 116, 124), v=7)
-    stozek(0, 0, 4.2, 1.17, 0.0, 2.35, (244, 246, 250), v=7)
+    stozek(0, 0, 0, 3.4, 0.0, 6.8, (150, 156, 170), v=8)
+    stozek(1.2, 0.8, 0, 2.2, 0.0, 4.4, (136, 144, 156), v=7)
+    stozek(0, 0, 3.4, 1.85, 0.0, 3.45, (250, 252, 255), v=8)
+    stozek(1.2, 0.8, 2.4, 1.05, 0.0, 2.05, (250, 252, 255), v=7)
 
 
 def m_lej():
@@ -783,6 +919,153 @@ def m_latarnia():
     cyl(0, 0, 0, 0.05, 2.4, (40, 44, 40), v=6)
     box(0, 0, 2.4, 0.22, 0.22, 0.3, (250, 230, 160), emisja=0.8)
     stozek(0, 0, 2.7, 0.18, 0.0, 0.18, (40, 44, 40), v=4)
+
+
+
+# ================================================================= POJAZDY I ŻYCIE MIASTA
+def kolo(x, y, z, r, kolor=(40, 34, 30)):
+    bpy.ops.mesh.primitive_torus_add(major_radius=r, minor_radius=0.04, major_segments=14, minor_segments=4,
+                                     location=(x, y, z), rotation=(0, math.pi / 2, 0))
+    _nadaj(bpy.context.active_object, kolor)
+    walec_lezacy(x, y, z, 0.05, 0.08, kolor, os_="x", v=6)
+
+
+def kon(x, y, kolor=(110, 74, 46)):
+    box(x, y, 0.75, 0.42, 1.25, 0.5, kolor)                       # tułów
+    for sx in (-0.15, 0.15):
+        for sy in (-0.45, 0.45):
+            box(x + sx, y + sy, 0, 0.12, 0.12, 0.8, tuple(int(c * .8) for c in kolor))
+    box(x, y - 0.75, 1.05, 0.22, 0.45, 0.25, kolor, rot=(0.7, 0, 0))   # szyja
+    box(x, y - 0.98, 1.25, 0.2, 0.42, 0.2, kolor)                  # łeb
+    box(x, y - 0.6, 1.3, 0.06, 0.4, 0.15, (40, 30, 24))            # grzywa
+    box(x, y + 0.66, 0.85, 0.08, 0.1, 0.45, (40, 30, 24), rot=(-0.4, 0, 0))   # ogon
+
+
+def m_dorozka():
+    kon(0, -1.0)
+    box(0, 1.0, 0.55, 1.0, 1.4, 0.5, (40, 40, 46))                 # nadwozie
+    box(0, 1.35, 1.05, 1.0, 0.7, 0.6, (40, 40, 46))                # buda
+    box(0, 0.45, 1.05, 0.5, 0.3, 0.08, (60, 50, 40))               # kozioł
+    for sy in (0.5, 1.5):
+        for sx in (-0.55, 0.55):
+            kolo(sx, sy, 0.38, 0.38)
+    box(0, -0.1, 0.6, 0.06, 1.4, 0.06, DREWNO_C)                   # dyszel
+    przed = set(bpy.context.scene.objects)
+    m_postac(dict(stroj="plaszcz", kolor=(50, 50, 40), spodnie=(50, 50, 40), krawat=None, skora=SKORA,
+                  wlosy=(80, 60, 40), fryzura="krotkie", wasy="duze", broda=False, kapelusz="melonik",
+                  kapelusz_kol=(30, 30, 30), okulary=False, trzyma="brak", buty=(30, 24, 22)), 0, 0.45)
+    for o in bpy.context.scene.objects:
+        if o not in przed:
+            o.location.z += 0.75          # woźnica siedzi na koźle
+
+
+def m_automobil():
+    kol = (30, 50, 40)
+    box(0, 0, 0.45, 1.3, 2.6, 0.45, kol)                           # podwozie
+    box(0, -0.85, 0.9, 1.1, 0.8, 0.35, kol)                        # maska
+    box(0, -1.32, 0.55, 0.9, 0.06, 0.6, (150, 150, 150), metal=0.6)   # chłodnica
+    box(0, 0.45, 0.9, 1.25, 1.3, 0.35, (60, 40, 30))               # siedzenia
+    box(0, 0.4, 1.7, 1.3, 1.5, 0.05, (30, 30, 30))                 # dach
+    for sx in (-0.6, 0.6):
+        for sy in (-0.3, 1.1):
+            box(sx, sy, 0.9, 0.04, 0.04, 0.8, (30, 30, 30))
+    for sx in (-0.5, 0.5):
+        kula(sx, -1.33, 0.95, 0.09, (250, 240, 200), emisja=0.6)   # lampy
+    for sx in (-0.7, 0.7):
+        for sy in (-0.8, 0.85):
+            kolo(sx, sy, 0.4, 0.4, (30, 30, 30))
+
+
+def m_tramwaj():
+    kon(0, -2.2, (150, 120, 90))
+    box(0, 0.6, 0.35, 1.5, 3.4, 0.25, (60, 50, 40))
+    box(0, 0.6, 0.6, 1.5, 3.2, 1.3, (190, 160, 80))                # wagon
+    box(0, 0.6, 1.9, 1.65, 3.5, 0.12, (90, 60, 40))                # dach
+    for sy in (-0.4, 0.2, 0.8, 1.4):
+        for sx in (-0.76, 0.76):
+            box(sx, sy, 1.1, 0.04, 0.42, 0.5, OKNO)
+    box(0, -1.05, 0.6, 1.0, 0.04, 0.12, (150, 40, 40))             # tablica
+    for sy in (-0.4, 1.6):
+        for sx in (-0.6, 0.6):
+            kolo(sx, sy, 0.3, 0.3)
+    box(0, -1.4, 0.55, 0.06, 1.0, 0.06, DREWNO_C)
+
+
+def m_ptak():
+    kula(0, 0, 0, 0.08, (60, 60, 66), seg=6, ringi=4, skala=(1, 1.6, 0.8))
+    for s in (-1, 1):
+        box(s * 0.22, 0.02, 0.02, 0.36, 0.12, 0.02, (60, 60, 66), rot=(0, s * 0.35, 0))
+
+
+def m_dym():
+    kula(0, 0, 0, 0.35, (200, 200, 205), seg=8, ringi=5)
+
+
+# ================================================================= DEKORACJE PRZERYWNIKÓW
+def m_sala_lustrzana():
+    """Sala Lustrzana pałacu w Wersalu: 17 okien naprzeciw 17 arkad z lustrami, złocenia, żyrandole."""
+    dl, sz, wys = 34.0, 9.0, 8.0
+    box(0, 0, -0.1, sz, dl, 0.1, (150, 104, 66))                   # parkiet
+    for i in range(0, 34, 2):
+        box(0, -dl / 2 + i + 0.5, -0.05, sz, 0.08, 0.06, (120, 80, 50))
+    box(0, 0, wys, sz + 0.4, dl, 0.3, (200, 170, 110))             # sklepienie
+    for i in range(8):
+        box(0, -dl / 2 + 2 + i * 4.2, wys - 0.05, sz * 0.7, 3.0, 0.06,
+            [(160, 120, 90), (110, 130, 170), (190, 150, 100)][i % 3])   # malowidła
+    for strona, kol_wn in ((-1, (190, 214, 236)), (1, (214, 224, 236))):
+        x = strona * sz / 2
+        box(x + strona * 0.15, 0, 0, 0.3, dl, wys, (232, 220, 196))  # ściana
+        for i in range(17):
+            y = -dl / 2 + 1.0 + i * 2.0
+            box(x, y, 0.6, 0.12, 1.3, 4.6, kol_wn, emisja=0.35 if strona < 0 else 0.15,
+                metal=0.0 if strona < 0 else 0.6, szorstkosc=0.15)   # okno / lustro
+            cyl(x, y, 4.6, 0.65, 0.12, kol_wn, v=12, rot=(0, math.pi / 2, 0), emisja=0.35 if strona < 0 else 0.15)
+            box(x - strona * 0.05, y + 1.0, 0, 0.2, 0.25, 6.5, (230, 190, 90), metal=0.5)   # pilaster
+    for i in range(6):                                                # żyrandole
+        y = -dl / 2 + 4 + i * 5.4
+        cyl(0, y, 5.2, 0.03, wys - 5.2, ZLOTO, v=6)
+        bpy.ops.mesh.primitive_torus_add(major_radius=0.6, minor_radius=0.05, major_segments=12, minor_segments=4,
+                                         location=(0, y, 5.2))
+        _nadaj(bpy.context.active_object, ZLOTO)
+        for k in range(8):
+            a = k * math.pi / 4
+            kula(math.cos(a) * 0.6, y + math.sin(a) * 0.6, 5.35, 0.08, (255, 240, 190), emisja=2.0)
+    box(0, 2, 0, 2.2, 6.0, 0.8, (60, 100, 70))                        # stół traktatu
+    box(0, 2, 0.8, 2.3, 6.1, 0.04, (40, 80, 50))
+    for i in range(3):
+        box(0.2 * (i - 1), 0.5 + i * 1.6, 0.84, 0.4, 0.55, 0.02, BIEL)   # dokumenty
+    for sy in range(6):
+        for sx in (-1.5, 1.5):
+            y = -0.4 + sy * 1.0
+            box(sx, y, 0, 0.5, 0.5, 0.48, (130, 40, 40))
+            box(sx + (0.22 if sx > 0 else -0.22), y, 0.48, 0.08, 0.5, 0.6, (130, 40, 40))
+
+
+def m_sala_rady():
+    """Salon na Quai d'Orsay, w którym obradowała Rada Dziesięciu (styczeń 1919)."""
+    box(0, 0, -0.1, 12, 10, 0.1, (140, 96, 60))
+    box(0, 0, 5.5, 12, 10, 0.2, (226, 214, 190))
+    for x in (-6, 6):
+        box(x, 0, 0, 0.2, 10, 5.5, (226, 210, 180))
+    box(0, 5, 0, 12, 0.2, 5.5, (226, 210, 180))
+    for x in (-3.6, 0, 3.6):
+        box(x, 4.88, 1.0, 1.6, 0.06, 3.4, (190, 214, 236), emisja=0.4)   # okna
+    box(0, 4.8, 3.9, 1.6, 0.1, 1.1, (230, 220, 200))                    # zegar nad kominkiem
+    cyl(0, 4.72, 4.2, 0.35, 0.05, BIEL, v=16, rot=(math.pi / 2, 0, 0))
+    box(0, 4.8, 0, 2.2, 0.5, 1.3, (220, 210, 196))                      # kominek
+    box(0, 4.6, 0.1, 1.2, 0.1, 0.8, (40, 30, 26))
+    box(0, 1.0, 0, 7.0, 2.4, 0.78, DREWNO_C)                            # stół obrad
+    box(0, 1.0, 0.78, 7.1, 2.5, 0.04, (40, 80, 50))
+    for x in [-3 + i * 1.2 for i in range(6)]:
+        box(x, 2.6, 0, 0.5, 0.5, 0.48, (110, 40, 40))
+        box(x, 2.85, 0.48, 0.5, 0.08, 0.6, (110, 40, 40))
+        box(x, 1.6, 0.82, 0.35, 0.45, 0.02, BIEL)
+    box(-4.8, -1.5, 0, 0.1, 0.1, 1.6, DREWNO)                           # sztaluga z mapą
+    box(-4.8, -1.55, 1.2, 2.2, 0.06, 1.6, (236, 226, 196))
+    for (x, z, w, h, k) in [(-5.3, 1.9, 0.7, 0.5, (210, 120, 110)), (-4.6, 2.1, 0.6, 0.6, (130, 170, 120)),
+                            (-4.5, 1.5, 0.7, 0.4, (200, 190, 110))]:
+        box(x, -1.6, z, w, 0.03, h, k)
+    flaga_fr(5.0, 4.4, 0, h=3.2)
 
 
 # ================================================================= RENDERY
@@ -824,7 +1107,21 @@ def panorama():
 
 
 # ================================================================= MAIN
+def podglad(nazwy, katalog):
+    """Szybki podgląd wybranych modeli (render miniatur do wskazanego katalogu)."""
+    global UI
+    UI = katalog
+    for n in nazwy:
+        czysc()
+        globals()["m_" + n]()
+        scal(n)
+        miniatura(n)
+
+
 def main():
+    if "--podglad" in ARGS:
+        podglad(ARGS[ARGS.index("--podglad") + 1].split(","), ARGS[ARGS.index("--podglad") + 2])
+        return
     os.makedirs(MODELE, exist_ok=True)
     os.makedirs(UI, exist_ok=True)
     budynki = {"kwatera": m_kwatera, "biuro": m_biuro, "redakcja": m_redakcja, "komitet": m_komitet,
@@ -840,7 +1137,8 @@ def main():
     inne = {"rusztowanie": m_rusztowanie, "skala": m_skala, "strzalka": m_strzalka, "znacznik": m_znacznik,
             "zamek": m_zamek, "kolumna": m_kolumna, "katedra": m_katedra, "wieza_eiffla": m_wieza_eiffla,
             "quai_dorsay": m_quai_dorsay, "wersal": m_wersal, "gora": m_gora, "lej": m_lej, "snopek": m_snopek,
-            "latarnia": m_latarnia}
+            "latarnia": m_latarnia, "dorozka": m_dorozka, "automobil": m_automobil, "tramwaj": m_tramwaj,
+            "ptak": m_ptak, "dym": m_dym, "sala_lustrzana": m_sala_lustrzana, "sala_rady": m_sala_rady}
     for w in range(3):
         inne["drzewo_%d" % w] = (lambda w=w: m_drzewo(w))
         inne["kamienica_wwa_%d" % w] = (lambda w=w: m_kamienica_wwa(w))
@@ -852,10 +1150,14 @@ def main():
         czysc()
         fn()
         eksportuj(nazwa)
+    for i, p in enumerate(PRZECHODNIE):
+        czysc()
+        m_postac(p, czesci=True)
+        eksportuj_postac("przechodzien_%d" % i)
     for nazwa, p in POSTACIE.items():
         czysc()
-        m_postac(p)
-        eksportuj("postac_" + nazwa)
+        m_postac(p, czesci=True)
+        eksportuj_postac("postac_" + nazwa)
         if RENDERY:
             portret(nazwa)
     if RENDERY:
