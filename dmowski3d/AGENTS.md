@@ -39,6 +39,9 @@ godot --headless --path godot --export-release "Web" ../build/web/index.html   #
 - Wstęp nauczyciela: przerywnik `PRZERYWNIKI["wstep"]` (dekoracja `klasa`, postać `postac_nauczyciel`).
 - Karty postaci: `KARTY_POSTACI` (fakty z ikonami, ciekawostka, warunek odblokowania); ilustracje
   `ui/ilustracja_<id>.png` z `ilustracja()` w Blenderze (`-- --ilustracje dmowski,haller` renderuje wybrane).
+- Dylematy: `DYLEMATY` (opcje z efektami na zaufanie `fr`/`uk`/`usa` i zasoby, flaga „jak w historii”);
+  gazety: `GAZETY`; mini-gra granic: `GRANICE`; pamiątki: `ZNAJDZKI` (pozycje sprawdzane w `main()`);
+  odznaki: `OSIAGNIECIA` (warunki w `sprawdz_odznaki()` w `gra.gd`).
 - Oś czasu: `OS_CZASU`; mapy podróży: `MAPY_PODROZY` (`dane.py`), dane granic: `godot/dane/mapa_europy.json`.
 
 ## Jak dodać kampanię lub budynek

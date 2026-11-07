@@ -35,6 +35,19 @@ i Hanna — sekretarka Komitetu (postać fikcyjna).
 - **Wersja przeglądarkowa (HTML5)** — po scaleniu z gałęzią `main` strona GitHub Pages buduje grę
   i udostępnia ją pod adresem `…/dmowski3d/graj/` (bez instalowania EXE).
 
+**Decyzje, gazeta, granice, pamiątki i odznaki:**
+- **8 dylematów** (po 2 w kampanii), np. „Po której stronie?” (1914) czy „Spór o Gdańsk” (1919). Każda decyzja
+  zmienia **zaufanie Francji, Wielkiej Brytanii i USA** (panel w lewym górnym rogu), a zaufanie wpływa na
+  napływ poparcia. Po wyborze gra pokazuje, co naprawdę zrobił Dmowski.
+- **Gazeta „Kurier Wolności”** (fikcyjna gazeta gry, prawdziwe wydarzenia) przed każdą kampanią, po przemówieniu
+  i po traktacie — pierwsza strona w stylu z epoki, wjeżdża z obrotem.
+- **Mini-gra „Granice Polski”** w kampanii IV: przyporządkuj Wielkopolskę, Pomorze, Gdańsk, Górny Śląsk
+  oraz Warmię i Mazury do prawdziwych rozstrzygnięć (traktat, Wolne Miasto, plebiscyt).
+- **12 pamiątek** ukrytych na mapach (po 3 w kampanii) — każda z faktem historycznym — i **12 odznak**
+  (np. „Mówca Rady”, „Kartograf”, „Śladami Dmowskiego”, „Własna droga”). Album w Księdze Wiedzy,
+  a na koniec gry **wynik końcowy** do porównania w klasie.
+- Poprawka realizmu: w Warszawie w 1914 r. jeżdżą dorożki i automobile — tramwaje konne zniknęły w 1908 r.
+
 **Wstęp nauczyciela i karty postaci:**
 - Po „Nowa gra” (i z menu tytułowego) **Pan Damian, nauczyciel historii**, prowadzi w klasie 3D krótki wstęp
   z lektorem: zabory, wybuch wojny, dwie drogi do niepodległości, cel gry i uczciwe spojrzenie na Dmowskiego.

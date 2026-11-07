@@ -58,6 +58,13 @@ def kwestie(d):
     w += [("narrator", v[1]) for v in d["wiedza"].values()]
     w += [("narrator", e[3]) for e in d["os_czasu"]]
     w += [("narrator", k["lektor"]) for k in d["karty_postaci"].values()]
+    for dl in d["dylematy"]:
+        w += [("narrator", dl["opis"]), ("narrator", dl["historia"])]
+    for gz in d["gazety"].values():
+        w.append(("narrator", gz["tytul"].capitalize() + " " + gz["podtytul"] + " " + gz["tekst"]))
+    w += [("narrator", r[4]) for r in d["granice"]["regiony"]]
+    for lista in d["znajdzki"].values():
+        w += [("narrator", z[4]) for z in lista]
     for m in d["mapy_podrozy"].values():
         w += [("narrator", t) for t in m["podpisy"]]
         w += [("narrator", t[3]) for t in m["trasa"]]

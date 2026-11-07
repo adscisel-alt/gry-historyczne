@@ -476,7 +476,8 @@ ROZDZIALY = {
               ["Przygotuj memoriał o Pomorzu i Gdańsku", "buduj", "sprawa_pomorze", 1],
               ["Przygotuj memoriał o Górnym Śląsku", "buduj", "sprawa_slask", 1],
               ["Przygotuj memoriał o Warmii i Mazurach", "buduj", "sprawa_warmia", 1],
-              ["Porozmawiaj z prezydentem Wilsonem", "rozmowa", "wilson", 4]],
+              ["Porozmawiaj z prezydentem Wilsonem", "rozmowa", "wilson", 4],
+              ["Ułóż mapę granic Polski (mini-gra)", "minigra", "granice", 1]],
         koniec=[["narrator", "28 czerwca 1919 r., Sala Lustrzana w Wersalu. Przedstawiciele państw podpisują "
                              "traktat pokojowy z Niemcami."],
                 ["paderewski", "Panie Romanie, podpiszmy razem. To podpis za całą Polskę."],
@@ -761,6 +762,168 @@ KARTY_POSTACI = {
         "Jego czapka-maciejówka stała się symbolem legionistów.", ["kampania", 4], 3),
 }
 
+# ------------------------------------------------------------------ dylematy (decyzje z konsekwencjami)
+# opcja: [tekst, efekty {"fr","uk","usa" = zaufanie; zasoby; "pw"}, czy tak było w historii]
+def D_(id_, kampania, dzien, data, tytul, opis, opcje, historia):
+    return dict(id=id_, kampania=kampania, dzien=dzien, data=data, tytul=tytul, opis=opis, opcje=opcje,
+                historia=historia)
+
+
+DYLEMATY = [
+    D_("strona_wojny", 1, 3, "Sierpień 1914", "Po której stronie?",
+       "Wybuchła wojna. Rosja walczy z Niemcami i Austro-Węgrami. Po której stronie powinien stanąć Komitet?",
+       [["Z Rosją i jej sojusznikami — Francją i Wielką Brytanią", {"fr": 8, "uk": 8, "poparcie": 10}, True],
+        ["Z Austro-Węgrami przeciw Rosji, jak Legiony Piłsudskiego", {"fr": -8, "uk": -8, "prasa": 10}, False],
+        ["Nie angażować się i czekać", {"fr": -3, "uk": -3, "usa": -3}, False]],
+       "Dmowski uważał, że największym wrogiem Polski są Niemcy, i związał się z ententą. Piłsudski wybrał "
+       "drugą drogę — Legiony u boku Austro-Węgier. Obie drogi miały swoich zwolenników."),
+    D_("ewakuacja", 1, 9, "Lato 1915", "Niemcy zbliżają się do Warszawy",
+       "Wojska rosyjskie się wycofują. Co zrobić z Komitetem Narodowym?",
+       [["Wyjechać na Zachód i przekonywać aliantów", {"fr": 6, "uk": 6, "pw": 2}, True],
+        ["Zostać w Warszawie pod okupacją niemiecką", {"fr": -5, "uk": -5, "fundusze": 20}, False],
+        ["Rozwiązać Komitet", {"fr": -10, "uk": -10, "usa": -5}, False]],
+       "Dmowski wyjechał przez Piotrogród na Zachód. W Londynie i Paryżu mógł swobodnie działać dla sprawy "
+       "polskiej."),
+    D_("akt_5_listopada", 2, 3, "5 listopada 1916", "Królestwo Polskie od Niemiec?",
+       "Niemcy i Austro-Węgry ogłaszają utworzenie Królestwa Polskiego, zależnego od nich. Jak zareagować?",
+       [["Wyjaśnić w prasie aliantów, że to nie jest prawdziwa niepodległość", {"fr": 6, "uk": 6, "prasa": 10},
+         True],
+        ["Poprzeć Królestwo — lepszy rydz niż nic", {"fr": -10, "uk": -10, "usa": -5}, False],
+        ["Milczeć i przeczekać", {"fr": -3, "uk": -3}, False]],
+       "Obóz Dmowskiego krytykował akt jako próbę zdobycia polskich żołnierzy przez Niemcy. Akt sprawił jednak, "
+       "że sprawą polską zainteresowały się wszystkie mocarstwa."),
+    D_("rewolucja", 2, 9, "1917", "Rewolucja w Rosji",
+       "Car upadł, Rosja słabnie. Na kim teraz oprzeć sprawę polską?",
+       [["Domagać się od Francji, Anglii i USA pełnej niepodległości Polski", {"fr": 6, "uk": 6, "usa": 8}, True],
+        ["Nadal liczyć tylko na Rosję", {"fr": -5, "uk": -5, "usa": -5}, False],
+        ["Poczekać, co zrobią inni", {"fr": -3, "usa": -3}, False]],
+       "Po rewolucji Dmowski mógł otwarcie domagać się od Zachodu niepodległej Polski. W 1917 r. Komitet "
+       "uznały Francja, Wielka Brytania, Włochy, a potem USA."),
+    D_("transport", 3, 3, "1917–1918", "Ochotnicy z Ameryki",
+       "Tysiące Polaków z USA chce walczyć we Francji, ale transport przez ocean kosztuje. Skąd wziąć pieniądze?",
+       [["Poprosić Polonię amerykańską i Paderewskiego o zbiórkę", {"usa": 8, "fundusze": 40}, True],
+        ["Poprosić Francję o pożyczkę", {"fr": 3, "fundusze": 40, "poparcie": -10}, False],
+        ["Zrezygnować z ochotników z Ameryki", {"usa": -8, "ochotnicy": -10}, False]],
+       "Polonia amerykańska zbierała pieniądze i werbowała ochotników. Paderewski był jednym z "
+       "najważniejszych organizatorów tej pomocy."),
+    D_("dowodca", 3, 9, "Październik 1918", "Kto ma dowodzić?",
+       "Armia Polska we Francji rośnie. Kto powinien nią dowodzić?",
+       [["Polski generał — Józef Haller", {"fr": 5, "uk": 3, "usa": 3, "ochotnicy": 10}, True],
+        ["Francuski generał", {"fr": 5, "ochotnicy": -5}, False],
+        ["Każdy pułk osobno, bez wspólnego dowództwa", {"fr": -6, "uk": -4, "usa": -4}, False]],
+       "Jesienią 1918 r. dowództwo Armii Polskiej objął gen. Józef Haller. Polskie wojsko pod polskim dowództwem "
+       "było ważnym argumentem dyplomatów."),
+    D_("porozumienie", 4, 3, "Styczeń 1919", "Warszawa czy Paryż?",
+       "W Warszawie rządzi Naczelnik Piłsudski, w Paryżu działa Komitet Narodowy. Kto ma reprezentować Polskę?",
+       [["Porozumieć się: Paderewski premierem, Dmowski na czele delegacji w Paryżu",
+         {"fr": 8, "uk": 8, "usa": 8, "poparcie": 10}, True],
+        ["Nie uznawać rządu w Warszawie", {"fr": -10, "uk": -10, "usa": -10}, False],
+        ["Zostawić konferencję i jechać do Warszawy", {"fr": -5, "uk": -5, "usa": -5}, False]],
+       "Porozumienie Piłsudskiego z Komitetem sprawiło, że Polska mówiła w Paryżu jednym głosem. "
+       "Premierem został Paderewski."),
+    D_("gdansk", 4, 9, "Wiosna 1919", "Spór o Gdańsk",
+       "Brytyjczycy nie chcą oddać Polsce Gdańska, w którym mieszka wielu Niemców. Co robisz?",
+       [["Przyjąć kompromis: Wolne Miasto z prawami dla Polski i dostępem do morza", {"uk": 6, "usa": 4}, True],
+        ["Żądać Gdańska za wszelką cenę", {"uk": -8, "fr": 3, "prasa": 5}, False],
+        ["Zrezygnować z dostępu do morza", {"fr": -6, "uk": 2, "usa": -6}, False]],
+       "Polska delegacja chciała Gdańska, ale musiała przyjąć kompromis: Wolne Miasto pod opieką Ligi Narodów. "
+       "Polska zachowała dostęp do morza przez Pomorze."),
+]
+ZAUFANIE_NAZWY = {"fr": "Francja", "uk": "Wielka Brytania", "usa": "USA"}
+
+# ------------------------------------------------------------------ gazeta „Kurier Wolności” (fikcyjna gazeta gry)
+GAZETY = {
+    "k1": dict(data="2 sierpnia 1914", tytul="WOJNA W EUROPIE!",
+               podtytul="Niemcy wypowiedziały wojnę Rosji. Zaborcy Polski stają przeciwko sobie.",
+               tekst="Polacy z trzech zaborów muszą służyć w trzech różnych armiach. Czy wojna zaborców otworzy "
+                     "drogę do wolnej Polski? Politycy z Warszawy i Krakowa spierają się, po której stronie "
+                     "stanąć.", obraz="ilustracja_dmowski"),
+    "k2": dict(data="sierpień 1917", tytul="KOMITET NARODOWY W LOZANNIE",
+               podtytul="Roman Dmowski na czele. Komitet przeniesie się do Paryża.",
+               tekst="Po rewolucji w Rosji sprawa polska staje się ważna dla Francji i Wielkiej Brytanii. Komitet "
+                     "chce mówić w imieniu wszystkich Polaków i zabiega o uznanie aliantów.",
+               obraz="ilustracja_zamoyski"),
+    "k3": dict(data="czerwiec 1917", tytul="POWSTAJE ARMIA POLSKA!",
+               podtytul="Prezydent Francji podpisał dekret. Ochotnicy płyną z Ameryki.",
+               tekst="Żołnierze dostaną błękitne francuskie mundury. W obozach szkoleniowych ćwiczą Polacy z Francji, "
+                     "z Ameryki i z niewoli.", obraz="ilustracja_haller"),
+    "k4": dict(data="styczeń 1919", tytul="KONFERENCJA POKOJOWA W PARYŻU",
+               podtytul="Zwycięzcy wojny zdecydują o nowych granicach Europy.",
+               tekst="Polskę reprezentują Roman Dmowski i premier Ignacy Jan Paderewski. Najważniejsze pytania: "
+                     "gdzie przebiegnie granica z Niemcami i czy Polska dostanie dostęp do morza?",
+               obraz="ilustracja_clemenceau"),
+    "przemowienie": dict(data="30 stycznia 1919", tytul="POLAK PRZED RADĄ DZIESIĘCIU",
+                         podtytul="Roman Dmowski przez kilka godzin przedstawiał sprawę polską.",
+                         tekst="Delegat mówił na zmianę po francusku i po angielsku, posługując się mapami i danymi. "
+                               "Rada powołała komisję do spraw polskich.", obraz="ilustracja_dmowski"),
+    "traktat": dict(data="29 czerwca 1919", tytul="TRAKTAT PODPISANY W WERSALU!",
+                    podtytul="Polska znów na mapie Europy. Za Polskę podpisali Paderewski i Dmowski.",
+                    tekst="Traktat przyznaje Polsce Wielkopolskę i większość Pomorza z dostępem do morza. Gdańsk "
+                          "będzie Wolnym Miastem, a o Górnym Śląsku i Warmii zdecydują plebiscyty.",
+                    obraz="ilustracja_paderewski"),
+}
+
+# ------------------------------------------------------------------ mini-gra: granice Polski
+GRANICE = dict(
+    kategorie=[["polska", "Do Polski — traktat wersalski (1919)"],
+               ["wolne_miasto", "Wolne Miasto pod opieką Ligi Narodów"],
+               ["plebiscyt", "Plebiscyt — zdecydują mieszkańcy"]],
+    regiony=[["wielkopolska", "Wielkopolska", "Poznań", "polska",
+              "Po zwycięskim powstaniu wielkopolskim traktat przyznał Polsce niemal całą Wielkopolskę."],
+             ["pomorze", "Pomorze Gdańskie", "Toruń", "polska",
+              "Polska otrzymała większość Pomorza, a z nim dostęp do Bałtyku."],
+             ["gdansk", "Gdańsk", "Gdańsk", "wolne_miasto",
+              "Gdańsk został Wolnym Miastem pod opieką Ligi Narodów, z prawami dla Polski."],
+             ["slask", "Górny Śląsk", "Katowice", "plebiscyt",
+              "Plebiscyt odbył się w 1921 r. Po powstaniach śląskich Polska otrzymała część regionu (1922)."],
+             ["warmia", "Warmia i Mazury", "Olsztyn", "plebiscyt",
+              "W plebiscycie w 1920 r. większość głosujących wybrała Niemcy."]],
+)
+
+# ------------------------------------------------------------------ znajdźki (3 na każdej mapie)
+ZNAJDZKI = {
+    "1": [["pocztowka", 22, 9, "Pocztówka z placu Zamkowego",
+           "Kolumna Zygmunta stoi na placu Zamkowym od 1644 r. — to najstarszy świecki pomnik Warszawy."],
+          ["gazeta", 4, 15, "Gazeta z sierpnia 1914",
+           "28 lipca 1914 r. Austro-Węgry wypowiedziały wojnę Serbii. Kilka dni później walczyła już cała Europa."],
+          ["bilet", 33, 18, "Bilet tramwajowy",
+           "Od 1908 r. po Warszawie jeździły tramwaje elektryczne; wcześniej ciągnęły je konie."]],
+    "2": [["pocztowka", 2, 8, "Pocztówka znad Jeziora Genewskiego",
+           "Lozanna leży nad Jeziorem Genewskim, w Szwajcarii, która w czasie wojny była neutralna."],
+          ["bilet", 13, 16, "Bilet Londyn–Paryż",
+           "W czasie wojny podróż z Londynu do Paryża wymagała przeprawy statkiem przez kanał La Manche."],
+          ["list", 30, 15, "List do Komitetu",
+           "Polacy z całego świata pisali do Komitetu Narodowego z prośbami o pomoc i z ofertami wsparcia."]],
+    "3": [["plakat", 3, 12, "Plakat werbunkowy",
+           "Plakaty zachęcały Polaków w Ameryce do wstępowania do Armii Polskiej we Francji."],
+          ["helm", 29, 6, "Hełm wzoru Adriana",
+           "Żołnierze armii francuskiej i Błękitnej Armii nosili stalowe hełmy wzoru Adriana."],
+          ["list", 25, 20, "List z frontu",
+           "Żołnierze pisali listy do rodzin; poczta polowa dostarczała je mimo walk."]],
+    "4": [["zaproszenie", 7, 13, "Przepustka na konferencję",
+           "W konferencji pokojowej w Paryżu uczestniczyły delegacje kilkudziesięciu państw."],
+          ["bilet", 34, 13, "Bilet do Wersalu",
+           "Pałac w Wersalu leży około 20 km od centrum Paryża."],
+          ["pioro", 20, 6, "Kałamarz delegacji",
+           "W Sali Lustrzanej, gdzie podpisano traktat, jest 357 luster."]],
+}
+
+# ------------------------------------------------------------------ odznaki (osiągnięcia)
+OSIAGNIECIA = [
+    ["kampania_1", "Komitet założony", "Ukończ kampanię I.", "medal"],
+    ["mowca", "Mówca Rady", "Zdobądź 3 gwiazdki w przemówieniu przed Radą Dziesięciu.", "gwiazda"],
+    ["kartograf", "Kartograf", "Ułóż mapę granic bez żadnego błędu.", "mapa"],
+    ["zbieracz", "Zbieracz pamiątek", "Znajdź wszystkie 12 pamiątek ukrytych na mapach.", "sakiewka"],
+    ["mol", "Mól książkowy", "Przeczytaj wszystkie karty Księgi Wiedzy.", "ksiega"],
+    ["postacie", "Znawca postaci", "Poznaj wszystkie karty postaci.", "teczka"],
+    ["dyplomata", "Ulubieniec aliantów", "Miej co najmniej 70 zaufania Francji, Wielkiej Brytanii i USA.", "flaga"],
+    ["sladami", "Śladami Dmowskiego", "Podejmij wszystkie 8 decyzji tak jak w historii.", "pioro"],
+    ["wlasna_droga", "Własna droga", "Podejmij co najmniej 3 decyzje inaczej niż w historii.", "kompas"],
+    ["budowniczy", "Budowniczy", "Zbuduj łącznie 25 placówek.", "kalendarz"],
+    ["zagadki", "Mistrz zagadek", "Rozwiąż wszystkie zagadki postaci.", "dokument"],
+    ["niepodlegla", "Niepodległa!", "Ukończ grę.", "odznaka"],
+]
+
 POWITANIE = [
     ["dmowski", "Warszawa, 1914. Trzeba działać — Polacy potrzebują wspólnego głosu."],
     ["hanna", "Panie Romanie, jestem Hanna. Będę panu pomagać we wszystkich kampaniach!"],
@@ -795,7 +958,8 @@ def main():
         karty_startowe=KARTY_STARTOWE, karta_budynku=KARTA_BUDYNKU, rangi=RANGI, quiz_glowny=QUIZ_GLOWNY,
         zagadki=ZAGADKI, rozmowy=ROZMOWY, przerywniki=PRZERYWNIKI, przemowienie=PRZEMOWIENIE,
         os_czasu=OS_CZASU, os_czasu_klasa7=OS_CZASU_KLASA7, mapy_podrozy=MAPY_PODROZY, powitanie=POWITANIE,
-        karty_postaci=KARTY_POSTACI, luzne=LUZNE, pomoc=POMOC, start_ekwipunek=["kompas", "datki", "paczka"],
+        karty_postaci=KARTY_POSTACI, dylematy=DYLEMATY, zaufanie_nazwy=ZAUFANIE_NAZWY, gazety=GAZETY,
+        granice=GRANICE, znajdzki=ZNAJDZKI, osiagniecia=OSIAGNIECIA, luzne=LUZNE, pomoc=POMOC, start_ekwipunek=["kompas", "datki", "paczka"],
         rozdzialy={str(k): dict(v, mapa=["".join(w) for w in v["mapa"]]) for k, v in ROZDZIALY.items()},
         liczba_rozdzialow=len(ROZDZIALY),
     )
@@ -810,6 +974,10 @@ def main():
         for n, (x, y) in r["npc"].items():
             assert mapa[y][x] in ".PB=#", (k, n, mapa[y][x])
         assert mapa[r["start"][1]][r["start"][0]] in ".PB=", (k, "start")
+        zajete = {(xx, yy) for typ, x, y, _ in r["dzialki"] for yy in range(y, y + BUDYNKI[typ]["h"])
+                  for xx in range(x, x + BUDYNKI[typ]["w"])}
+        for z in ZNAJDZKI[str(k)]:
+            assert mapa[z[2]][z[1]] in ".PB=#" and (z[1], z[2]) not in zajete, (k, z[3], mapa[z[2]][z[1]])
     tu = os.path.dirname(os.path.abspath(__file__))
     cel = os.path.join(tu, "..", "godot", "dane", "dane.json")
     os.makedirs(os.path.dirname(cel), exist_ok=True)
