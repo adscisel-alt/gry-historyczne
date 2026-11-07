@@ -12,6 +12,9 @@ https://adscisel-alt.github.io/gry-historyczne/
 - `cyberdetektyw.html` — „Damian Teacher: Cyberdetektyw”, klockowa gra RPG 3D o zasadach bezpieczeństwa
   w internecie dla klas VI–VIII (Szkoła Mentis): 9 spraw z quizami i słowniczkiem PL–EN (m.in. AI, deepfake,
   uzależnienie od ekranu), 12 złotych kłódek z poradami, finał z Phisherem i certyfikat do druku
+- `kroniki-damiana-scisla/` — „Kroniki Damiana Ścisła”, turowa strategia (Python + Pygame, grafika 3D renderowana w Blenderze, EXE na Windows) o Polsce
+  966–1410: 6 rozdziałów, 4 epoki, 20 technologii z zagadkami, bitwy kartami, 12 postaci; EXE buduje
+  `.github/workflows/kroniki-exe.yml`
 - `zamosc/` — „Jan Zamoyski i Miasto Idealne”, gra strategiczna pixel-art (Python + Pygame) dla 10–12 lat,
   kompilowana do `ZamoyskiMiastoIdealne.exe` (Windows) przez `.github/workflows/zamosc-exe.yml`
 - `zamosc3d/` — „Jan Zamoyski i Miasto Idealne 3D”: ta sama gra w 3D (modele z Blendera, silnik Godot 4.3),
