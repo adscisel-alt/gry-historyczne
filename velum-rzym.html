@@ -76,6 +76,18 @@
   #karta .panel{max-width:400px;text-align:left;padding:18px 20px;}
   #karta.schowana .panel{transform:translateX(110%);}
   #karta .panel{transition:transform .35s ease;}
+  table.rekordy{width:100%;border-collapse:collapse;font-size:14px;margin:8px 0;}
+  table.rekordy th{font-family:'Cinzel',serif;font-size:11px;letter-spacing:.08em;color:var(--zloto);font-weight:500;
+    border-bottom:1px solid var(--linia);padding:5px 4px;text-align:left;}
+  table.rekordy td{padding:5px 4px;border-bottom:1px solid rgba(201,165,92,.15);text-align:left;}
+  table.rekordy td.l{text-align:right;font-family:'Cinzel',serif;color:var(--zloto-j);}
+  table.rekordy tr.nowy td{background:rgba(201,165,92,.18);}
+  .pusto{opacity:.7;font-style:italic;padding:12px 0;}
+  .wpis{margin:10px 0;} .ukryty-wpis{display:none;}
+  .wpis input{font-family:'Spectral',serif;font-size:16px;padding:8px 10px;border-radius:6px;border:1px solid var(--linia);
+    background:rgba(255,255,255,.06);color:var(--ink);width:min(220px,60vw);}
+  .niebezp{border-color:rgba(224,103,93,.6);color:#f0a59d;}
+  .niebezp:hover{border-color:#e0675d;color:#ffb8b0;}
   .podpis{font-size:12px;opacity:.7;font-style:italic;margin-top:6px;line-height:1.4;}
   .pytanie{margin-top:12px;padding-top:10px;border-top:1px solid var(--linia);}
   .pytanie .q{font-weight:600;margin-bottom:8px;}
@@ -141,7 +153,7 @@
       <div class="sub">Odsłoń starożytny Rzym — od wilczycy kapitolińskiej po upadek cesarstwa</div>
       <div class="zasady">
         Pod marmurową zasłoną (<i>velum</i>) ukryto <b>9 obrazów z dziejów Rzymu</b>.
-        Sterujesz złotym punktem na krawędzi planszy. Wjedź w zasłonę, by <b>ciąć linię</b>,
+        Sterujesz złotym punktem po odsłoniętym terenie. Wjedź w zasłonę, by <b>ciąć linię</b>,
         i wróć na odsłonięty teren, by <b>odciąć kawałek</b>.<br>
         ⚠ Jeśli wirujące <b>fasces</b> (pęk rózeg z toporem — symbol władzy rzymskich urzędników) dotkną linii, zanim ją domkniesz — tracisz życie.
         Iskry krążą po krawędziach, a gdy zatrzymasz się w połowie cięcia, linia zacznie płonąć.<br>
@@ -149,12 +161,14 @@
         Wrogowie zamknięci w odciętym kawałku giną (+500 pkt).
       </div>
       <div style="font-size:13px;opacity:.85">Poziom trudności</div>
-      <div class="wybor" id="trudnosc">
-        <button data-t="0">Łatwy</button><button data-t="1" class="akt">Normalny</button><button data-t="2">Legionista</button>
+      <div class="wybor" id="trudnosc" style="margin-bottom:2px">
+        <button data-t="0">Łatwy</button><button data-t="1" class="akt">Normalny</button><button data-t="2" title="Dwa fasces naraz, szybsi wrogowie i wyższy cel">Legionista</button>
       </div>
+      <div style="font-size:12px;opacity:.65" id="trudnosc-opis">3 życia · zwykła prędkość wrogów</div>
       <div style="margin-top:10px">
         <button class="duzy" id="b-graj">GRAJ</button>
         <button class="drugi" id="b-galeria">GALERIA</button>
+        <button class="drugi" id="b-rekordy">REKORDY</button>
       </div>
       <div style="font-size:12px;opacity:.6;margin-top:10px">Sterowanie: strzałki / WASD · P — pauza · M — dźwięk · na telefonie przyciski pod planszą</div>
     </div>
@@ -178,6 +192,7 @@
       <h2>PAUZA</h2>
       <p>Odpocznij, legionisto. Rzym nie został zbudowany w jeden dzień.</p>
       <button class="duzy" id="b-wznow">WZNÓW</button>
+      <button class="drugi" id="b-odnowa">ZACZNIJ OD NOWA</button>
       <button class="drugi" id="b-menu1">MENU</button>
     </div>
   </div>
@@ -208,8 +223,28 @@
       <div class="laur" id="ko-laur">✝</div>
       <h2 id="ko-tytul">Vae victis!</h2>
       <p id="ko-tekst"></p>
+      <div id="ko-wpis" class="wpis ukryty-wpis">
+        <div style="font-size:14px;margin-bottom:6px">Twój wynik trafia na listę rekordów! Wpisz imię:</div>
+        <input id="ko-imie" maxlength="16" autocomplete="off" placeholder="Imię">
+        <button class="duzy" id="b-zapisz-wynik" style="padding:8px 18px">ZAPISZ</button>
+      </div>
+      <div id="ko-lista"></div>
       <button class="duzy" id="b-ponow">SPRÓBUJ PONOWNIE</button>
       <button class="drugi" id="b-menu2">MENU</button>
+    </div>
+  </div>
+
+  <!-- rekordy -->
+  <div class="nakladka ciemna ukryta" id="ekran-rekordy">
+    <div class="panel">
+      <h2>LISTA REKORDÓW</h2>
+      <p style="opacity:.8;font-size:14px">10 najlepszych wyników zapisanych na tym komputerze.</p>
+      <div id="lista-rekordow"></div>
+      <div style="margin-top:14px">
+        <button class="drugi" id="b-menu4">WRÓĆ</button>
+        <button class="drugi niebezp" id="b-reset">RESETUJ GRĘ</button>
+      </div>
+      <div id="reset-info" style="font-size:12.5px;opacity:.75;margin-top:6px">Reset usuwa listę rekordów i odsłonięte obrazy z galerii.</div>
     </div>
   </div>
 
@@ -836,7 +871,7 @@ function ustawieniaPoziomu(i) {
   const t = TRUDNOSC[G.trudnosc];
   return {
     cel: Math.min(0.85, 0.70 + i * 0.01 + t.cel),
-    bossy: i === 8 ? 2 : 1,
+    bossy: (i === 8 ? 2 : 1) + (G.trudnosc === 2 ? 1 : 0),
     bossV: (0.30 + 0.022 * i) * t.predkosc,
     sludzy: [0, 0, 1, 1, 2, 2, 2, 3, 2][i],
     iskry: [0, 1, 1, 1, 2, 2, 2, 3, 3][i],
@@ -887,8 +922,9 @@ const G = {
   bossy: [], sludzy: [], iskry: [], czastki: [], niezn: 0, wstrzas: 0, procent: 0, ust: null,
   odslonaT: 0, dzwiek: true, iskraDoSpawnu: 0, poprawne: 0, punktyStartPoziomu: 0,
 };
-let zapis = { odkryte: [], rekord: 0 };
-try { const z = JSON.parse(localStorage.getItem('velum-rzym') || 'null'); if (z && Array.isArray(z.odkryte)) zapis = z; } catch (e) {}
+let zapis = { odkryte: [], rekord: 0, rekordy: [], imie: '' };
+try { const z = JSON.parse(localStorage.getItem('velum-rzym') || 'null'); if (z && Array.isArray(z.odkryte)) zapis = Object.assign(zapis, z); } catch (e) {}
+if (!Array.isArray(zapis.rekordy)) zapis.rekordy = [];
 function zapisz() { try { localStorage.setItem('velum-rzym', JSON.stringify(zapis)); } catch (e) {} }
 
 /* Obrazy z domeny publicznej (Wikimedia Commons), 1024×672, wbudowane przez velum-obrazy/osadz.py.
@@ -975,7 +1011,7 @@ function przygotujPoziom(i) {
   G.bossy = []; G.sludzy = []; G.iskry = []; G.czastki = [];
   for (let b = 0; b < G.ust.bossy; b++) {
     const a = Math.random() * Math.PI * 2;
-    G.bossy.push({ x: GW / 2 + (b ? 20 : 0), y: GH / 2 - 6, vx: Math.cos(a) * G.ust.bossV, vy: Math.sin(a) * G.ust.bossV, v: G.ust.bossV, r: 2.6, kat: 0, hist: [], boss: true, odcien: b ? 200 : 0 });
+    G.bossy.push({ x: GW / 2 + [0, 22, -22][b % 3], y: GH / 2 - 6 + (b === 2 ? 10 : 0), vx: Math.cos(a) * G.ust.bossV, vy: Math.sin(a) * G.ust.bossV, v: G.ust.bossV, r: 2.6, kat: 0, hist: [], boss: true, odcien: b * 2.1 });
   }
   for (let s = 0; s < G.ust.sludzy; s++) {
     const a = Math.random() * Math.PI * 2, v = G.ust.bossV * 1.5;
@@ -993,7 +1029,9 @@ function ruchGracza(d) {
   if (nx < 0 || ny < 0 || nx >= GW || ny >= GH) return false;
   const n = idx(nx, ny), c = g[n];
   if (!G.rysuje) {
-    if (c === 1) { if (!krawedz(n)) return false; G.px = nx; G.py = ny; return true; }
+    // po odsłoniętym terenie gracz chodzi swobodnie — przy dwóch fasces zasłona dzieli się na osobne obszary,
+    // a same krawędzie mogłyby nie łączyć się ze sobą
+    if (c === 1) { G.px = nx; G.py = ny; return true; }
     if (c === 0) { G.rysuje = true; G.sx = G.px; G.sy = G.py; G.slad = [n]; g[n] = 2; G.px = nx; G.py = ny; ton(520, 0.05, 'square', 0.04); return true; }
     return false;
   }
@@ -1026,7 +1064,6 @@ function zamknij() {
   }
   G.rysuje = false; G.slad = []; G.lont = -1;
   odswiezMaske();
-  if (!krawedz(idx(G.px, G.py))) { const k = najblizszaKrawedz(idx(G.px, G.py)); if (k >= 0) { G.px = k % GW; G.py = (k / GW) | 0; } }
   for (const s of G.iskry) if (!krawedz(s.c)) { s.c = najblizszaKrawedz(s.c); s.prev = -1; }
   arpeggio([523, 659, 784, 1046], 0.07);
   if (G.procent >= G.ust.cel) wygranaPoziomu();
@@ -1046,6 +1083,13 @@ function smierc(zrodloX, zrodloY) {
   G.zycia--; G.wstrzas = 18; G.niezn = 120;
   ton(180, 0.5, 'sawtooth', 0.09, 60);
   if (!krawedz(idx(G.px, G.py))) { const k = najblizszaKrawedz(idx(G.px, G.py)); if (k >= 0) { G.px = k % GW; G.py = (k / GW) | 0; } }
+  // iskry tuż obok miejsca odrodzenia przenoszą się na przeciwną stronę planszy — bez pętli śmierci
+  for (const sk of G.iskry) {
+    if (sk.c < 0) continue;
+    if (Math.max(Math.abs(sk.c % GW - G.px), Math.abs(((sk.c / GW) | 0) - G.py)) < 14) {
+      const c = najblizszaKrawedz(idx(GW - 1 - G.px, GH - 1 - G.py)); if (c >= 0) { sk.c = c; sk.prev = -1; }
+    }
+  }
   if (G.zycia <= 0) koniecGry();
 }
 
@@ -1245,10 +1289,10 @@ function aktualizujHud() {
    EKRANY
    ========================================================================= */
 function pokaz(id) {
-  for (const e of ['ekran-start', 'ekran-intro', 'ekran-pauza', 'karta', 'ekran-koniec', 'ekran-galeria']) $(e).classList.toggle('ukryta', e !== id);
+  for (const e of ['ekran-start', 'ekran-intro', 'ekran-pauza', 'karta', 'ekran-koniec', 'ekran-galeria', 'ekran-rekordy']) $(e).classList.toggle('ukryta', e !== id);
 }
 function doMenu() { G.stan = 'menu'; obraz = pobierzObraz(zapis.odkryte.length ? zapis.odkryte[zapis.odkryte.length - 1] : 0); pokaz('ekran-start'); }
-function nowaGra(od = 0) { G.punkty = 0; G.zycia = TRUDNOSC[G.trudnosc].zycia; G.poprawne = 0; intro(od); }
+function nowaGra(od = 0) { G.od = od; G.punkty = 0; G.zycia = TRUDNOSC[G.trudnosc].zycia; G.poprawne = 0; intro(od); }
 function intro(i) {
   przygotujPoziom(i);
   G.stan = 'intro';
@@ -1317,6 +1361,7 @@ function dalej() {
     $('ko-tytul').textContent = 'Ave, odkrywco!';
     $('ko-tekst').innerHTML = `Odsłoniłeś wszystkie ${POZIOMY.length} obrazów — od założenia Rzymu (753 p.n.e.) po upadek cesarstwa zachodniego (476 n.e.).<br>Wynik: <b>${G.punkty.toLocaleString('pl-PL')}</b> pkt · poprawne odpowiedzi: <b>${G.poprawne}/${POZIOMY.length}</b><br>Rekord: ${zapis.rekord.toLocaleString('pl-PL')} pkt`;
     $('b-ponow').textContent = 'ZAGRAJ OD NOWA'; G.ponowOd = 0;
+    G.ukonczone = true; proponujRekord();
     pokaz('ekran-koniec');
   }
 }
@@ -1327,8 +1372,62 @@ function koniecGry() {
   $('ko-tytul').textContent = 'Vae victis! — Biada zwyciężonym!';
   $('ko-tekst').innerHTML = `Zasłona obrazu „${POZIOMY[G.poziom].tytul}” okazała się zbyt mocna.<br>Odsłonięto ${(G.procent * 100).toFixed(1)}% · wynik: <b>${G.punkty.toLocaleString('pl-PL')}</b> pkt<br>Możesz spróbować ponownie od tego obrazu (wynik liczy się od nowa).`;
   $('b-ponow').textContent = 'SPRÓBUJ PONOWNIE'; G.ponowOd = G.poziom;
+  G.ukonczone = false; proponujRekord();
   ton(140, 0.9, 'sawtooth', 0.08, 50);
   setTimeout(() => pokaz('ekran-koniec'), 700);
+}
+/* ---------- lista rekordów ---------- */
+const MAX_REKORDOW = 10;
+function kwalifikuje(pkt) { return pkt > 0 && (zapis.rekordy.length < MAX_REKORDOW || pkt > zapis.rekordy[zapis.rekordy.length - 1].pkt); }
+function tabelaRekordow(el, nowy) {
+  el.innerHTML = '';
+  if (!zapis.rekordy.length) { el.innerHTML = '<div class="pusto">Brak wyników — zagraj i zapisz pierwszy rekord!</div>'; return; }
+  const t = document.createElement('table'); t.className = 'rekordy';
+  t.innerHTML = '<tr><th>#</th><th>Imię</th><th>Tryb</th><th>Obrazy</th><th>Data</th><th style="text-align:right">Punkty</th></tr>';
+  zapis.rekordy.forEach((r, i) => {
+    const tr = document.createElement('tr'); if (r === nowy) tr.className = 'nowy';
+    const kom = [i + 1 + '.', r.imie, TRUDNOSC[r.trud] ? TRUDNOSC[r.trud].nazwa : '—',
+      (r.od === r.do ? rzymska(r.od + 1) : `${rzymska(r.od + 1)}–${rzymska(r.do + 1)}`) + (r.calosc ? ' ✔' : ''), r.data, r.pkt.toLocaleString('pl-PL')];
+    kom.forEach((k, j) => { const td = document.createElement('td'); td.textContent = k; if (j === 5) td.className = 'l'; tr.appendChild(td); });
+    t.appendChild(tr);
+  });
+  el.appendChild(t);
+}
+function proponujRekord() {
+  $('ko-lista').innerHTML = '';
+  const ok = kwalifikuje(G.punkty);
+  $('ko-wpis').classList.toggle('ukryty-wpis', !ok);
+  if (ok) { $('ko-imie').value = zapis.imie || ''; $('b-zapisz-wynik').disabled = false; setTimeout(() => $('ko-imie').focus(), 750); }
+}
+function zapiszWynik() {
+  const imie = ($('ko-imie').value || '').trim().slice(0, 16) || 'Anonim';
+  const d = new Date();
+  const r = { imie, pkt: G.punkty, trud: G.trudnosc, od: G.od || 0, do: G.poziom, calosc: !!G.ukonczone,
+    data: `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${d.getFullYear()}` };
+  zapis.rekordy.push(r); zapis.rekordy.sort((a, b) => b.pkt - a.pkt); zapis.rekordy = zapis.rekordy.slice(0, MAX_REKORDOW);
+  zapis.imie = imie; zapis.rekord = Math.max(zapis.rekord || 0, G.punkty); zapisz();
+  $('ko-wpis').classList.add('ukryty-wpis');
+  tabelaRekordow($('ko-lista'), r);
+  arpeggio([523, 784, 1046], 0.09);
+}
+function rekordy() {
+  pokaz('ekran-rekordy'); G.stan = 'menu';
+  tabelaRekordow($('lista-rekordow'));
+  resetKrok = 0; $('b-reset').textContent = 'RESETUJ GRĘ';
+  $('reset-info').textContent = 'Reset usuwa listę rekordów i odsłonięte obrazy z galerii.';
+}
+let resetKrok = 0;
+function resetuj() {
+  if (resetKrok === 0) {
+    resetKrok = 1; $('b-reset').textContent = 'NA PEWNO? KLIKNIJ JESZCZE RAZ';
+    $('reset-info').textContent = 'Tego nie da się cofnąć: znikną wszystkie rekordy i odsłonięte obrazy.';
+    return;
+  }
+  zapis = { odkryte: [], rekord: 0, rekordy: [], imie: '' }; zapisz();
+  resetKrok = 0; $('b-reset').textContent = 'RESETUJ GRĘ';
+  $('reset-info').textContent = '✔ Gra zresetowana — galeria i lista rekordów są puste.';
+  tabelaRekordow($('lista-rekordow'));
+  obraz = pobierzObraz(0);
 }
 function podpis(i) {
   return maObraz(i) && POZIOMY[i].obraz ? `Obraz: ${POZIOMY[i].obraz} · domena publiczna, Wikimedia Commons` : 'Ilustracja namalowana kodem na potrzeby gry';
@@ -1395,16 +1494,22 @@ function przelaczDzwiek() { G.dzwiek = !G.dzwiek; $('b-dzwiek').textContent = G.
 
 $('b-graj').onclick = () => { odblokujAudio(); nowaGra(0); };
 $('b-galeria').onclick = galeria;
+$('b-rekordy').onclick = rekordy;
+$('b-reset').onclick = resetuj;
+$('b-zapisz-wynik').onclick = zapiszWynik;
+$('ko-imie').addEventListener('keydown', e => { if (e.key === 'Enter') zapiszWynik(); e.stopPropagation(); });
+$('b-odnowa').onclick = () => { odblokujAudio(); nowaGra(0); };
 $('b-start').onclick = startPoziomu;
 $('b-wznow').onclick = () => pauza(false);
 $('b-pauza').onclick = () => pauza(G.stan === 'gra');
 $('b-dzwiek').onclick = przelaczDzwiek;
 $('b-dalej').onclick = dalej;
 $('b-ponow').onclick = () => nowaGra(G.ponowOd || 0);
-for (const id of ['b-menu1', 'b-menu2', 'b-menu3']) $(id).onclick = doMenu;
+for (const id of ['b-menu1', 'b-menu2', 'b-menu3', 'b-menu4']) $(id).onclick = doMenu;
 $('pokaz-obraz').onclick = () => { const k = $('karta'); k.classList.toggle('schowana'); $('pokaz-obraz').textContent = k.classList.contains('schowana') ? 'Pokaż opis' : 'Pokaż obraz'; };
 document.querySelectorAll('#trudnosc button').forEach(b => b.onclick = () => {
   G.trudnosc = +b.dataset.t; document.querySelectorAll('#trudnosc button').forEach(x => x.classList.toggle('akt', x === b));
+  $('trudnosc-opis').textContent = ['5 żyć · wolniejsi wrogowie · niższy cel', '3 życia · zwykła prędkość wrogów', '3 życia · DWA fasces naraz · szybsi wrogowie · wyższy cel'][G.trudnosc];
 });
 
 let ostatni = 0, akum = 0;
@@ -1416,7 +1521,7 @@ function petla(t) {
 }
 wczytajObrazy().then(() => { doMenu(); requestAnimationFrame(petla); });
 // haki testowe
-window.__velum = { G, g, krok, krawedz, idx, wcisniete, dalej, POZIOMY, pobierzObraz, przygotujPoziom, zamknij, wygranaPoziomu, nowaGra, startPoziomu };
+window.__velum = { G, g, smierc, krok, krawedz, idx, wcisniete, dalej, POZIOMY, pobierzObraz, przygotujPoziom, zamknij, wygranaPoziomu, nowaGra, startPoziomu };
 </script>
 </body>
 </html>
