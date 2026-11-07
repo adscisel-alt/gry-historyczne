@@ -1470,6 +1470,7 @@ func _stan_demo(rozdzial: int) -> void:
 
 func _zrzuty() -> void:
 	DirAccess.make_dir_recursive_absolute(tryb)
+	pokaz_tytul()
 	await klatki(10)
 	await zrob("01_tytul")
 	nowa_gra()
