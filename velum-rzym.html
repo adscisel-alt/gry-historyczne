@@ -142,7 +142,7 @@
         Pod marmurową zasłoną (<i>velum</i>) ukryto <b>9 obrazów z dziejów Rzymu</b>.
         Sterujesz złotym punktem na krawędzi planszy. Wjedź w zasłonę, by <b>ciąć linię</b>,
         i wróć na odsłonięty teren, by <b>odciąć kawałek</b>.<br>
-        ⚠ Jeśli wróg dotknie linii, zanim ją domkniesz — tracisz życie.
+        ⚠ Jeśli wirujące <b>fasces</b> (pęk rózeg z toporem — symbol władzy rzymskich urzędników) dotkną linii, zanim ją domkniesz — tracisz życie.
         Iskry krążą po krawędziach, a gdy zatrzymasz się w połowie cięcia, linia zacznie płonąć.<br>
         Odsłoń wymaganą część (ok. <b>75%</b>), aby zobaczyć obraz, poznać jego historię i zdobyć bonus za quiz.
         Wrogowie zamknięci w odciętym kawałku giną (+500 pkt).
@@ -938,7 +938,7 @@ function przygotujPoziom(i) {
   G.bossy = []; G.sludzy = []; G.iskry = []; G.czastki = [];
   for (let b = 0; b < G.ust.bossy; b++) {
     const a = Math.random() * Math.PI * 2;
-    G.bossy.push({ x: GW / 2 + (b ? 20 : 0), y: GH / 2 - 6, vx: Math.cos(a) * G.ust.bossV, vy: Math.sin(a) * G.ust.bossV, v: G.ust.bossV, r: 2, kat: 0, hist: [], boss: true, odcien: b ? 200 : 0 });
+    G.bossy.push({ x: GW / 2 + (b ? 20 : 0), y: GH / 2 - 6, vx: Math.cos(a) * G.ust.bossV, vy: Math.sin(a) * G.ust.bossV, v: G.ust.bossV, r: 2.6, kat: 0, hist: [], boss: true, odcien: b ? 200 : 0 });
   }
   for (let s = 0; s < G.ust.sludzy; s++) {
     const a = Math.random() * Math.PI * 2, v = G.ust.bossV * 1.5;
@@ -1126,19 +1126,54 @@ function rysujGracza() {
   ctx.strokeStyle = '#ffe08a'; ctx.lineWidth = 2; ctx.stroke();
   ctx.fillStyle = '#fff6d8'; ctx.beginPath(); ctx.arc(x, y, 2.5, 0, Math.PI * 2); ctx.fill();
 }
+let fascesObraz = null;
+function malujFasces() {
+  const cv = document.createElement('canvas'); cv.width = 96; cv.height = 128; const c = cv.getContext('2d');
+  c.translate(52, 66); c.scale(2, 2);
+  // rózgi
+  const kolory = ['#7a4a22', '#9a6430', '#b07a3c', '#8a5628', '#a46e34', '#7f4e24', '#96602e'];
+  for (let i = 0; i < 7; i++) {
+    const rx = -7.2 + i * 2.4;
+    c.fillStyle = kolory[i]; c.beginPath(); c.roundRect(rx - 1.2, -20 + (i % 2), 2.4, 42 - (i % 2), 1.2); c.fill();
+    c.fillStyle = 'rgba(255,230,180,0.35)'; c.fillRect(rx - 0.7, -18, 0.6, 38);
+  }
+  c.strokeStyle = '#3a200c'; c.lineWidth = 0.8; c.strokeRect(-8.6, -20, 17.2, 42);
+  // trzonek topora wystający ponad pęk
+  c.fillStyle = '#5a3416'; c.fillRect(-1.1, -28, 2.2, 10);
+  c.fillStyle = '#d9b24a'; c.beginPath(); c.arc(0, -28.5, 1.8, 0, Math.PI * 2); c.fill();
+  // ostrze topora
+  const st = c.createLinearGradient(-20, 0, -2, 0); st.addColorStop(0, '#f4f6f8'); st.addColorStop(0.5, '#a9b2ba'); st.addColorStop(1, '#5d666e');
+  c.fillStyle = st; c.beginPath();
+  c.moveTo(-1, -25); c.lineTo(-9, -27.5); c.quadraticCurveTo(-21, -22, -19, -12); c.lineTo(-9, -15.5); c.lineTo(-1, -18.5); c.closePath(); c.fill();
+  c.strokeStyle = '#2c3238'; c.lineWidth = 0.7; c.stroke();
+  c.strokeStyle = 'rgba(255,255,255,0.8)'; c.lineWidth = 0.6; c.beginPath(); c.moveTo(-10, -26.6); c.quadraticCurveTo(-20, -21.5, -18.4, -12.8); c.stroke();
+  // czerwone rzemienie: opaski i przeplot
+  c.fillStyle = '#b3241c';
+  for (const yy of [-17, 18]) c.fillRect(-9.2, yy, 18.4, 2.6);
+  c.strokeStyle = '#b3241c'; c.lineWidth = 1.8;
+  c.beginPath();
+  for (let k = 0; k < 4; k++) { const y0 = -14.5 + k * 8; c.moveTo(-8.6, y0); c.lineTo(8.6, y0 + 8); c.moveTo(8.6, y0); c.lineTo(-8.6, y0 + 8); }
+  c.stroke();
+  c.strokeStyle = 'rgba(255,140,120,0.5)'; c.lineWidth = 0.5;
+  c.beginPath(); for (const yy of [-17, 18]) { c.moveTo(-9.2, yy + 0.5); c.lineTo(9.2, yy + 0.5); } c.stroke();
+  return cv;
+}
+function rysujFasces(x, y, kat, alfa) {
+  if (!fascesObraz) fascesObraz = malujFasces();
+  ctx.save(); ctx.globalAlpha = alfa; ctx.translate(x, y); ctx.rotate(kat);
+  ctx.drawImage(fascesObraz, -32, -41, 60, 80);
+  ctx.restore();
+}
 function rysujWrogow() {
-  const kol = POZIOMY[G.poziom].kolor;
   for (const b of G.bossy) {
-    const x = b.x * CS, y = b.y * CS, L = b.r * CS * 1.9 * (0.75 + 0.25 * Math.sin(G.klatka * 0.07));
-    b.hist.push([x + Math.cos(b.kat) * L, y + Math.sin(b.kat) * L, x - Math.cos(b.kat * 1.7) * L, y - Math.sin(b.kat * 1.7) * L]);
-    if (b.hist.length > 10) b.hist.shift();
-    ctx.fillStyle = gradR(ctx, x, y, 0, L * 1.5, [[0, 'rgba(255,80,60,0.45)'], [1, 'rgba(255,40,40,0)']]); ctx.beginPath(); ctx.arc(x, y, L * 1.5, 0, Math.PI * 2); ctx.fill();
-    b.hist.forEach((h, i) => {
-      ctx.strokeStyle = `hsla(${(G.klatka * 3 + i * 18 + b.odcien) % 360},90%,${55 + i * 3}%,${(i + 1) / b.hist.length})`;
-      ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(h[0], h[1]); ctx.lineTo(h[2], h[3]); ctx.stroke();
-    });
-    ctx.fillStyle = '#1a0a0a'; ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = kol; ctx.lineWidth = 2; ctx.stroke();
+    const x = b.x * CS, y = b.y * CS;
+    const kat = Math.sin(G.klatka * 0.06 + b.odcien) * 0.35 + b.vx * 0.6;
+    b.hist.push([x, y, kat]); if (b.hist.length > 7) b.hist.shift();
+    const puls = 0.85 + 0.15 * Math.sin(G.klatka * 0.15);
+    ctx.fillStyle = gradR(ctx, x, y, 0, 42, [[0, `rgba(200,30,20,${0.5 * puls})`], [1, 'rgba(160,20,10,0)']]);
+    ctx.beginPath(); ctx.arc(x, y, 42, 0, Math.PI * 2); ctx.fill();
+    b.hist.forEach(([hx, hy, hk], i) => { if (i < b.hist.length - 1) rysujFasces(hx, hy, hk, 0.12 + i * 0.04); });
+    rysujFasces(x, y, kat, 1);
   }
   for (const s of G.sludzy) {
     s.ogon.forEach(([ox, oy], i) => { ctx.fillStyle = `rgba(255,140,40,${i / s.ogon.length * 0.5})`; ctx.beginPath(); ctx.arc(ox * CS, oy * CS, 2 + i * 0.4, 0, Math.PI * 2); ctx.fill(); });
