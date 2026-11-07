@@ -270,6 +270,7 @@ func _odswiez_siatke() -> void:
 func _process(dt: float) -> void:
 	if g == null:
 		return
+	_aktualizuj_mape(dt)
 	if ekran and is_instance_valid(intro_tekst) and g.scena == "intro":
 		intro_znaki += 60 * dt
 		intro_tekst.visible_characters = int(intro_znaki)
@@ -393,6 +394,8 @@ func pokaz_ekran() -> void:
 			_ekran_intro()
 		"koniec":
 			_ekran_koniec()
+		"mapa":
+			_ekran_mapy()
 
 
 func _pelny() -> Control:
@@ -464,6 +467,7 @@ func _ekran_intro() -> void:
 	var l := _label("%s · %s" % [r.miejsce, r.lata], 19, C_TEKST)
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vb.add_child(l)
+	g.lektor(r.wstep)
 	intro_tekst = RichTextLabel.new()
 	intro_tekst.text = r.wstep
 	intro_tekst.fit_content = true
@@ -572,11 +576,14 @@ func odswiez_dialog() -> void:
 		d_tekst.visible_characters = int(dl.znaki)
 		d_tekst.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		vb.add_child(d_tekst)
+		g.lektor(dl.kwestie[dl.i][1])
 		var b := _btn("Dalej »  (Spacja)", func(): g.dalej_dialog(), "", 16)
 		b.size_flags_horizontal = Control.SIZE_SHRINK_END
 		vb.add_child(b)
 	else:
 		var q = dl.zagadka
+		if dl.tryb == "zagadka":
+			g.lektor(q.pytanie)
 		var p := _label(q.pytanie, 20)
 		p.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		p.custom_minimum_size.x = 680
@@ -610,6 +617,8 @@ func przelacz_okno(nazwa: String) -> void:
 
 
 func zamknij_okno(dzw := true) -> void:
+	if otwarte != "":
+		g.ucisz_lektora()
 	if okno:
 		okno.queue_free()
 		okno = null
@@ -729,6 +738,7 @@ func _okno_ekwipunek() -> void:
 
 func czytaj_karte(k: String) -> void:
 	wybrana_karta = k
+	g.lektor(g.D.wiedza[k][1])
 	g.dzwiek("strona")
 	if not k in g.stan.przeczytane:
 		g.stan.przeczytane.append(k)
@@ -738,13 +748,28 @@ func czytaj_karte(k: String) -> void:
 	pokaz_okno("ksiega")
 
 
+var ksiega_tryb := "karty"
+var wybrane_wydarzenie := -1
+
+
 func _okno_ksiega() -> void:
-	var vb := _okno("Księga Wiedzy", Vector2(1000, 540))
+	var vb := _okno("Księga Wiedzy", Vector2(1000, 560))
+	var zakladki := HBoxContainer.new()
+	zakladki.alignment = BoxContainer.ALIGNMENT_CENTER
+	for z in [["karty", "Karty wiedzy"], ["os", "Oś czasu 1914–1919"]]:
+		var b := _btn(z[1], func(): ksiega_tryb = z[0]; g.ucisz_lektora(); pokaz_okno("ksiega"), "", 17)
+		if ksiega_tryb == z[0]:
+			b.modulate = Color(1.35, 1.2, 0.7)
+		zakladki.add_child(b)
+	vb.add_child(zakladki)
+	if ksiega_tryb == "os":
+		_os_czasu(vb)
+		return
 	var hb := HBoxContainer.new()
 	hb.add_theme_constant_override("separation", 16)
 	vb.add_child(hb)
 	var sc := ScrollContainer.new()
-	sc.custom_minimum_size = Vector2(330, 440)
+	sc.custom_minimum_size = Vector2(330, 420)
 	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	hb.add_child(sc)
 	var lista := VBoxContainer.new()
@@ -802,6 +827,7 @@ func _okno_menu() -> void:
 	for p in [["Wróć do gry", func(): zamknij_okno()],
 			["Zapisz grę", func(): g.zapisz(); toast("Gra zapisana!"); zamknij_okno()],
 			["Muzyka wł./wył. (M)", func(): g.przelacz_muzyke()],
+			["Lektor wł./wył. (G)", func(): g.przelacz_lektora()],
 			["Menu główne", func(): g.zapisz(); g.pokaz_tytul()],
 			["Wyjście z gry", func(): g.zapisz(); get_tree().quit()]]:
 		vb.add_child(_btn(p[0], p[1], "", 19))
@@ -843,6 +869,7 @@ func odswiez_kino() -> void:
 			pas.offset_top = -170
 		kino_w.add_child(pas)
 	var napis = g.D.przerywniki[g.kino_nazwa][g.kino_i]
+	g.lektor(napis[1])
 	var hb := HBoxContainer.new()
 	hb.position = Vector2(60, 720 - 155)
 	hb.custom_minimum_size = Vector2(1160, 140)
@@ -940,6 +967,8 @@ func odswiez_przemowienie() -> void:
 		vb.add_child(b)
 		return
 	var r = rundy[m.runda]
+	if m.stan == "pytanie":
+		g.lektor(r.pytanie)
 	vb.add_child(_label("Pytanie %d/%d — %s" % [m.runda + 1, rundy.size(), r.pytajacy], 18, C_SZARY))
 	var q := _label(r.pytanie, 23)
 	q.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -965,6 +994,342 @@ func odswiez_przemowienie() -> void:
 		var b2 := _btn("Następne pytanie »" if m.runda + 1 < rundy.size() else "Podsumowanie »", func(): g.dalej_przemowienie(), "", 20)
 		b2.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		vb.add_child(b2)
+
+
+# ===================================================================== oś czasu 1914–1919
+func wybierz_wydarzenie(i: int) -> void:
+	wybrane_wydarzenie = i
+	g.dzwiek("klik")
+	g.lektor(g.D.os_czasu[i][3])
+	pokaz_okno("ksiega")
+
+
+func _os_czasu(vb: VBoxContainer) -> void:
+	var os := OsCzasuWidget.new()
+	os.g = g
+	os.ui = self
+	os.wybrane = wybrane_wydarzenie
+	os.custom_minimum_size = Vector2(960, 250)
+	vb.add_child(os)
+	var opis := PanelContainer.new()
+	opis.add_theme_stylebox_override("panel", _sb(Color("f6ecd0"), Color("b89a6a"), 2, 6, 10))
+	opis.custom_minimum_size = Vector2(960, 120)
+	vb.add_child(opis)
+	var ov := VBoxContainer.new()
+	opis.add_child(ov)
+	if wybrane_wydarzenie >= 0:
+		var e = g.D.os_czasu[wybrane_wydarzenie]
+		ov.add_child(_label("%s — %s" % [e[1], e[2]], 22, C_CZERW if e[4] == "pl" else Color("2c4a8a")))
+		var t := _label(e[3], 18)
+		t.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		t.custom_minimum_size.x = 930
+		ov.add_child(t)
+		if e[5]:
+			ov.add_child(_label("To wydarzenie znajdziesz też na osi czasu klasy VII.", 15, C_SZARY))
+	else:
+		ov.add_child(_label("Kliknij kropkę na osi, aby przeczytać o wydarzeniu. Czerwone — historia Polski, niebieskie — historia świata. Złota ramka — wydarzenia z kampanii, które już przeszedłeś.", 17, C_SZARY))
+		ov.get_child(0).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		ov.get_child(0).custom_minimum_size.x = 930
+	var hb := HBoxContainer.new()
+	hb.alignment = BoxContainer.ALIGNMENT_CENTER
+	hb.add_child(_btn("Otwórz pełną oś czasu klasy VII (1815–1939) w przeglądarce", func(): OS.shell_open(g.D.os_czasu_klasa7), "ikona_wiedza", 16))
+	vb.add_child(hb)
+
+
+class OsCzasuWidget extends Control:
+	var g
+	var ui
+	var wybrane := -1
+	const POCZ := 1914.0
+	const KON := 1920.0
+
+	func _x(rok: float) -> float:
+		return 30 + (rok - POCZ) / (KON - POCZ) * (size.x - 60)
+
+	var _poziomy := []
+
+	func _poz(i: int) -> Vector2:
+		if _poziomy.size() != g.D.os_czasu.size():
+			_rozmiesc()
+		var e = g.D.os_czasu[i]
+		return Vector2(_x(e[0]), size.y / 2 + _poziomy[i] * 36)
+
+	func _rozmiesc() -> void:
+		## Każde wydarzenie dostaje poziom (nad lub pod osią), na którym jego podpis się nie nakłada.
+		var f := ThemeDB.fallback_font
+		var koniec_poziomu := {}
+		_poziomy = []
+		for e in g.D.os_czasu:
+			var x := _x(e[0])
+			var pol: float = min(f.get_string_size(e[2], HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x, 150.0) / 2 + 6
+			var wybrany := 1
+			for p in [-1, 1, -2, 2, -3, 3]:
+				if koniec_poziomu.get(p, -1000.0) < x - pol:
+					wybrany = p
+					break
+			koniec_poziomu[wybrany] = x + pol
+			_poziomy.append(wybrany)
+
+	func _koniec_kampanii() -> float:
+		return [1915.7, 1917.7, 1919.0, 1920.0][clampi(int(g.stan.rozdzial) - 1, 0, 3)] if g.scena == "gra" else 1920.0
+
+	func _draw() -> void:
+		var f := ThemeDB.fallback_font
+		var y0 := size.y / 2
+		draw_rect(Rect2(Vector2.ZERO, size), Color("f6ecd0"))
+		draw_line(Vector2(20, y0), Vector2(size.x - 20, y0), Color("5a3a22"), 4)
+		for rok in range(1914, 1921):
+			var x := _x(rok)
+			draw_line(Vector2(x, y0 - 10), Vector2(x, y0 + 10), Color("5a3a22"), 3)
+			draw_string(f, Vector2(x - 18, y0 + 30 if rok % 2 else y0 - 18), str(rok), HORIZONTAL_ALIGNMENT_LEFT, -1, 17, Color("5a3a22"))
+		draw_rect(Rect2(_x(1914.58), y0 - 4, _x(1918.86) - _x(1914.58), 8), Color(0.55, 0.3, 0.25, 0.5))
+		var granica := _koniec_kampanii()
+		for i in g.D.os_czasu.size():
+			var e = g.D.os_czasu[i]
+			var p := _poz(i)
+			draw_line(Vector2(p.x, y0), p, Color(0.4, 0.3, 0.2, 0.6), 1)
+			var kol := Color("c0303a") if e[4] == "pl" else Color("2c4a8a")
+			if e[0] > granica:
+				kol = kol.lerp(Color(0.8, 0.78, 0.72), 0.55)
+			else:
+				draw_circle(p, 11, Color("f0c040"))
+			if i == wybrane:
+				draw_circle(p, 14, Color(0.1, 0.1, 0.1))
+			draw_circle(p, 8, kol)
+			var tytul: String = e[2]
+			while f.get_string_size(tytul, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x > 150:
+				tytul = tytul.substr(0, tytul.length() - 2) + "…"
+			var w := f.get_string_size(tytul, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
+			draw_string(f, p + Vector2(-w / 2, -14 if p.y < y0 else 26), tytul, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color("30200f"))
+
+	func _gui_input(e: InputEvent) -> void:
+		if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT:
+			var najl := -1
+			var dmin := 18.0
+			for i in g.D.os_czasu.size():
+				var d := _poz(i).distance_to(e.position)
+				if d < dmin:
+					dmin = d
+					najl = i
+			if najl >= 0:
+				ui.wybierz_wydarzenie(najl)
+
+
+# ===================================================================== mapa Europy między kampaniami
+var mapa_w: Control
+var mapa_podpis: Label
+var mapa_krok := 0
+var mapa_kroki := []
+
+
+func _ekran_mapy() -> void:
+	ekran = _pelny()
+	var tlo := ColorRect.new()
+	tlo.color = Color("1f2a33")
+	tlo.set_anchors_preset(Control.PRESET_FULL_RECT)
+	ekran.add_child(tlo)
+	var sc = g.D.mapy_podrozy[g.mapa_scen]
+	mapa_kroki = []
+	for i in sc.trasa.size():
+		mapa_kroki.append({"typ": "odcinek", "i": i, "tekst": sc.trasa[i][3]})
+	for t in sc.podpisy:
+		mapa_kroki.append({"typ": "podpis", "tekst": t})
+	mapa_krok = 0
+	var m := MapaPodrozy.new()
+	m.clip_contents = true
+	m.g = g
+	m.sc = sc
+	m.przejscie = 0.0 if sc.od != sc.do else 1.0
+	var prop: float = g.D_mapa.proporcja
+	m.position = Vector2((1280 - 560 * prop) / 2, 64)
+	m.size = Vector2(560 * prop, 560)
+	ekran.add_child(m)
+	mapa_w = m
+	var rok := _label(sc.rok, 40, C_ZLOTY)
+	rok.position = Vector2(30, 6)
+	rok.add_theme_color_override("font_outline_color", Color("1c120e"))
+	rok.add_theme_constant_override("outline_size", 10)
+	ekran.add_child(rok)
+	var tyt := _label("Podróż Romana Dmowskiego · mapa Europy", 20, C_JASNY)
+	tyt.position = Vector2(30 + rok.get_minimum_size().x + 20, 22)
+	ekran.add_child(tyt)
+	var panel := PanelContainer.new()
+	panel.position = Vector2(140, 630)
+	panel.custom_minimum_size = Vector2(1000, 80)
+	ekran.add_child(panel)
+	var hb := HBoxContainer.new()
+	hb.add_theme_constant_override("separation", 14)
+	panel.add_child(hb)
+	mapa_podpis = _label("", 19)
+	mapa_podpis.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	mapa_podpis.custom_minimum_size.x = 760
+	mapa_podpis.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hb.add_child(mapa_podpis)
+	hb.add_child(_btn("Dalej »", dalej_mapy, "", 18))
+	hb.add_child(_btn("Pomiń", func(): g.zakoncz_mape(), "", 15))
+	var zr := _label(g.D_mapa.zrodlo, 12, Color(0.7, 0.72, 0.75))
+	zr.position = Vector2(m.position.x, m.position.y + m.size.y + 2)
+	ekran.add_child(zr)
+	_ustaw_krok_mapy()
+
+
+func _ustaw_krok_mapy() -> void:
+	if mapa_krok >= mapa_kroki.size():
+		return
+	var k = mapa_kroki[mapa_krok]
+	mapa_podpis.text = k.tekst
+	g.lektor(k.tekst)
+	if k.typ == "podpis" and mapa_w.przejscie < 1.0:
+		mapa_w.animuj_granice = true
+
+
+func dalej_mapy() -> void:
+	if g.scena != "mapa" or mapa_w == null:
+		return
+	var k = mapa_kroki[mapa_krok] if mapa_krok < mapa_kroki.size() else null
+	if k != null and k.typ == "odcinek" and mapa_w.postep < k.i + 1:
+		mapa_w.postep = k.i + 1
+	if k != null and k.typ == "podpis" and mapa_w.przejscie < 1.0 and mapa_w.animuj_granice:
+		mapa_w.przejscie = 1.0
+		return
+	mapa_krok += 1
+	if mapa_krok >= mapa_kroki.size():
+		g.zakoncz_mape()
+	else:
+		_ustaw_krok_mapy()
+
+
+func _aktualizuj_mape(dt: float) -> void:
+	if g.scena != "mapa" or mapa_w == null or not is_instance_valid(mapa_w):
+		return
+	if mapa_krok < mapa_kroki.size():
+		var k = mapa_kroki[mapa_krok]
+		if k.typ == "odcinek":
+			mapa_w.postep = min(mapa_w.postep + dt / 2.6, k.i + 1.0)
+			# kolejny odcinek tej samej podróży rusza sam
+			if mapa_w.postep >= k.i + 1.0 and mapa_krok + 1 < mapa_kroki.size() and mapa_kroki[mapa_krok + 1].typ == "odcinek":
+				mapa_krok += 1
+				if mapa_kroki[mapa_krok].tekst != k.tekst:
+					_ustaw_krok_mapy()
+	if mapa_w.animuj_granice and mapa_w.przejscie < 1.0:
+		mapa_w.przejscie = min(1.0, mapa_w.przejscie + dt / 3.5)
+	mapa_w.queue_redraw()
+
+
+class MapaPodrozy extends Control:
+	var g
+	var sc
+	var postep := 0.0
+	var przejscie := 1.0
+	var animuj_granice := false
+	var _cache := {}
+	const KOLORY := {"German Empire": Color(0.56, 0.62, 0.78), "Austro-Hungarian Empire": Color(0.9, 0.78, 0.42),
+		"Russian Empire": Color(0.56, 0.72, 0.5), "Poland": Color(0.88, 0.2, 0.25), "France": Color(0.55, 0.66, 0.9)}
+
+	func _pkt(p) -> Vector2:
+		return Vector2(p[0] * size.x, p[1] * size.y)
+
+	func _wielokaty(epoka: String) -> Array:
+		var klucz := epoka + str(size)
+		if _cache.has(klucz):
+			return _cache[klucz]
+		var w := []
+		for k in g.D_mapa[epoka]:
+			for c in k.czesci:
+				var pts := PackedVector2Array()
+				for p in c:
+					pts.append(_pkt(p))
+				var ok := Geometry2D.triangulate_polygon(pts).size() > 0
+				w.append({"n": k.n, "pts": pts, "ok": ok})
+		_cache[klucz] = w
+		return w
+
+	func _kolor(n: String) -> Color:
+		if n in sc.wyroznij and KOLORY.has(n):
+			return KOLORY[n]
+		var h := float(n.hash() % 1000) / 1000.0
+		return Color(0.86, 0.82, 0.72).lerp(Color(0.78, 0.76, 0.7), h)
+
+	func _rysuj_epoke(epoka: String, alfa: float) -> void:
+		for p in _wielokaty(epoka):
+			var kol := _kolor(p.n)
+			kol.a = alfa
+			if p.ok:
+				draw_colored_polygon(p.pts, kol)
+			var obr := Color(0.25, 0.2, 0.18, 0.7 * alfa)
+			draw_polyline(p.pts + PackedVector2Array([p.pts[0]]), obr, 1.2 if p.n != "Poland" else 2.5)
+
+	func _etykiety(epoka: String, alfa: float) -> void:
+		var f := ThemeDB.fallback_font
+		for k in g.D_mapa[epoka]:
+			if k.etykieta == null:
+				continue
+			var p := _pkt(k.etykieta)
+			var wyr: bool = k.n in sc.wyroznij
+			var rozm := 20 if wyr else 13
+			var w := f.get_string_size(k.pl, HORIZONTAL_ALIGNMENT_LEFT, -1, rozm).x
+			var kol := Color(0.15, 0.1, 0.08, alfa) if not wyr else Color(1, 1, 1, alfa)
+			if wyr:
+				draw_string_outline(f, p - Vector2(w / 2, 0), k.pl, HORIZONTAL_ALIGNMENT_LEFT, -1, rozm, 5, Color(0.1, 0.06, 0.04, alfa))
+			draw_string(f, p - Vector2(w / 2, 0), k.pl, HORIZONTAL_ALIGNMENT_LEFT, -1, rozm, kol)
+
+	func _punkt_trasy(t: float) -> Vector2:
+		var i := clampi(int(t), 0, sc.trasa.size() - 1)
+		var u := clampf(t - i, 0.0, 1.0)
+		var a := _pkt(g.D_mapa.miasta[sc.trasa[i][0]])
+		var b := _pkt(g.D_mapa.miasta[sc.trasa[i][1]])
+		var srodek := (a + b) / 2 + (b - a).orthogonal().normalized() * a.distance_to(b) * 0.12
+		return a.lerp(srodek, u).lerp(srodek.lerp(b, u), u)
+
+	func _draw() -> void:
+		draw_rect(Rect2(Vector2.ZERO, size), Color(0.56, 0.7, 0.82))
+		if sc.od == sc.do:
+			_rysuj_epoke(sc.od, 1.0)
+			_etykiety(sc.od, 1.0)
+		else:
+			_rysuj_epoke(sc.od, 1.0)
+			if przejscie > 0.0:
+				_rysuj_epoke(sc.do, przejscie)
+			_etykiety(sc.od if przejscie < 0.5 else sc.do, abs(przejscie - 0.5) * 2)
+		var f := ThemeDB.fallback_font
+		# trasa
+		if sc.trasa.size() > 0:
+			var krok := 0.02
+			var t := 0.0
+			while t < postep:
+				var p1 := _punkt_trasy(t)
+				var p2 := _punkt_trasy(min(t + krok * 0.6, postep))
+				draw_line(p1, p2, Color(0.55, 0.12, 0.12), 3)
+				t += krok
+		# miasta
+		for nazwa in sc.miasta:
+			var p := _pkt(g.D_mapa.miasta[nazwa])
+			draw_circle(p, 6, Color(0.1, 0.08, 0.06))
+			draw_circle(p, 4, Color(1, 0.92, 0.6))
+			draw_string_outline(f, p + Vector2(8, -6), nazwa, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, 4, Color(1, 1, 1, 0.9))
+			draw_string(f, p + Vector2(8, -6), nazwa, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(0.1, 0.06, 0.04))
+		# pojazd
+		if sc.trasa.size() > 0:
+			var tt: float = min(postep, sc.trasa.size() - 0.001)
+			var poz := _punkt_trasy(tt)
+			var dalej := _punkt_trasy(min(tt + 0.02, sc.trasa.size() - 0.0001))
+			var kier := 1.0 if dalej.x >= poz.x else -1.0
+			var statek: bool = sc.trasa[clampi(int(tt), 0, sc.trasa.size() - 1)][2] == "statek"
+			for i in 4:
+				var faza := fmod(g.t * 1.5 + i * 0.25, 1.0)
+				draw_circle(poz + Vector2(-kier * (6 + faza * 22), -16 - faza * 14), 3 + faza * 5, Color(0.9, 0.9, 0.92, 0.7 * (1.0 - faza)))
+			if statek:
+				draw_colored_polygon(PackedVector2Array([poz + Vector2(-16, 0), poz + Vector2(16, 0), poz + Vector2(11, 8), poz + Vector2(-11, 8)]), Color(0.2, 0.2, 0.25))
+				draw_rect(Rect2(poz + Vector2(-8, -8), Vector2(14, 8)), Color(0.95, 0.95, 0.9))
+				draw_rect(Rect2(poz + Vector2(-2, -15), Vector2(5, 8)), Color(0.75, 0.2, 0.2))
+			else:
+				draw_rect(Rect2(poz + Vector2(-14, -9), Vector2(20, 9)), Color(0.15, 0.15, 0.18))
+				draw_rect(Rect2(poz + Vector2(kier * 2 - 2, -15), Vector2(9, 15) * Vector2(1, 1)), Color(0.55, 0.12, 0.12))
+				draw_rect(Rect2(poz + Vector2(-kier * 10 - 2, -14), Vector2(4, 6)), Color(0.15, 0.15, 0.18))
+				for dx in [-10, -2, 6]:
+					draw_circle(poz + Vector2(dx, 1), 3.5, Color(0.1, 0.1, 0.1))
+				draw_line(poz + Vector2(-14, 4), poz + Vector2(10, 4), Color(0.8, 0.7, 0.3), 1)
+		draw_rect(Rect2(Vector2.ZERO, size), Color(0.9, 0.8, 0.5), false, 3)
 
 
 # ===================================================================== widżety rysowane

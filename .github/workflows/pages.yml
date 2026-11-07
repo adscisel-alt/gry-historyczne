@@ -45,6 +45,7 @@ jobs:
           d=~/.local/share/godot/export_templates/4.3.stable && mkdir -p $d
           unzip -joq /tmp/szablony.tpz templates/web_nothreads_release.zip templates/web_nothreads_debug.zip templates/version.txt -d $d
           rm -f /tmp/godot.zip /tmp/szablony.tpz
+          python dmowski3d/narzedzia/generuj_lektora.py || echo "Lektor niedostępny – gra bez nagrań"
           for g in zamosc3d dmowski3d; do
             godot --headless --path $g/godot --import || true
             mkdir -p "$PWD/web_godot/$g"

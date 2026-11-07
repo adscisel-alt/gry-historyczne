@@ -8,6 +8,8 @@ Edukacyjna gra strategiczna 3D o odzyskaniu niepodległości przez Polskę (1914
 
 ![Sala Lustrzana — przerywnik](zrzuty/16_kino_sala_lustrzana.png)
 
+![Podróż przez Europę](zrzuty/02a_mapa_podroz.png)
+
 ## Kampanie
 
 | Kampania | Miejsce i lata | Cele |
@@ -32,6 +34,18 @@ i Hanna — sekretarka Komitetu (postać fikcyjna).
   „Przekonanie Rady” i 1–3 gwiazdki decydują o nagrodzie.
 - **Wersja przeglądarkowa (HTML5)** — po scaleniu z gałęzią `main` strona GitHub Pages buduje grę
   i udostępnia ją pod adresem `…/dmowski3d/graj/` (bez instalowania EXE).
+
+**Lektor, oś czasu i mapa Europy:**
+- **Lektor** czyta po polsku kwestie postaci, wstępy, przerywniki, zagadki, karty Księgi i podpisy mapy
+  (syntezator Piper: osobne głosy dla Dmowskiego, Hanny i Kronikarza). Klawisz **G** lub Menu włącza i wyłącza
+  lektora. Nagrania powstają w GitHub Actions (`narzedzia/generuj_lektora.py`), więc ma je wersja na stronie
+  i EXE z Actions.
+- **Oś czasu 1914–1919** w Księdze Wiedzy (zakładka): 17 wydarzeń z Polski i świata, zaznaczone te
+  z przebytych kampanii; przycisk otwiera pełną oś czasu klasy VII z tego repozytorium.
+- **Mapa Europy między kampaniami:** pociąg i statek jadą trasą Warszawa → Piotrogród → Skandynawia → Londyn
+  → Paryż → Lozanna, a w 1918 r. granice zaborców zmieniają się w mapę z odrodzoną Polską. Granice:
+  projekt [historical-basemaps](https://github.com/aourednik/historical-basemaps) (licencja GPL-3.0,
+  plik `godot/dane/LICENSE-mapa-europy-GPL3.txt`).
 
 Mechaniki: 4 zasoby (fundusze, poparcie aliantów, prasa, ochotnicy), działacze do obsługi placówek,
 **ekwipunek** (11 przedmiotów z działaniem), **Punkty Wiedzy** (24 karty Księgi Wiedzy, 23 zagadki, rangi

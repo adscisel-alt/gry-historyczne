@@ -19,6 +19,8 @@ renderer *GL Compatibility*), modele: **Blender 4.x** (skrypt Pythona). Silnik g
 ```bash
 python narzedzia/dane.py                         # treść -> JSON (sprawdza też spójność map)
 python narzedzia/generuj_ikony_i_dzwieki.py      # ikony i dźwięki
+python narzedzia/eksportuj_mape_europy.py        # mapa Europy 1914/1920 (pip install shapely)
+python narzedzia/generuj_lektora.py              # lektor (pip install piper-tts, ffmpeg) -> godot/audio/glos
 blender -b -P blender/generuj_modele.py          # modele i rendery (-- --bez-renderow: tylko .glb)
 godot --headless --path godot -- --samotest      # autotest: oczekiwane "TEST_WYNIK: OK"
 godot --path godot -- --zrzuty ../zrzuty         # 11 zrzutów ekranu
@@ -32,6 +34,9 @@ godot --headless --path godot --export-release "Web" ../build/web/index.html   #
   `reka_l`, `reka_p` (punkt obrotu w stawie) — `animuj()` w `gra.gd` porusza nimi przy chodzeniu.
 - Przerywniki: teksty w `PRZERYWNIKI` (`dane.py`), dekoracje i ujęcia kamery w `pokaz_przerywnik()` (`gra.gd`).
 - Mini-gra „Przemówienie”: pytania i punktacja argumentów w `PRZEMOWIENIE` (`dane.py`).
+- Lektor: plik `audio/glos/<md5 tekstu>.ogg` (md5 jak `String.md5_text()`); po zmianie tekstu uruchom
+  `generuj_lektora.py` ponownie. Nagrania nie są w repozytorium — powstają w workflowach.
+- Oś czasu: `OS_CZASU`; mapy podróży: `MAPY_PODROZY` (`dane.py`), dane granic: `godot/dane/mapa_europy.json`.
 
 ## Jak dodać kampanię lub budynek
 

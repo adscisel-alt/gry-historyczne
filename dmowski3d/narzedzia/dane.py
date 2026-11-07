@@ -607,13 +607,103 @@ PRZEMOWIENIE = [
          reakcja="Błękitna Armia generała Hallera była dowodem, że Polacy walczyli razem z aliantami."),
 ]
 
+# ------------------------------------------------------------------ oś czasu 1914–1919 (Księga Wiedzy)
+# [pozycja na osi (rok z ułamkiem), data, tytuł, opis, rodzaj: pl / sw, czy jest też na osi czasu klasy VII]
+OS_CZASU = [
+    [1914.49, "28 czerwca 1914", "Zamach w Sarajewie",
+     "Zabójstwo austriackiego następcy tronu w Sarajewie stało się iskrą, od której wybuchła wielka wojna.", "sw", True],
+    [1914.57, "28 lipca 1914", "Wybuch I wojny światowej",
+     "Austro-Węgry wypowiadają wojnę Serbii. W ciągu kilku dni walczy już niemal cała Europa.", "sw", False],
+    [1914.6, "6 sierpnia 1914", "Wymarsz Pierwszej Kompanii Kadrowej",
+     "Strzelcy Józefa Piłsudskiego wyruszają z Krakowa. Powstają Legiony Polskie.", "pl", True],
+    [1914.9, "25 listopada 1914", "Komitet Narodowy Polski",
+     "W Warszawie powstaje Komitet Narodowy Polski, którym kieruje Roman Dmowski.", "pl", False],
+    [1915.59, "5 sierpnia 1915", "Niemcy zajmują Warszawę",
+     "Wojska rosyjskie wycofują się. Dmowski wyjeżdża na Zachód, by tam walczyć o sprawę polską.", "pl", False],
+    [1916.15, "1916", "Bitwa pod Verdun",
+     "Jedna z najdłuższych i najkrwawszych bitew wojny — symbol okrucieństwa walk w okopach.", "sw", True],
+    [1916.85, "5 listopada 1916", "Akt 5 listopada",
+     "Niemcy i Austro-Węgry zapowiadają utworzenie Królestwa Polskiego zależnego od nich.", "pl", True],
+    [1917.2, "1917", "Rewolucje w Rosji",
+     "Upada car, a potem władzę przejmują bolszewicy. Rosja wycofuje się z wojny.", "sw", True],
+    [1917.27, "6 kwietnia 1917", "USA przystępują do wojny",
+     "Stany Zjednoczone dołączają do aliantów. Prezydentem jest Woodrow Wilson.", "sw", True],
+    [1917.43, "4 czerwca 1917", "Armia Polska we Francji",
+     "Dekret prezydenta Francji pozwala utworzyć polskie wojsko — przyszłą Błękitną Armię.", "pl", False],
+    [1917.62, "15 sierpnia 1917", "Komitet w Lozannie",
+     "Dmowski odnawia w Lozannie Komitet Narodowy Polski, który wkrótce przenosi się do Paryża.", "pl", False],
+    [1918.02, "8 stycznia 1918", "13. punkt Wilsona",
+     "Prezydent USA zapowiada niepodległe państwo polskie z dostępem do morza.", "pl", True],
+    [1918.86, "11 listopada 1918", "Odzyskanie niepodległości",
+     "Koniec I wojny światowej. Józef Piłsudski przejmuje dowództwo nad wojskiem w Warszawie.", "pl", True],
+    [1918.99, "27 grudnia 1918", "Powstanie wielkopolskie",
+     "Wybucha zwycięskie powstanie, które przywraca Polsce większość Wielkopolski.", "pl", True],
+    [1919.05, "18 stycznia 1919", "Konferencja pokojowa w Paryżu",
+     "Zwycięzcy wojny zbierają się w Paryżu, by ustalić nowe granice Europy.", "sw", False],
+    [1919.08, "29 stycznia 1919", "Przemówienie Dmowskiego",
+     "Dmowski przedstawia polskie postulaty przed Radą Dziesięciu.", "pl", False],
+    [1919.49, "28 czerwca 1919", "Traktat wersalski",
+     "Podpisanie traktatu pokojowego z Niemcami. Za Polskę podpisują Paderewski i Dmowski.", "sw", True],
+]
+OS_CZASU_KLASA7 = "https://adscisel-alt.github.io/gry-historyczne/os-czasu-historia-7.html"
+
+# ------------------------------------------------------------------ mapa Europy między kampaniami
+# trasa: [skąd, dokąd, środek: "pociag" / "statek", podpis]
+MAPY_PODROZY = {
+    "start": dict(rok="1914", od="1914", do="1914", wyroznij=["German Empire", "Austro-Hungarian Empire",
+                                                              "Russian Empire"],
+                  miasta=["Warszawa", "Poznań", "Gdańsk", "Kraków", "Berlin", "Wiedeń", "Piotrogród"], trasa=[],
+                  podpisy=["Rok 1914. Polski nie ma na mapie Europy — od 1795 r. jej ziemie należą do trzech "
+                           "zaborców: Niemiec, Austro-Węgier i Rosji.",
+                           "Warszawa leży w zaborze rosyjskim, Poznań i Gdańsk — w niemieckim, a Kraków — "
+                           "w austriackim. Zaraz wybuchnie wielka wojna."]),
+    "2": dict(rok="1915–1917", od="1914", do="1914", wyroznij=["German Empire", "Austro-Hungarian Empire",
+                                                             "Russian Empire"],
+              miasta=["Warszawa", "Piotrogród", "Sztokholm", "Londyn", "Paryż", "Lozanna"],
+              trasa=[["Warszawa", "Piotrogród", "pociag", "Sierpień 1915: Niemcy zajmują Warszawę. Dmowski "
+                                                          "wyjeżdża do Piotrogrodu."],
+                     ["Piotrogród", "Sztokholm", "pociag", "Przez Skandynawię jedzie na Zachód…"],
+                     ["Sztokholm", "Bergen", "pociag", "Przez Skandynawię jedzie na Zachód…"],
+                     ["Bergen", "Londyn", "statek", "…i dociera do Londynu, gdzie pisze memoriały dla aliantów."],
+                     ["Londyn", "Paryż", "pociag", "1917: przez Paryż jedzie do neutralnej Szwajcarii."],
+                     ["Paryż", "Lozanna", "pociag", "W Lozannie odnawia Komitet Narodowy Polski."]],
+              podpisy=[]),
+    "3": dict(rok="1917", od="1914", do="1914", wyroznij=["France", "German Empire"],
+              miasta=["Lozanna", "Paryż", "Londyn", "Warszawa"],
+              trasa=[["Lozanna", "Paryż", "pociag", "Komitet przenosi się do Paryża. We Francji powstaje "
+                                                    "Armia Polska — Błękitna Armia."]],
+              podpisy=[]),
+    "4": dict(rok="1918", od="1914", do="1920", wyroznij=["Poland"],
+              miasta=["Paryż", "Warszawa", "Poznań", "Gdańsk", "Kraków"], trasa=[],
+              podpisy=["Jesień 1918: zaborcy przegrywają wojnę. Upadają cesarstwa Niemiec, Austro-Węgier "
+                       "i Rosji.",
+                       "11 listopada 1918 r. Polska odzyskuje niepodległość! Wraca na mapę Europy po 123 latach.",
+                       "Ale granice nie są jeszcze ustalone. Teraz rozstrzygnie o nich konferencja pokojowa "
+                       "w Paryżu — i walki w latach 1918–1921."]),
+    "koniec": dict(rok="1919–1921", od="1920", do="1920", wyroznij=["Poland"],
+                   miasta=["Warszawa", "Poznań", "Gdańsk", "Kraków", "Paryż"], trasa=[],
+                   podpisy=["Traktat wersalski (1919) przyznał Polsce Wielkopolskę i większość Pomorza z dostępem "
+                            "do Bałtyku. Gdańsk został Wolnym Miastem.",
+                            "O Górnym Śląsku oraz Warmii i Mazurach zdecydowały plebiscyty, a granicę wschodnią "
+                            "ustalono dopiero w 1921 r. Mapa pokazuje stan około 1920 r."]),
+}
+
+POWITANIE = [
+    ["dmowski", "Warszawa, 1914. Trzeba działać — Polacy potrzebują wspólnego głosu."],
+    ["hanna", "Panie Romanie, jestem Hanna. Będę panu pomagać we wszystkich kampaniach!"],
+    ["narrator", "Chodź klawiszami WASD lub strzałkami. Kamerę obracasz klawiszami Q i R albo prawym "
+                 "przyciskiem myszy, a kółkiem przybliżasz."],
+    ["narrator", "Podejdź do postaci z wykrzyknikiem i wciśnij E. Kompas (K) wskaże kierunek do celu. "
+                 "Lektora włączasz i wyłączasz klawiszem G."],
+]
+
 POMOC = [
     "STEROWANIE",
     "WASD / strzałki — chodzenie · Q / R lub prawy przycisk myszy — obrót kamery",
     "Kółko myszy — przybliżanie i oddalanie kamery",
     "E lub Spacja — rozmowa z postacią (podejdź blisko)",
     "Lewy przycisk myszy — wybór i stawianie placówki · Prawy — anuluj",
-    "K — kompas   I — ekwipunek   L — Księga Wiedzy   M — muzyka   F11 — pełny ekran",
+    "K — kompas   I — ekwipunek   L — Księga Wiedzy (i oś czasu)   G — lektor   M — muzyka   F11 — pełny ekran",
     "",
     "JAK GRAĆ",
     "Każda kampania toczy się w innym mieście — wykonuj cele z panelu po prawej.",
@@ -630,7 +720,8 @@ def main():
         postacie=POSTACIE, zasoby=ZASOBY, budynki=BUDYNKI, model_sprawy=MODEL_SPRAWY, zasoby_nazwy=ZASOBY_NAZWY,
         przedmioty=PRZEDMIOTY, wiedza={k: list(v) for k, v in WIEDZA.items()}, wiedza_kolejnosc=list(WIEDZA),
         karty_startowe=KARTY_STARTOWE, karta_budynku=KARTA_BUDYNKU, rangi=RANGI, quiz_glowny=QUIZ_GLOWNY,
-        zagadki=ZAGADKI, rozmowy=ROZMOWY, przerywniki=PRZERYWNIKI, przemowienie=PRZEMOWIENIE, luzne=LUZNE, pomoc=POMOC, start_ekwipunek=["kompas", "datki", "paczka"],
+        zagadki=ZAGADKI, rozmowy=ROZMOWY, przerywniki=PRZERYWNIKI, przemowienie=PRZEMOWIENIE,
+        os_czasu=OS_CZASU, os_czasu_klasa7=OS_CZASU_KLASA7, mapy_podrozy=MAPY_PODROZY, powitanie=POWITANIE, luzne=LUZNE, pomoc=POMOC, start_ekwipunek=["kompas", "datki", "paczka"],
         rozdzialy={str(k): dict(v, mapa=["".join(w) for w in v["mapa"]]) for k, v in ROZDZIALY.items()},
         liczba_rozdzialow=len(ROZDZIALY),
     )
