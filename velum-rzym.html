@@ -1,0 +1,1347 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>VELUM — Odsłoń starożytny Rzym</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Spectral:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --zloto:#c9a55c; --zloto-j:#e8cd8a; --ink:#f3ead7; --tlo:#0d0f15; --panel:#17140f;
+    --czerwien:#a8322a; --zielen:#4f8a4a; --linia:rgba(201,165,92,.45);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;min-height:100%;background:var(--tlo);color:var(--ink);
+    font-family:'Spectral',Georgia,serif;}
+  body{display:flex;flex-direction:column;align-items:center;min-height:100vh;overflow-x:hidden;
+    background:radial-gradient(ellipse at 50% 0%, #2a2216 0%, var(--tlo) 60%);}
+  button{font-family:'Cinzel',serif;cursor:pointer;}
+
+  /* ---------- HUD ---------- */
+  #hud{width:min(1024px,100%);display:flex;align-items:center;gap:14px;padding:10px 16px 8px;
+    flex-wrap:wrap;user-select:none;}
+  #hud .tytul{font-family:'Cinzel',serif;font-weight:700;color:var(--zloto);letter-spacing:.18em;font-size:15px;}
+  #hud .poziom{font-size:14px;opacity:.9;flex:1;min-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  #pasek{position:relative;width:180px;height:14px;border:1px solid var(--linia);border-radius:7px;
+    background:rgba(255,255,255,.05);overflow:hidden;}
+  #pasek-wyp{position:absolute;left:0;top:0;bottom:0;width:0;background:linear-gradient(90deg,#8a6a2c,var(--zloto-j));
+    transition:width .25s ease;}
+  #pasek-cel{position:absolute;top:-2px;bottom:-2px;width:2px;background:#fff;box-shadow:0 0 4px #fff;}
+  #procent{font-family:'Cinzel',serif;font-size:13px;min-width:92px;}
+  #zycia{font-size:15px;letter-spacing:2px;color:#e05a4a;min-width:60px;}
+  #punkty{font-family:'Cinzel',serif;font-size:13px;color:var(--zloto-j);min-width:90px;text-align:right;}
+  .male{background:transparent;border:1px solid var(--linia);color:var(--ink);border-radius:5px;
+    padding:4px 9px;font-size:12px;}
+  .male:hover{border-color:var(--zloto);color:var(--zloto);}
+
+  /* ---------- plansza ---------- */
+  #scena{position:relative;width:min(1024px, calc(100vw - 16px), calc((100vh - 70px) * 1.5238));
+    aspect-ratio:1024/672;border:1px solid var(--linia);box-shadow:0 10px 40px rgba(0,0,0,.6);
+    border-radius:4px;overflow:hidden;background:#000;}
+  body.dotyk #scena{width:min(1024px, calc(100vw - 16px), calc((100vh - 230px) * 1.5238));}
+  #gra{display:block;width:100%;height:100%;touch-action:none;}
+
+  /* ---------- nakładki ---------- */
+  .nakladka{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    padding:16px;z-index:5;transition:opacity .35s ease;}
+  .nakladka.ukryta{opacity:0;pointer-events:none;}
+  .ciemna{background:radial-gradient(ellipse at 50% 40%, rgba(25,20,12,.88), rgba(6,5,3,.95));}
+  .panel{max-width:620px;width:100%;max-height:100%;overflow:auto;text-align:center;
+    background:linear-gradient(180deg, rgba(28,23,15,.96), rgba(14,12,8,.97));
+    border:1px solid var(--linia);border-radius:8px;padding:22px 26px;box-shadow:0 12px 40px rgba(0,0,0,.6);}
+  .panel h1{font-family:'Cinzel',serif;font-size:clamp(34px,7vw,60px);margin:0;letter-spacing:.22em;color:var(--zloto);
+    text-shadow:0 2px 14px rgba(0,0,0,.8);}
+  .panel h2{font-family:'Cinzel',serif;color:var(--zloto);letter-spacing:.1em;margin:0 0 4px;font-size:clamp(18px,3vw,24px);}
+  .panel .data{font-family:'Cinzel',serif;font-size:13px;letter-spacing:.2em;opacity:.8;margin-bottom:10px;}
+  .panel p{line-height:1.55;font-size:clamp(13px,1.8vw,15.5px);margin:8px 0;}
+  .panel .sub{font-style:italic;opacity:.9;margin:6px 0 16px;font-size:clamp(14px,2.2vw,18px);}
+  .laur{color:var(--zloto);letter-spacing:.6em;font-size:18px;}
+  .zasady{text-align:left;font-size:14px;line-height:1.6;background:rgba(255,255,255,.04);border-radius:6px;
+    padding:10px 14px;margin:12px 0;}
+  .zasady b{color:var(--zloto-j);}
+  .duzy{background:linear-gradient(180deg,#b38b45,#7a5a24);color:#1a1208;border:1px solid var(--zloto-j);
+    padding:11px 26px;border-radius:6px;font-size:15px;letter-spacing:.16em;font-weight:700;margin:6px 4px;}
+  .duzy:hover{filter:brightness(1.12);}
+  .drugi{background:transparent;color:var(--ink);border:1px solid var(--linia);padding:10px 20px;border-radius:6px;
+    font-size:13px;letter-spacing:.12em;margin:6px 4px;}
+  .drugi:hover{border-color:var(--zloto);color:var(--zloto);}
+  .wybor{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin:6px 0 4px;}
+  .wybor button{background:transparent;border:1px solid var(--linia);color:var(--ink);padding:6px 12px;border-radius:14px;font-size:12px;}
+  .wybor button.akt{background:var(--zloto);color:#1a1208;border-color:var(--zloto);}
+  .cel{display:inline-block;margin-top:6px;padding:6px 14px;border:1px dashed var(--linia);border-radius:6px;font-size:14px;}
+
+  /* karta po odsłonięciu — z boku, by obraz był widoczny */
+  #karta{justify-content:flex-end;align-items:stretch;background:linear-gradient(90deg, transparent 40%, rgba(0,0,0,.55));}
+  #karta .panel{max-width:400px;text-align:left;padding:18px 20px;}
+  #karta.schowana .panel{transform:translateX(110%);}
+  #karta .panel{transition:transform .35s ease;}
+  .pytanie{margin-top:12px;padding-top:10px;border-top:1px solid var(--linia);}
+  .pytanie .q{font-weight:600;margin-bottom:8px;}
+  .odp{display:block;width:100%;text-align:left;background:rgba(255,255,255,.04);color:var(--ink);
+    border:1px solid var(--linia);border-radius:5px;padding:7px 10px;margin:5px 0;font-family:'Spectral',serif;font-size:14px;}
+  .odp:hover:not(:disabled){border-color:var(--zloto);}
+  .odp.dobra{background:rgba(79,138,74,.45);border-color:#7fc276;}
+  .odp.zla{background:rgba(168,50,42,.45);border-color:#e0675d;}
+  .werdykt{min-height:1.4em;font-size:14px;margin-top:6px;}
+  #pokaz-obraz{position:absolute;top:10px;left:10px;}
+  #karta .stopka{display:flex;justify-content:space-between;align-items:center;margin-top:10px;gap:8px;flex-wrap:wrap;}
+
+  /* galeria */
+  .siatka{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin:12px 0;}
+  .kafel{position:relative;border:1px solid var(--linia);border-radius:5px;overflow:hidden;aspect-ratio:1024/672;
+    background:#111;cursor:pointer;padding:0;}
+  .kafel canvas{width:100%;height:100%;display:block;}
+  .kafel span{position:absolute;left:0;right:0;bottom:0;font-size:11px;background:rgba(0,0,0,.65);padding:3px 4px;
+    font-family:'Cinzel',serif;color:var(--ink);letter-spacing:.04em;}
+  .kafel.zamk{cursor:default;display:flex;align-items:center;justify-content:center;font-family:'Cinzel',serif;
+    font-size:28px;color:rgba(201,165,92,.5);}
+  #podglad canvas{width:100%;border-radius:4px;border:1px solid var(--linia);}
+
+  /* pad dotykowy */
+  #pad{display:none;margin:10px auto 14px;user-select:none;-webkit-user-select:none;touch-action:none;}
+  body.dotyk #pad{display:grid;grid-template-columns:repeat(3,58px);grid-template-rows:repeat(2,52px);gap:6px;}
+  #pad button{background:rgba(201,165,92,.14);border:1px solid var(--linia);color:var(--zloto-j);border-radius:10px;
+    font-size:22px;touch-action:none;}
+  #pad button.wcisniety{background:rgba(201,165,92,.45);}
+  #pad .g{grid-column:2;grid-row:1;} #pad .l{grid-column:1;grid-row:2;}
+  #pad .d{grid-column:2;grid-row:2;} #pad .p{grid-column:3;grid-row:2;}
+  .stopka-strony{font-size:12px;opacity:.55;margin:10px 0 16px;text-align:center;padding:0 16px;}
+  .stopka-strony a{color:var(--zloto);}
+  @media (max-width:640px){
+    #pasek{width:110px;} #hud{gap:8px;padding:8px 8px 6px;} #hud .tytul{display:none;}
+    #karta{align-items:flex-end;background:linear-gradient(180deg, transparent 30%, rgba(0,0,0,.55));}
+    #karta .panel{max-width:100%;max-height:72%;}
+    #karta.schowana .panel{transform:translateY(110%);}
+    .panel{padding:16px 14px;}
+  }
+</style>
+</head>
+<body>
+<div id="hud">
+  <span class="tytul">VELUM</span>
+  <span class="poziom" id="h-poziom">Starożytny Rzym</span>
+  <div id="pasek" title="Odsłonięta część obrazu"><div id="pasek-wyp"></div><div id="pasek-cel"></div></div>
+  <span id="procent">0% / 75%</span>
+  <span id="zycia">♥♥♥</span>
+  <span id="punkty">0</span>
+  <button class="male" id="b-pauza" title="Pauza (P)">❚❚</button>
+  <button class="male" id="b-dzwiek" title="Dźwięk (M)">♪</button>
+</div>
+
+<div id="scena">
+  <canvas id="gra" width="1024" height="672"></canvas>
+
+  <!-- ekran tytułowy -->
+  <div class="nakladka ciemna" id="ekran-start">
+    <div class="panel">
+      <div class="laur">❦ S·P·Q·R ❦</div>
+      <h1>VELUM</h1>
+      <div class="sub">Odsłoń starożytny Rzym — od wilczycy kapitolińskiej po upadek cesarstwa</div>
+      <div class="zasady">
+        Pod marmurową zasłoną (<i>velum</i>) ukryto <b>9 obrazów z dziejów Rzymu</b>.
+        Sterujesz złotym punktem na krawędzi planszy. Wjedź w zasłonę, by <b>ciąć linię</b>,
+        i wróć na odsłonięty teren, by <b>odciąć kawałek</b>.<br>
+        ⚠ Jeśli wróg dotknie linii, zanim ją domkniesz — tracisz życie.
+        Iskry krążą po krawędziach, a gdy zatrzymasz się w połowie cięcia, linia zacznie płonąć.<br>
+        Odsłoń wymaganą część (ok. <b>75%</b>), aby zobaczyć obraz, poznać jego historię i zdobyć bonus za quiz.
+        Wrogowie zamknięci w odciętym kawałku giną (+500 pkt).
+      </div>
+      <div style="font-size:13px;opacity:.85">Poziom trudności</div>
+      <div class="wybor" id="trudnosc">
+        <button data-t="0">Łatwy</button><button data-t="1" class="akt">Normalny</button><button data-t="2">Legionista</button>
+      </div>
+      <div style="margin-top:10px">
+        <button class="duzy" id="b-graj">GRAJ</button>
+        <button class="drugi" id="b-galeria">GALERIA</button>
+      </div>
+      <div style="font-size:12px;opacity:.6;margin-top:10px">Sterowanie: strzałki / WASD · P — pauza · M — dźwięk · na telefonie przyciski pod planszą</div>
+    </div>
+  </div>
+
+  <!-- wprowadzenie do poziomu -->
+  <div class="nakladka ciemna ukryta" id="ekran-intro">
+    <div class="panel">
+      <div class="data" id="i-nr">OBRAZ I z IX</div>
+      <h2 id="i-tytul"></h2>
+      <div class="data" id="i-data"></div>
+      <p id="i-zajawka"></p>
+      <div class="cel" id="i-cel"></div>
+      <div style="margin-top:14px"><button class="duzy" id="b-start">ODSŁANIAJ ➜</button></div>
+    </div>
+  </div>
+
+  <!-- pauza -->
+  <div class="nakladka ciemna ukryta" id="ekran-pauza">
+    <div class="panel">
+      <h2>PAUZA</h2>
+      <p>Odpocznij, legionisto. Rzym nie został zbudowany w jeden dzień.</p>
+      <button class="duzy" id="b-wznow">WZNÓW</button>
+      <button class="drugi" id="b-menu1">MENU</button>
+    </div>
+  </div>
+
+  <!-- karta odsłoniętego obrazu -->
+  <div class="nakladka ukryta" id="karta">
+    <button class="male" id="pokaz-obraz">Pokaż obraz</button>
+    <div class="panel">
+      <div class="data" id="k-data"></div>
+      <h2 id="k-tytul"></h2>
+      <div id="k-opis"></div>
+      <div class="pytanie">
+        <div class="q" id="k-pyt"></div>
+        <div id="k-odp"></div>
+        <div class="werdykt" id="k-werdykt"></div>
+      </div>
+      <div class="stopka">
+        <span id="k-bonus" style="font-size:13px;opacity:.85"></span>
+        <button class="duzy" id="b-dalej" disabled>DALEJ ➜</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- koniec gry -->
+  <div class="nakladka ciemna ukryta" id="ekran-koniec">
+    <div class="panel">
+      <div class="laur" id="ko-laur">✝</div>
+      <h2 id="ko-tytul">Vae victis!</h2>
+      <p id="ko-tekst"></p>
+      <button class="duzy" id="b-ponow">SPRÓBUJ PONOWNIE</button>
+      <button class="drugi" id="b-menu2">MENU</button>
+    </div>
+  </div>
+
+  <!-- galeria -->
+  <div class="nakladka ciemna ukryta" id="ekran-galeria">
+    <div class="panel" style="max-width:820px">
+      <h2>GALERIA ODSŁONIĘTYCH OBRAZÓW</h2>
+      <p style="opacity:.8;font-size:14px">Kliknij odsłonięty obraz, by przeczytać jego historię albo zagrać od tego poziomu.</p>
+      <div class="siatka" id="siatka"></div>
+      <div id="podglad"></div>
+      <button class="drugi" id="b-menu3">WRÓĆ</button>
+    </div>
+  </div>
+</div>
+
+<div id="pad">
+  <button class="g" data-k="g" aria-label="W górę">▲</button>
+  <button class="l" data-k="l" aria-label="W lewo">◀</button>
+  <button class="d" data-k="d" aria-label="W dół">▼</button>
+  <button class="p" data-k="p" aria-label="W prawo">▶</button>
+</div>
+<div class="stopka-strony">Obrazy namalowane kodem na potrzeby gry (ilustracje, nie reprodukcje dzieł). · <a href="./index.html">Wszystkie gry historyczne</a></div>
+
+<script>
+'use strict';
+/* =========================================================================
+   VELUM — gra typu Qix/Volfied z obrazami starożytnego Rzymu
+   ========================================================================= */
+const W = 1024, H = 672, CS = 8, GW = W / CS, GH = H / CS, N = GW * GH;
+const KIER = { g: [0, -1], d: [0, 1], l: [-1, 0], p: [1, 0] };
+const D4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+
+function rzymska(n) {
+  const t = [[1000,'M'],[900,'CM'],[500,'D'],[400,'CD'],[100,'C'],[90,'XC'],[50,'L'],[40,'XL'],[10,'X'],[9,'IX'],[5,'V'],[4,'IV'],[1,'I']];
+  let s = ''; for (const [v, z] of t) while (n >= v) { s += z; n -= v; } return s;
+}
+function losowanie(ziarno) { // mulberry32
+  let a = ziarno >>> 0;
+  return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+}
+
+/* =========================================================================
+   MALARSTWO — pomocnicze
+   ========================================================================= */
+function gradL(c, x0, y0, x1, y1, st) { const g = c.createLinearGradient(x0, y0, x1, y1); st.forEach(([o, k]) => g.addColorStop(o, k)); return g; }
+function gradR(c, x, y, r0, r1, st) { const g = c.createRadialGradient(x, y, r0, x, y, r1); st.forEach(([o, k]) => g.addColorStop(o, k)); return g; }
+function niebo(c, st) { c.fillStyle = gradL(c, 0, 0, 0, H, st); c.fillRect(0, 0, W, H); }
+function slonce(c, x, y, r, rdzen, poswiata) {
+  c.fillStyle = gradR(c, x, y, 0, r * 5, [[0, `rgba(${poswiata},0.55)`], [0.3, `rgba(${poswiata},0.18)`], [1, `rgba(${poswiata},0)`]]);
+  c.fillRect(0, 0, W, H);
+  c.fillStyle = rdzen; c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill();
+}
+function garby(c, baza, garbyL, kolor, krok = 4) {
+  c.fillStyle = kolor; c.beginPath(); c.moveTo(0, H);
+  for (let x = 0; x <= W + krok; x += krok) {
+    let y = baza;
+    for (const [gx, gh, gw] of garbyL) y -= gh * Math.exp(-(((x - gx) / gw) ** 2));
+    c.lineTo(x, y);
+  }
+  c.lineTo(W, H); c.closePath(); c.fill();
+}
+function grzbiet(c, r, baza, amp, kolor, czest = 1) {
+  const p1 = r() * 6, p2 = r() * 6, p3 = r() * 6;
+  c.fillStyle = kolor; c.beginPath(); c.moveTo(0, H);
+  for (let x = 0; x <= W + 6; x += 6) {
+    const y = baza - amp * (0.5 * Math.sin(x * 0.004 * czest + p1) + 0.3 * Math.sin(x * 0.011 * czest + p2) + 0.2 * Math.sin(x * 0.027 * czest + p3));
+    c.lineTo(x, y);
+  }
+  c.lineTo(W, H); c.closePath(); c.fill();
+}
+function chmura(c, x, y, s, kolor) {
+  c.fillStyle = kolor;
+  const k = [[0, 0, 1], [-1.1, 0.25, 0.7], [1.1, 0.2, 0.75], [-0.5, -0.45, 0.75], [0.55, -0.4, 0.7], [1.9, 0.4, 0.5], [-1.9, 0.45, 0.45]];
+  for (const [dx, dy, rr] of k) { c.beginPath(); c.arc(x + dx * s, y + dy * s, rr * s, 0, Math.PI * 2); c.fill(); }
+}
+function pasmaChmur(c, r, kolor, y0, y1, n) {
+  c.fillStyle = kolor;
+  for (let i = 0; i < n; i++) {
+    const y = y0 + r() * (y1 - y0), x = r() * W, w = 120 + r() * 260, h = 3 + r() * 7;
+    c.beginPath(); c.ellipse(x, y, w, h, 0, 0, Math.PI * 2); c.fill();
+  }
+}
+function ziarno(c, r, sila) {
+  const id = c.getImageData(0, 0, W, H), d = id.data;
+  for (let i = 0; i < d.length; i += 4) { const n = (r() - 0.5) * sila; d[i] += n; d[i + 1] += n; d[i + 2] += n; }
+  c.putImageData(id, 0, 0);
+}
+function winieta(c, sila = 0.55) {
+  c.fillStyle = gradR(c, W / 2, H / 2, H * 0.35, W * 0.72, [[0, 'rgba(0,0,0,0)'], [1, `rgba(10,5,0,${sila})`]]);
+  c.fillRect(0, 0, W, H);
+}
+function kolumna(c, x, yT, yB, w, jasny, ciemny) {
+  const g = gradL(c, x - w / 2, 0, x + w / 2, 0, [[0, ciemny], [0.38, jasny], [1, ciemny]]);
+  c.fillStyle = g;
+  c.fillRect(x - w * 0.42, yT + w * 0.32, w * 0.84, yB - yT - w * 0.58);
+  c.strokeStyle = 'rgba(0,0,0,0.13)'; c.lineWidth = Math.max(1, w * 0.04);
+  for (let k = -2; k <= 2; k++) { c.beginPath(); c.moveTo(x + k * w * 0.15, yT + w * 0.34); c.lineTo(x + k * w * 0.15, yB - w * 0.28); c.stroke(); }
+  c.fillStyle = g;
+  c.fillRect(x - w * 0.62, yT, w * 1.24, w * 0.18);
+  c.fillRect(x - w * 0.5, yT + w * 0.17, w, w * 0.16);
+  c.fillRect(x - w * 0.6, yB - w * 0.14, w * 1.2, w * 0.14);
+  c.fillRect(x - w * 0.5, yB - w * 0.27, w, w * 0.14);
+}
+function swiatynia(c, x0, x1, yBaza, yKol, nKol, wKol, jasny, ciemny, cella, wysPod = 30) {
+  const sz = x1 - x0;
+  c.fillStyle = gradL(c, 0, yBaza - wysPod, 0, yBaza, [[0, jasny], [1, ciemny]]);
+  c.fillRect(x0 - sz * 0.02, yBaza - wysPod, sz * 1.04, wysPod);
+  c.strokeStyle = 'rgba(0,0,0,0.18)'; c.lineWidth = 1;
+  for (let i = 1; i < 4; i++) { const y = yBaza - wysPod + i * wysPod / 4; c.beginPath(); c.moveTo(x0 - sz * 0.02, y); c.lineTo(x1 + sz * 0.02, y); c.stroke(); }
+  const yB = yBaza - wysPod;
+  c.fillStyle = cella; c.fillRect(x0 + wKol * 0.3, yKol, sz - wKol * 0.6, yB - yKol);
+  for (let i = 0; i < nKol; i++) { const x = x0 + wKol / 2 + i * (sz - wKol) / (nKol - 1); kolumna(c, x, yKol, yB, wKol, jasny, ciemny); }
+  const hBel = wKol * 0.75;
+  c.fillStyle = gradL(c, 0, yKol - hBel, 0, yKol, [[0, jasny], [1, ciemny]]);
+  c.fillRect(x0 - wKol * 0.4, yKol - hBel, sz + wKol * 0.8, hBel);
+  c.strokeStyle = 'rgba(0,0,0,0.22)'; c.beginPath(); c.moveTo(x0 - wKol * 0.4, yKol - hBel * 0.45); c.lineTo(x1 + wKol * 0.4, yKol - hBel * 0.45); c.stroke();
+  const hTr = sz * 0.17;
+  c.fillStyle = jasny; c.beginPath();
+  c.moveTo(x0 - wKol * 0.55, yKol - hBel); c.lineTo((x0 + x1) / 2, yKol - hBel - hTr); c.lineTo(x1 + wKol * 0.55, yKol - hBel); c.closePath(); c.fill();
+  c.fillStyle = ciemny; c.globalAlpha = 0.45; c.beginPath();
+  c.moveTo(x0 + wKol * 0.4, yKol - hBel - 3); c.lineTo((x0 + x1) / 2, yKol - hBel - hTr + wKol * 0.45); c.lineTo(x1 - wKol * 0.4, yKol - hBel - 3); c.closePath(); c.fill();
+  c.globalAlpha = 1;
+}
+function postac(c, x, y, s, szata, skora = '#c08a5e', wlosy = '#2b1d14') {
+  c.fillStyle = 'rgba(0,0,0,0.18)'; c.beginPath(); c.ellipse(x + 2 * s, y, 5 * s, 1.2 * s, 0, 0, Math.PI * 2); c.fill();
+  c.fillStyle = szata; c.beginPath();
+  c.moveTo(x - 4.6 * s, y); c.lineTo(x - 3.2 * s, y - 13.5 * s); c.lineTo(x + 3.2 * s, y - 13.5 * s); c.lineTo(x + 4.6 * s, y); c.closePath(); c.fill();
+  c.beginPath(); c.ellipse(x, y - 13.5 * s, 3.5 * s, 1.8 * s, 0, 0, Math.PI * 2); c.fill();
+  c.strokeStyle = 'rgba(0,0,0,0.2)'; c.lineWidth = Math.max(1, s * 0.6);
+  c.beginPath(); c.moveTo(x - 3 * s, y - 13 * s); c.quadraticCurveTo(x + 1 * s, y - 8 * s, x + 4 * s, y - 2 * s); c.stroke();
+  c.fillStyle = skora; c.beginPath(); c.arc(x, y - 17 * s, 2.1 * s, 0, Math.PI * 2); c.fill();
+  c.fillStyle = wlosy; c.beginPath(); c.arc(x, y - 17.6 * s, 2.1 * s, Math.PI, Math.PI * 2); c.fill();
+}
+function legionista(c, x, y, s, kolor, tarcza, grzebien) {
+  c.fillStyle = kolor; c.strokeStyle = kolor;
+  c.fillRect(x - 2.2 * s, y - 7 * s, 1.6 * s, 7 * s); c.fillRect(x + 0.6 * s, y - 7 * s, 1.6 * s, 7 * s);
+  c.fillRect(x - 3 * s, y - 16 * s, 6 * s, 9.5 * s);
+  c.beginPath(); c.arc(x, y - 18.4 * s, 2.4 * s, 0, Math.PI * 2); c.fill();
+  c.fillStyle = grzebien || kolor; c.beginPath(); c.ellipse(x, y - 21.2 * s, 2.9 * s, 1.1 * s, 0, 0, Math.PI * 2); c.fill();
+  c.lineWidth = Math.max(1, 0.6 * s); c.beginPath(); c.moveTo(x + 3 * s, y - 5 * s); c.lineTo(x + 5.5 * s, y - 30 * s); c.stroke();
+  c.fillStyle = tarcza || kolor; c.beginPath(); c.roundRect(x - 6.5 * s, y - 17.5 * s, 5.4 * s, 11.5 * s, 1.2 * s); c.fill();
+  if (tarcza) { c.strokeStyle = 'rgba(230,190,90,0.8)'; c.lineWidth = Math.max(1, 0.4 * s); c.beginPath(); c.arc(x - 3.8 * s, y - 11.8 * s, 1.1 * s, 0, Math.PI * 2); c.stroke(); }
+}
+function orzel(c, x, y, s, kolor) {
+  c.fillStyle = kolor; c.beginPath();
+  c.moveTo(x, y - 2 * s); c.lineTo(x - 3 * s, y - 6 * s); c.lineTo(x - 9 * s, y - 9 * s); c.lineTo(x - 6 * s, y - 3 * s);
+  c.lineTo(x - 2 * s, y + 1 * s); c.lineTo(x - 1.4 * s, y + 4 * s); c.lineTo(x + 1.4 * s, y + 4 * s); c.lineTo(x + 2 * s, y + 1 * s);
+  c.lineTo(x + 6 * s, y - 3 * s); c.lineTo(x + 9 * s, y - 9 * s); c.lineTo(x + 3 * s, y - 6 * s); c.closePath(); c.fill();
+  c.beginPath(); c.arc(x, y - 3.5 * s, 1.4 * s, 0, Math.PI * 2); c.fill();
+  c.fillRect(x - 4 * s, y + 4 * s, 8 * s, 1.2 * s);
+}
+function cyprys(c, x, y, h, kolor) {
+  c.fillStyle = kolor; c.beginPath(); c.ellipse(x, y - h / 2, h * 0.11, h / 2, 0, 0, Math.PI * 2); c.fill();
+  c.fillStyle = 'rgba(255,255,255,0.06)'; c.beginPath(); c.ellipse(x - h * 0.03, y - h / 2, h * 0.04, h * 0.42, 0, 0, Math.PI * 2); c.fill();
+}
+function pinia(c, x, y, s, pien, korona) {
+  c.strokeStyle = pien; c.lineWidth = 3 * s; c.lineCap = 'round';
+  c.beginPath(); c.moveTo(x, y); c.quadraticCurveTo(x + 6 * s, y - 25 * s, x + 2 * s, y - 42 * s); c.stroke();
+  c.lineWidth = 1.6 * s; c.beginPath(); c.moveTo(x + 3 * s, y - 32 * s); c.lineTo(x - 10 * s, y - 42 * s); c.moveTo(x + 3 * s, y - 34 * s); c.lineTo(x + 14 * s, y - 43 * s); c.stroke();
+  c.lineCap = 'butt'; c.fillStyle = korona;
+  const k = [[0, -48, 22, 7], [-14, -45, 13, 5], [15, -45, 14, 5.5], [5, -52, 14, 5]];
+  for (const [dx, dy, rx, ry] of k) { c.beginPath(); c.ellipse(x + dx * s, y + dy * s, rx * s, ry * s, 0, 0, Math.PI * 2); c.fill(); }
+}
+function ptaki(c, r, n, x0, x1, y0, y1, kolor) {
+  c.strokeStyle = kolor; c.lineWidth = 1.6;
+  for (let i = 0; i < n; i++) {
+    const x = x0 + r() * (x1 - x0), y = y0 + r() * (y1 - y0), s = 4 + r() * 5;
+    c.beginPath(); c.moveTo(x - s, y - s * 0.4); c.quadraticCurveTo(x - s * 0.4, y - s * 0.6, x, y); c.quadraticCurveTo(x + s * 0.4, y - s * 0.6, x + s, y - s * 0.4); c.stroke();
+  }
+}
+function wykoncz(c, r, ziarnoSila = 14, win = 0.5) { winieta(c, win); ziarno(c, r, ziarnoSila); }
+
+/* =========================================================================
+   OBRAZY — 9 scen z dziejów Rzymu
+   ========================================================================= */
+function scenaZalozenie(c, r) {
+  niebo(c, [[0, '#24264f'], [0.3, '#6b3f72'], [0.55, '#d9765a'], [0.7, '#f8c37f'], [1, '#f8c37f']]);
+  slonce(c, 690, 405, 44, '#fff2cc', '255,190,120');
+  pasmaChmur(c, r, 'rgba(255,190,160,0.28)', 90, 330, 14);
+  pasmaChmur(c, r, 'rgba(90,50,100,0.25)', 60, 200, 8);
+  grzbiet(c, r, 410, 40, '#9a6a80', 0.8);
+  garby(c, 455, [[70, 60, 70], [200, 75, 70], [335, 55, 60], [470, 90, 80], [610, 62, 60], [760, 72, 75], [915, 58, 65]], '#6a4b68');
+  garby(c, 495, [[160, 40, 110], [420, 70, 120], [780, 35, 140]], '#4c3d4f');
+  c.fillStyle = gradL(c, 0, 470, 0, H, [[0, '#3b3a3e'], [1, '#22201f']]); c.fillRect(0, 500, W, H);
+  garby(c, 520, [[420, 75, 130]], '#3a3240');
+  // Tyber
+  c.beginPath(); c.moveTo(0, 560);
+  for (let x = 0; x <= W; x += 8) c.lineTo(x, 548 + 22 * Math.sin(x * 0.009 + 1) + x * 0.02);
+  for (let x = W; x >= 0; x -= 8) c.lineTo(x, 548 + 22 * Math.sin(x * 0.009 + 1) + x * 0.02 + 34 + x * 0.035);
+  c.closePath(); c.fillStyle = gradL(c, 0, 520, 0, 640, [[0, '#f7b77a'], [0.5, '#c06b6a'], [1, '#5e4672']]); c.fill();
+  c.strokeStyle = 'rgba(255,235,190,0.55)'; c.lineWidth = 1.5;
+  for (let i = 0; i < 40; i++) { const x = r() * W, y = 560 + 22 * Math.sin(x * 0.009 + 1) + x * 0.02 + r() * 30; c.beginPath(); c.moveTo(x, y); c.lineTo(x + 10 + r() * 30, y); c.stroke(); }
+  // chaty na Palatynie
+  const chaty = [[360, 456], [392, 448], [425, 444], [458, 446], [490, 452], [522, 462], [410, 470], [470, 472]];
+  for (const [x, y] of chaty) {
+    c.fillStyle = 'rgba(200,190,200,0.18)'; c.beginPath(); c.ellipse(x + 6, y - 32 - r() * 10, 4, 14, 0.3, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#5a3c2c'; c.fillRect(x - 7, y - 8, 14, 8);
+    c.fillStyle = '#9d7a45'; c.beginPath(); c.moveTo(x - 9.5, y - 7); c.lineTo(x, y - 20); c.lineTo(x + 9.5, y - 7); c.closePath(); c.fill();
+    c.fillStyle = '#ffcf7a'; c.fillRect(x - 1.5, y - 5, 3, 5);
+  }
+  // bruzda Romulusa
+  c.strokeStyle = 'rgba(30,20,20,0.6)'; c.lineWidth = 2; c.setLineDash([6, 4]);
+  c.beginPath(); c.ellipse(440, 462, 110, 22, 0, Math.PI * 1.02, Math.PI * 1.98, true); c.stroke(); c.setLineDash([]);
+  // skała z wilczycą
+  c.fillStyle = '#231a24'; c.beginPath(); c.moveTo(690, H); c.lineTo(735, 590); c.lineTo(800, 560); c.lineTo(900, 552); c.lineTo(980, 540); c.lineTo(W, 545); c.lineTo(W, H); c.closePath(); c.fill();
+  const wilk = [118,40,108,28,100,26,60,24,40,20,30,9,25,-1,23,-6,20,0,9,-8,6,-5,15,7,20,14,24,30,25,54,30,54,32,36,40,38,70,39,80,35,85,54,90,54,92,38,98,44,100,54,105,54,104,35,110,35,116,42];
+  c.save(); c.translate(790, 485); c.scale(1.35, 1.35); c.fillStyle = '#140e14'; c.beginPath(); c.moveTo(wilk[0], wilk[1]);
+  for (let i = 2; i < wilk.length; i += 2) c.lineTo(wilk[i], wilk[i + 1]); c.closePath(); c.fill(); c.restore();
+  // figowiec ruminalski i koszyk z bliźniętami
+  c.strokeStyle = '#18120f'; c.lineWidth = 16; c.lineCap = 'round';
+  c.beginPath(); c.moveTo(110, H); c.quadraticCurveTo(150, 560, 120, 430); c.stroke();
+  c.lineWidth = 7; c.beginPath(); c.moveTo(125, 470); c.quadraticCurveTo(200, 430, 250, 400); c.moveTo(122, 450); c.quadraticCurveTo(80, 400, 40, 380); c.stroke();
+  c.lineCap = 'butt';
+  c.fillStyle = '#1b2219';
+  for (let i = 0; i < 26; i++) { c.beginPath(); c.arc(30 + r() * 250, 330 + r() * 90, 24 + r() * 26, 0, Math.PI * 2); c.fill(); }
+  c.fillStyle = '#6b4a2b'; c.beginPath(); c.ellipse(190, 625, 30, 12, 0, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#e2b48a'; c.beginPath(); c.arc(180, 614, 6, 0, Math.PI * 2); c.arc(198, 616, 6, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#2b201a'; c.fillRect(0, 640, W, 32);
+  ptaki(c, r, 7, 520, 900, 140, 260, 'rgba(40,20,40,0.7)');
+  wykoncz(c, r);
+}
+
+function scenaForum(c, r) {
+  niebo(c, [[0, '#3a74b8'], [0.45, '#8dbde3'], [0.7, '#e7eef0']]);
+  for (let i = 0; i < 7; i++) chmura(c, r() * W, 60 + r() * 140, 18 + r() * 22, 'rgba(255,255,255,0.75)');
+  garby(c, 430, [[110, 170, 170]], '#86956a');
+  garby(c, 430, [[900, 150, 230]], '#7b8b5c');
+  for (let i = 0; i < 5; i++) pinia(c, 800 + i * 45 + r() * 10, 300 + Math.abs(i - 2) * 18, 0.8, '#3d2e22', '#3f5a32');
+  swiatynia(c, 70, 190, 268, 228, 6, 12, '#f1e6c8', '#b9a47a', '#8f7a55', 14);
+  c.fillStyle = gradL(c, 0, 430, 0, H, [[0, '#c4ad80'], [1, '#e5d4a8']]); c.fillRect(0, 430, W, H - 430);
+  // bruk
+  c.save(); c.beginPath(); c.rect(0, 470, W, H - 470); c.clip();
+  c.strokeStyle = 'rgba(90,70,40,0.22)'; c.lineWidth = 1;
+  for (let i = -12; i <= 12; i++) { c.beginPath(); c.moveTo(512, 350); c.lineTo(512 + i * 140, H); c.stroke(); }
+  for (let k = 0; k < 14; k++) { const y = 470 + (k * k) * 1.1 + k * 6; c.beginPath(); c.moveTo(0, y); c.lineTo(W, y); c.stroke(); }
+  c.restore();
+  // Kuria
+  c.fillStyle = gradL(c, 60, 0, 260, 0, [[0, '#b46646'], [1, '#8a4630']]); c.fillRect(55, 280, 200, 190);
+  c.fillStyle = '#c47a58'; c.beginPath(); c.moveTo(45, 282); c.lineTo(155, 240); c.lineTo(265, 282); c.closePath(); c.fill();
+  c.fillStyle = '#e6d6b0'; c.fillRect(45, 280, 220, 8);
+  c.fillStyle = '#3a2418'; for (const x of [90, 145, 200]) c.fillRect(x, 305, 22, 34);
+  c.fillStyle = '#6b4a24'; c.fillRect(130, 395, 50, 75); c.fillStyle = '#b08840'; c.fillRect(134, 399, 20, 71); c.fillRect(156, 399, 20, 71);
+  // świątynia Saturna i Kastora
+  swiatynia(c, 300, 540, 470, 300, 6, 26, '#f3e9cf', '#b59f74', '#7f6a4a', 34);
+  swiatynia(c, 640, 960, 470, 262, 8, 24, '#f5ecd5', '#b8a27a', '#836d4c', 46);
+  // Rostra
+  c.fillStyle = gradL(c, 0, 500, 0, 548, [[0, '#d6c49c'], [1, '#a8936a']]); c.fillRect(380, 500, 260, 48);
+  c.fillStyle = '#3d4a3a';
+  for (let i = 0; i < 8; i++) { const x = 395 + i * 32; c.beginPath(); c.moveTo(x, 512); c.lineTo(x + 18, 520); c.lineTo(x, 528); c.closePath(); c.fill(); }
+  postac(c, 512, 500, 2.2, '#f4efe4');
+  c.strokeStyle = '#c08a5e'; c.lineWidth = 3; c.beginPath(); c.moveTo(516, 470); c.lineTo(530, 456); c.stroke();
+  const ludzie = [];
+  for (let i = 0; i < 34; i++) ludzie.push([r() * W, 560 + r() * 100]);
+  ludzie.sort((a, b) => a[1] - b[1]);
+  const szaty = ['#f4efe4', '#efe6d2', '#e9dfc8', '#a83a2c', '#5a6f9a', '#c8a85a', '#f4efe4'];
+  for (const [x, y] of ludzie) postac(c, x, y, 1.6 + (y - 560) / 60, szaty[Math.floor(r() * szaty.length)]);
+  wykoncz(c, r, 12, 0.4);
+}
+
+function scenaRubikon(c, r) {
+  niebo(c, [[0, '#1d1b3a'], [0.35, '#6e2a40'], [0.55, '#d9573a'], [0.68, '#f6b15a']]);
+  slonce(c, 520, 372, 52, '#ffe1a0', '255,150,80');
+  pasmaChmur(c, r, 'rgba(255,140,110,0.3)', 120, 320, 16);
+  pasmaChmur(c, r, 'rgba(60,20,50,0.35)', 40, 180, 10);
+  grzbiet(c, r, 372, 30, '#5a2a45', 1.2);
+  grzbiet(c, r, 398, 18, '#3e2034', 2);
+  c.fillStyle = '#2a1726'; c.fillRect(0, 398, W, 30);
+  // kolumna legionu na drugim brzegu
+  const kol = '#1a0f18';
+  for (let rz = 0; rz < 3; rz++) for (let i = 0; i < 34; i++) {
+    const x = 330 + i * 21 + rz * 7 + r() * 4, y = 420 + rz * 5;
+    legionista(c, x, y, 1.25, kol, null, null);
+  }
+  for (const x of [360, 520, 690, 860]) {
+    c.strokeStyle = kol; c.lineWidth = 2; c.beginPath(); c.moveTo(x, 420); c.lineTo(x, 350); c.stroke();
+    c.fillStyle = '#8f1c1c'; c.fillRect(x - 9, 354, 18, 15);
+  }
+  c.strokeStyle = kol; c.lineWidth = 2.5; c.beginPath(); c.moveTo(310, 422); c.lineTo(310, 350); c.stroke();
+  orzel(c, 310, 346, 1.6, '#e2b24a');
+  // rzeka
+  c.fillStyle = gradL(c, 0, 428, 0, 580, [[0, '#f0a456'], [0.4, '#b34a3e'], [1, '#2c1830']]); c.fillRect(0, 428, W, 160);
+  c.strokeStyle = 'rgba(255,220,150,0.5)'; c.lineWidth = 2;
+  for (let i = 0; i < 60; i++) { const y = 432 + r() * 140, x = 400 + (r() - 0.5) * (120 + (y - 430) * 2.5); c.beginPath(); c.moveTo(x, y); c.lineTo(x + 8 + r() * 40, y); c.stroke(); }
+  c.strokeStyle = 'rgba(30,10,30,0.35)'; c.lineWidth = 1;
+  for (let i = 0; i < 40; i++) { const y = 440 + r() * 140, x = r() * W; c.beginPath(); c.moveTo(x, y); c.lineTo(x + 20 + r() * 60, y); c.stroke(); }
+  // bliski brzeg i Cezar
+  c.fillStyle = '#150b14'; c.beginPath(); c.moveTo(0, 590); c.quadraticCurveTo(300, 560, 520, 588); c.quadraticCurveTo(800, 610, W, 585); c.lineTo(W, H); c.lineTo(0, H); c.closePath(); c.fill();
+  c.strokeStyle = '#150b14'; c.lineWidth = 2;
+  for (let i = 0; i < 90; i++) { const x = r() * W, y = 600 + r() * 30, h = 20 + r() * 40; c.beginPath(); c.moveTo(x, y); c.quadraticCurveTo(x + 4, y - h / 2, x + (r() - 0.5) * 16, y - h); c.stroke(); }
+  // Cezar na bliskim brzegu
+  const cx = 250, cy = 612, sk = 5;
+  c.fillStyle = '#8e1f1c'; c.beginPath();
+  c.moveTo(cx - 2 * sk, cy - 16 * sk); c.quadraticCurveTo(cx - 12 * sk, cy - 10 * sk, cx - 17 * sk, cy - 1 * sk);
+  c.lineTo(cx - 9 * sk, cy - 2 * sk); c.quadraticCurveTo(cx - 5 * sk, cy - 8 * sk, cx + 1 * sk, cy - 14 * sk); c.closePath(); c.fill();
+  legionista(c, cx, cy, sk, '#120910', null, '#8e1f1c');
+  c.strokeStyle = '#d9d2c0'; c.lineWidth = 4; c.beginPath(); c.moveTo(cx + 3 * sk, cy - 15 * sk); c.lineTo(cx + 11 * sk, cy - 27 * sk); c.stroke();
+  for (let i = 0; i < 7; i++) legionista(c, 40 + i * 22, 616 + (i % 2) * 6, 2.8, '#120910', null, i === 3 ? '#8e1f1c' : null);
+  wykoncz(c, r, 16, 0.55);
+}
+
+function scenaAkwedukt(c, r) {
+  niebo(c, [[0, '#5b93c9'], [0.5, '#a9cbe4'], [0.62, '#e8eee9']]);
+  for (let i = 0; i < 6; i++) chmura(c, r() * W, 70 + r() * 120, 16 + r() * 20, 'rgba(255,255,255,0.7)');
+  grzbiet(c, r, 330, 50, '#8aa0b8', 0.7);
+  grzbiet(c, r, 390, 45, '#6f8f72', 1.1);
+  grzbiet(c, r, 440, 40, '#557a4c', 1.6);
+  for (let i = 0; i < 40; i++) { const x = r() * W, y = 420 + r() * 70; c.fillStyle = r() < 0.5 ? '#3e5e36' : '#4a6b3c'; c.beginPath(); c.arc(x, y, 8 + r() * 12, 0, Math.PI * 2); c.fill(); }
+  // akwedukt na osobnym płótnie
+  const a = document.createElement('canvas'); a.width = W; a.height = H; const k = a.getContext('2d');
+  const yWoda = 560, piętra = [[yWoda, 435, 6, 0.78], [435, 335, 11, 0.74], [335, 290, 35, 0.6]];
+  k.fillStyle = gradL(k, 0, 280, 0, yWoda, [[0, '#ecd3a0'], [1, '#c39e66']]);
+  for (const [yb, yt] of piętra) k.fillRect(-10, yt, W + 20, yb - yt);
+  k.fillRect(-10, 278, W + 20, 14);
+  k.strokeStyle = 'rgba(110,80,40,0.25)'; k.lineWidth = 1;
+  for (let y = 282; y < yWoda; y += 9) { k.beginPath(); k.moveTo(-10, y); k.lineTo(W + 10, y); k.stroke(); }
+  for (let y = 282; y < yWoda; y += 9) for (let x = (y % 18 ? 0 : 14); x < W; x += 28) { k.beginPath(); k.moveTo(x, y); k.lineTo(x, y + 9); k.stroke(); }
+  k.globalCompositeOperation = 'destination-out';
+  for (const [yb, yt, n, frac] of piętra) {
+    const span = (W + 20) / n, sz = span * frac, h = yb - yt;
+    for (let i = 0; i < n; i++) {
+      const cx = -10 + span * (i + 0.5), rr = sz / 2, yProst = yt + h * 0.1 + rr;
+      k.beginPath(); k.moveTo(cx - rr, yb + 1); k.lineTo(cx - rr, yProst); k.arc(cx, yProst, rr, Math.PI, 0); k.lineTo(cx + rr, yb + 1); k.closePath(); k.fill();
+    }
+  }
+  k.globalCompositeOperation = 'source-atop';
+  k.fillStyle = gradL(k, 0, 0, W, 0, [[0, 'rgba(255,240,210,0.15)'], [1, 'rgba(80,50,20,0.25)']]); k.fillRect(0, 0, W, H);
+  k.globalCompositeOperation = 'source-over';
+  // woda i odbicie
+  c.fillStyle = gradL(c, 0, yWoda, 0, H, [[0, '#6f9fa8'], [1, '#2f5a62']]); c.fillRect(0, yWoda, W, H - yWoda);
+  c.save(); c.globalAlpha = 0.35; c.translate(0, yWoda * 2); c.scale(1, -1); c.drawImage(a, 0, 0); c.restore();
+  c.drawImage(a, 0, 0);
+  c.strokeStyle = 'rgba(255,255,255,0.35)'; c.lineWidth = 1.5;
+  for (let i = 0; i < 70; i++) { const x = r() * W, y = yWoda + 4 + r() * (H - yWoda); c.beginPath(); c.moveTo(x, y); c.lineTo(x + 10 + r() * 30, y); c.stroke(); }
+  // brzegi
+  c.fillStyle = '#4c6b3d'; c.beginPath(); c.moveTo(0, 540); c.quadraticCurveTo(80, 560, 130, H); c.lineTo(0, H); c.closePath(); c.fill();
+  c.beginPath(); c.moveTo(W, 530); c.quadraticCurveTo(940, 570, 900, H); c.lineTo(W, H); c.closePath(); c.fill();
+  cyprys(c, 40, 590, 140, '#26402a'); cyprys(c, 75, 600, 100, '#2c4a2f');
+  cyprys(c, 960, 585, 150, '#26402a'); cyprys(c, 995, 600, 110, '#2c4a2f');
+  wykoncz(c, r, 12, 0.4);
+}
+
+function scenaKoloseum(c, r) {
+  niebo(c, [[0, '#4f86c2'], [0.5, '#bcd3df'], [0.7, '#f3dfb8']]);
+  for (let i = 0; i < 5; i++) chmura(c, r() * W, 60 + r() * 100, 18 + r() * 18, 'rgba(255,250,240,0.7)');
+  grzbiet(c, r, 440, 40, '#8c9a7e', 1);
+  const cx = 512, R = 440, yDolS = 590, yDolB = 545, yGorS = 200, yGorB = 185;
+  const yB = t => yDolB + (yDolS - yDolB) * Math.cos(t), yT = t => yGorB + (yGorS - yGorB) * Math.cos(t);
+  const X = t => cx + R * Math.sin(t);
+  const sciezkaFasady = () => { c.beginPath(); for (let i = 0; i <= 90; i++) { const t = -Math.PI / 2 + Math.PI * i / 90; i ? c.lineTo(X(t), yT(t)) : c.moveTo(X(t), yT(t)); } for (let i = 90; i >= 0; i--) { const t = -Math.PI / 2 + Math.PI * i / 90; c.lineTo(X(t), yB(t)); } c.closePath(); };
+  sciezkaFasady(); c.fillStyle = gradL(c, 0, yGorB, 0, yDolS, [[0, '#ecd8ae'], [1, '#c9a978']]); c.fill();
+  const prog = [0, 0.27, 0.52, 0.76, 1], nZ = 30;
+  const lerp = (a, b, f) => a + (b - a) * f;
+  for (let p = 0; p < 4; p++) {
+    for (let i = 0; i < nZ; i++) {
+      const t0 = -Math.PI / 2 + Math.PI * i / nZ, t1 = -Math.PI / 2 + Math.PI * (i + 1) / nZ, tm = (t0 + t1) / 2;
+      const x0 = X(t0), x1 = X(t1), sz = x1 - x0, xm = X(tm);
+      const ydol = lerp(yB(tm), yT(tm), prog[p]), ygora = lerp(yB(tm), yT(tm), prog[p + 1]), h = ydol - ygora;
+      c.strokeStyle = 'rgba(120,90,50,0.35)'; c.lineWidth = Math.max(1, sz * 0.12);
+      c.beginPath(); c.moveTo(x0, ydol); c.lineTo(X(t0), lerp(yB(t0), yT(t0), prog[p + 1])); c.stroke();
+      if (sz < 4) continue;
+      if (p < 3) {
+        const w = sz * 0.56, rr = w / 2, yl = ygora + h * 0.2 + rr;
+        c.fillStyle = gradL(c, 0, ygora, 0, ydol, [[0, '#3a2618'], [1, '#6a4a30']]);
+        c.beginPath(); c.moveTo(xm - rr, ydol - h * 0.08); c.lineTo(xm - rr, yl); c.arc(xm, yl, rr, Math.PI, 0); c.lineTo(xm + rr, ydol - h * 0.08); c.closePath(); c.fill();
+        if (p > 0 && r() < 0.8) { c.fillStyle = 'rgba(245,235,215,0.55)'; c.beginPath(); c.ellipse(xm, ydol - h * 0.25, rr * 0.25, h * 0.18, 0, 0, Math.PI * 2); c.fill(); }
+      } else if (i % 2 === 0) {
+        c.fillStyle = '#4a3220'; c.fillRect(xm - sz * 0.18, ygora + h * 0.4, sz * 0.36, h * 0.3);
+      }
+    }
+    c.strokeStyle = 'rgba(255,245,220,0.6)'; c.lineWidth = 3;
+    c.beginPath(); for (let i = 0; i <= 90; i++) { const t = -Math.PI / 2 + Math.PI * i / 90, y = lerp(yB(t), yT(t), prog[p + 1]); i ? c.lineTo(X(t), y) : c.moveTo(X(t), y); } c.stroke();
+  }
+  c.save(); sciezkaFasady(); c.clip();
+  c.fillStyle = gradL(c, 0, 0, W, 0, [[0, 'rgba(255,240,210,0.15)'], [0.45, 'rgba(0,0,0,0)'], [1, 'rgba(70,40,20,0.4)']]); c.fillRect(0, 0, W, H); c.restore();
+  c.strokeStyle = '#6b5233'; c.lineWidth = 2;
+  for (let i = 0; i <= nZ; i += 2) { const t = -Math.PI / 2 + Math.PI * i / nZ; c.beginPath(); c.moveTo(X(t), yT(t)); c.lineTo(X(t), yT(t) - 22 * Math.cos(t) - 4); c.stroke(); }
+  c.fillStyle = gradL(c, 0, 545, 0, H, [[0, '#c9b285'], [1, '#a68f62']]);
+  c.beginPath(); c.moveTo(0, 545); for (let i = 0; i <= 90; i++) { const t = -Math.PI / 2 + Math.PI * i / 90; c.lineTo(X(t), yB(t)); } c.lineTo(W, 545); c.lineTo(W, H); c.lineTo(0, H); c.closePath(); c.fill();
+  pinia(c, 40, 640, 2.2, '#3a2a1e', '#2f4a2a'); pinia(c, 980, 650, 2.4, '#3a2a1e', '#2f4a2a');
+  const ludzie = []; for (let i = 0; i < 28; i++) ludzie.push([120 + r() * 780, 605 + r() * 60]); ludzie.sort((a, b) => a[1] - b[1]);
+  for (const [x, y] of ludzie) postac(c, x, y, 1.5 + (y - 600) / 50, ['#f1ead8', '#a83a2c', '#e8dcc0', '#56709a', '#d0b066'][Math.floor(r() * 5)]);
+  wykoncz(c, r, 12, 0.42);
+}
+
+function scenaPanteon(c, r) {
+  niebo(c, [[0, '#1f4f8f'], [0.6, '#79abd6'], [0.85, '#d7e4e8']]);
+  for (let i = 0; i < 5; i++) chmura(c, r() * W, 50 + r() * 100, 16 + r() * 18, 'rgba(255,255,255,0.65)');
+  // rotunda i kopuła
+  c.fillStyle = gradL(c, 180, 0, 844, 0, [[0, '#9a6a4a'], [0.5, '#c08a62'], [1, '#7a5038']]); c.fillRect(180, 250, 664, 330);
+  c.strokeStyle = 'rgba(60,30,20,0.25)'; c.lineWidth = 1; for (let y = 262; y < 580; y += 7) { c.beginPath(); c.moveTo(180, y); c.lineTo(844, y); c.stroke(); }
+  c.fillStyle = gradL(c, 200, 0, 824, 0, [[0, '#6f7a80'], [0.4, '#b6bec2'], [1, '#5c666c']]);
+  c.beginPath(); c.ellipse(512, 252, 312, 150, 0, Math.PI, 0); c.closePath(); c.fill();
+  c.strokeStyle = 'rgba(40,50,55,0.4)'; c.lineWidth = 2;
+  for (let i = 1; i <= 4; i++) { c.beginPath(); c.ellipse(512, 252, 312 - i * 4, 150 - (i * 14), 0, Math.PI * 1.02, Math.PI * 1.98); c.stroke(); }
+  c.fillStyle = '#cfd5d8'; c.beginPath(); c.ellipse(512, 104, 42, 6, 0, 0, Math.PI * 2); c.fill();
+  // człon pośredni
+  c.fillStyle = gradL(c, 0, 210, 0, 330, [[0, '#e8dcc0'], [1, '#bda988']]); c.fillRect(300, 228, 424, 110);
+  c.fillStyle = '#ddd0b0'; c.beginPath(); c.moveTo(290, 230); c.lineTo(512, 175); c.lineTo(734, 230); c.closePath(); c.fill();
+  // portyk
+  const x0 = 236, x1 = 788, yKol = 352, yBaza = 588;
+  c.fillStyle = '#4a3a2c'; c.fillRect(x0 + 10, yKol, x1 - x0 - 20, yBaza - yKol);
+  c.fillStyle = '#7a5a2a'; c.fillRect(478, 420, 68, 168); c.fillStyle = '#b48a44'; c.fillRect(482, 424, 29, 164); c.fillRect(513, 424, 29, 164);
+  for (let i = 0; i < 8; i++) { const x = x0 + 22 + i * (x1 - x0 - 44) / 7; kolumna(c, x, yKol, yBaza, 40, '#f2ece0', '#a8a090'); }
+  c.fillStyle = gradL(c, 0, 300, 0, 352, [[0, '#efe5cc'], [1, '#c8b896']]); c.fillRect(x0 - 16, 300, x1 - x0 + 32, 52);
+  c.strokeStyle = 'rgba(0,0,0,0.2)'; c.beginPath(); c.moveTo(x0 - 16, 316); c.lineTo(x1 + 16, 316); c.stroke();
+  c.fillStyle = '#5a4a32'; c.font = 'bold 19px Cinzel, Georgia, serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.fillText('M·AGRIPPA·L·F·COS·TERTIVM·FECIT', 512, 335);
+  c.fillStyle = '#f0e6cf'; c.beginPath(); c.moveTo(x0 - 26, 302); c.lineTo(512, 214); c.lineTo(x1 + 26, 302); c.closePath(); c.fill();
+  c.fillStyle = 'rgba(150,130,100,0.5)'; c.beginPath(); c.moveTo(x0 + 20, 296); c.lineTo(512, 226); c.lineTo(x1 - 20, 296); c.closePath(); c.fill();
+  // stopnie i plac
+  c.fillStyle = gradL(c, 0, yBaza, 0, H, [[0, '#cbbd9c'], [1, '#e6dac0']]); c.fillRect(0, yBaza, W, H - yBaza);
+  c.strokeStyle = 'rgba(0,0,0,0.15)'; for (let i = 0; i < 4; i++) { c.beginPath(); c.moveTo(x0 - 30 - i * 10, yBaza + i * 6); c.lineTo(x1 + 30 + i * 10, yBaza + i * 6); c.stroke(); }
+  const ludzie = []; for (let i = 0; i < 22; i++) ludzie.push([r() * W, 615 + r() * 50]); ludzie.sort((a, b) => a[1] - b[1]);
+  for (const [x, y] of ludzie) postac(c, x, y, 1.5 + (y - 610) / 50, ['#f1ead8', '#7a3d8a', '#e8dcc0', '#a83a2c'][Math.floor(r() * 4)]);
+  wykoncz(c, r, 12, 0.45);
+}
+
+function scenaPompeje(c, r) {
+  niebo(c, [[0, '#0c0607'], [0.35, '#2e1210'], [0.62, '#7c3218'], [0.75, '#c2581e']]);
+  // Wezuwiusz
+  c.fillStyle = '#241614'; c.beginPath(); c.moveTo(150, 540); c.quadraticCurveTo(420, 380, 560, 300); c.lineTo(660, 300); c.quadraticCurveTo(820, 400, 1024, 520); c.lineTo(W, H); c.lineTo(0, H); c.closePath(); c.fill();
+  c.fillStyle = gradR(c, 610, 300, 5, 160, [[0, 'rgba(255,200,90,0.9)'], [0.3, 'rgba(255,90,20,0.5)'], [1, 'rgba(255,60,0,0)']]); c.fillRect(400, 150, 420, 300);
+  c.strokeStyle = '#ff7a26'; c.lineCap = 'round';
+  for (let i = 0; i < 7; i++) { c.lineWidth = 2 + r() * 3; const x = 575 + r() * 70; c.beginPath(); c.moveTo(x, 305); let xx = x, yy = 305; for (let k = 0; k < 8; k++) { xx += (x - 610) * 0.25 + (r() - 0.5) * 16; yy += 14 + r() * 10; c.lineTo(xx, yy); } c.stroke(); }
+  c.lineCap = 'butt';
+  // kolumna erupcyjna w kształcie piniowym (opis Pliniusza)
+  const kleby = [];
+  for (let i = 0; i < 26; i++) kleby.push([600 + (r() - 0.5) * (30 + i * 4), 300 - i * 9, 28 + i * 1.3]);
+  for (let i = 0; i < 70; i++) { const t = r(); kleby.push([200 + r() * 700, 70 + r() * 110 + t * 20, 40 + r() * 50]); }
+  for (const [x, y, rr] of kleby) {
+    c.fillStyle = gradR(c, x - rr * 0.3, y + rr * 0.4, rr * 0.2, rr * 1.1, [[0, '#7a4a3a'], [0.6, '#4a3330'], [1, '#2a1e1e']]);
+    c.beginPath(); c.arc(x, y, rr, 0, Math.PI * 2); c.fill();
+  }
+  c.strokeStyle = 'rgba(220,200,255,0.85)'; c.lineWidth = 2;
+  for (let b = 0; b < 3; b++) { let x = 300 + r() * 500, y = 110 + r() * 40; c.beginPath(); c.moveTo(x, y); for (let k = 0; k < 6; k++) { x += (r() - 0.5) * 40; y += 12 + r() * 14; c.lineTo(x, y); } c.stroke(); }
+  // miasto
+  c.fillStyle = 'rgba(255,120,40,0.18)'; c.fillRect(0, 470, W, 200);
+  c.fillStyle = '#1c1210'; c.fillRect(0, 540, W, H - 540);
+  for (let i = 0; i < 14; i++) {
+    const x = r() * W, w = 50 + r() * 70, h = 30 + r() * 40, y = 540;
+    c.fillStyle = '#2a1a16'; c.fillRect(x, y - h, w, h);
+    c.fillStyle = '#5e2a1c'; c.beginPath(); c.moveTo(x - 6, y - h); c.lineTo(x + w / 2, y - h - 16); c.lineTo(x + w + 6, y - h); c.closePath(); c.fill();
+  }
+  swiatynia(c, 330, 560, 600, 470, 6, 18, '#b88a64', '#5a3a2a', '#2a1a14', 34);
+  for (let i = 0; i < 14; i++) kolumna(c, 600 + i * 30, 500, 600, 13, '#a87a56', '#4a2e22');
+  c.fillStyle = '#5a3a2a'; c.fillRect(590, 492, 420, 10);
+  c.fillStyle = '#120a09'; c.fillRect(0, 600, W, 72);
+  for (let i = 0; i < 6; i++) postac(c, 80 + r() * 260, 640 + r() * 20, 2.3, '#3a2a24', '#5a3a2a', '#1a1010');
+  c.fillStyle = 'rgba(180,170,160,0.5)'; for (let i = 0; i < 500; i++) { c.fillRect(r() * W, r() * H, 1.6, 1.6); }
+  for (let i = 0; i < 70; i++) { c.fillStyle = `rgba(255,${120 + r() * 100 | 0},40,${0.5 + r() * 0.5})`; c.beginPath(); c.arc(400 + r() * 420, 150 + r() * 400, 1 + r() * 2, 0, Math.PI * 2); c.fill(); }
+  wykoncz(c, r, 16, 0.6);
+}
+
+function scenaCyrk(c, r) {
+  niebo(c, [[0, '#5a8fcf'], [0.5, '#b8d4e6'], [0.62, '#f2e2c0']]);
+  for (let i = 0; i < 5; i++) chmura(c, r() * W, 50 + r() * 80, 16 + r() * 16, 'rgba(255,255,255,0.7)');
+  garby(c, 300, [[150, 120, 230]], '#8a8f68');
+  // pałace na Palatynie
+  for (let i = 0; i < 6; i++) { const x = 30 + i * 52, h = 50 + r() * 40, y = 240 - Math.exp(-(((x - 150) / 230) ** 2)) * 70 + 40; c.fillStyle = i % 2 ? '#d9b58a' : '#c9a070'; c.fillRect(x, y - h, 48, h + 30); c.fillStyle = '#5a3a24'; for (let k = 0; k < 3; k++) { c.beginPath(); c.arc(x + 9 + k * 15, y - h + 22, 5, Math.PI, 0); c.rect(x + 4 + k * 15, y - h + 22, 10, 12); c.fill(); } }
+  garby(c, 330, [[880, 80, 200]], '#7f8a60');
+  swiatynia(c, 800, 930, 262, 220, 6, 11, '#f0e4c8', '#b8a07a', '#8a7452', 12);
+  c.fillStyle = '#9a9a72'; c.fillRect(0, 320, W, 60);
+  // cyrk w rzucie
+  const cy = 480, sy = 0.4, P = (x, y) => [512 + x, cy + y * sy];
+  const zaokr = (L, Wd, kolor) => {
+    c.beginPath(); const [ax, ay] = P(-L / 2, -Wd / 2); c.moveTo(ax, ay);
+    let [bx, by] = P(L / 2 - Wd / 2, -Wd / 2); c.lineTo(bx, by);
+    for (let i = 0; i <= 30; i++) { const t = -Math.PI / 2 + Math.PI * i / 30; const [x, y] = P(L / 2 - Wd / 2 + Math.cos(t) * Wd / 2, Math.sin(t) * Wd / 2); c.lineTo(x, y); }
+    const [dx, dy] = P(-L / 2, Wd / 2); c.lineTo(dx, dy); c.closePath(); c.fillStyle = kolor; c.fill();
+  };
+  zaokr(1020, 520, '#b48a5e');
+  for (let k = 0; k < 6; k++) zaokr(1000 - k * 22, 500 - k * 22, k % 2 ? '#c9a172' : '#a87e52');
+  c.save(); zaokr(870, 370, 'rgba(0,0,0,0)'); c.restore();
+  // tłum
+  for (let i = 0; i < 2600; i++) {
+    const a = r() * Math.PI * 2, rr = 0.75 + r() * 0.24;
+    let px = Math.cos(a) * 500 * rr, py = Math.sin(a) * 255 * rr;
+    if (px > 260) px = 260 + (px - 260) * 0.9;
+    const [x, y] = P(px, py);
+    c.fillStyle = ['#e9e0cc', '#a83a2c', '#4a6aa0', '#3d7a40', '#f3eee4', '#c49a5a'][Math.floor(r() * 6)];
+    c.fillRect(x, y, 2, 2);
+  }
+  zaokr(860, 360, '#d9b77a');
+  c.strokeStyle = 'rgba(150,110,60,0.35)'; c.lineWidth = 1;
+  for (let i = 0; i < 30; i++) { const [x, y] = P(-430 + r() * 800, (r() - 0.5) * 340); c.beginPath(); c.moveTo(x, y); c.lineTo(x + 30, y); c.stroke(); }
+  // carceres
+  const [kx] = P(-430, 0);
+  c.fillStyle = '#e6d6b0'; c.fillRect(kx - 30, cy - 80, 34, 150);
+  c.fillStyle = '#4a3020'; for (let i = 0; i < 6; i++) c.fillRect(kx - 26, cy - 72 + i * 24, 14, 16);
+  // spina z obeliskiem i metami
+  const [s0x, s0y] = P(-300, -12); c.fillStyle = '#e8dcc0'; c.fillRect(s0x, s0y, 600, 24 * sy * 2);
+  c.fillStyle = '#5a7a8a'; c.fillRect(s0x + 4, s0y + 2, 592, 4);
+  for (const mx of [-310, 310]) { const [x, y] = P(mx, 0); for (let k = -1; k <= 1; k++) { c.fillStyle = '#d4b048'; c.beginPath(); c.moveTo(x + k * 9 - 5, y + 2); c.lineTo(x + k * 9, y - 34); c.lineTo(x + k * 9 + 5, y + 2); c.closePath(); c.fill(); } }
+  const [ox, oy] = P(0, 0);
+  c.fillStyle = gradL(c, ox - 8, 0, ox + 8, 0, [[0, '#a8724a'], [0.5, '#e0a878'], [1, '#8a5a38']]);
+  c.beginPath(); c.moveTo(ox - 9, oy + 4); c.lineTo(ox - 5, oy - 150); c.lineTo(ox, oy - 162); c.lineTo(ox + 5, oy - 150); c.lineTo(ox + 9, oy + 4); c.closePath(); c.fill();
+  for (const sx of [-180, -90, 90, 180]) { const [x, y] = P(sx, 0); c.fillStyle = '#f0e6cf'; c.fillRect(x - 6, y - 26, 12, 26); c.fillStyle = '#c9a55c'; c.beginPath(); c.arc(x, y - 30, 5, 0, Math.PI * 2); c.fill(); }
+  // kwadrygi
+  const kon = (x, y, s, kol, faza) => {
+    c.fillStyle = kol; c.beginPath(); c.ellipse(x, y, 6 * s, 2.6 * s, 0, 0, Math.PI * 2); c.fill();
+    c.beginPath(); c.moveTo(x + 3 * s, y - 1.5 * s); c.lineTo(x + 7 * s, y - 6 * s); c.lineTo(x + 8.6 * s, y - 4.6 * s); c.lineTo(x + 5.5 * s, y + 0.5 * s); c.closePath(); c.fill();
+    c.beginPath(); c.ellipse(x + 9 * s, y - 5.5 * s, 2.4 * s, 1.1 * s, 0.4, 0, Math.PI * 2); c.fill();
+    c.strokeStyle = kol; c.lineWidth = 1.1 * s;
+    for (const [lx, a] of [[-4, 0.6 + faza], [-3, -0.4 - faza], [4, -0.7 - faza], [3, 0.5 + faza]]) { c.beginPath(); c.moveTo(x + lx * s, y + 1.5 * s); c.lineTo(x + lx * s + Math.sin(a) * 5 * s, y + 6.5 * s); c.stroke(); }
+    c.beginPath(); c.moveTo(x - 6 * s, y - 1 * s); c.lineTo(x - 9 * s, y + 2 * s); c.stroke();
+  };
+  const druzyny = [['#b8261e', -250, -110], ['#f3f0e6', 40, -120], ['#2f7a3a', 200, 110], ['#2a5aa8', -100, 125]];
+  for (const [kol, px, py] of druzyny) {
+    const [x, y] = P(px, py), s = 1.5, kier = py < 0 ? 1 : -1;
+    c.fillStyle = 'rgba(220,190,140,0.55)'; for (let k = 0; k < 6; k++) { c.beginPath(); c.arc(x - kier * (30 + k * 9), y + 4 - r() * 6, 6 + k * 2, 0, Math.PI * 2); c.fill(); }
+    c.save(); c.translate(x, y); c.scale(kier, 1);
+    for (let k = 0; k < 4; k++) kon(12 + (k % 2) * 3, -k * 2.5 + 2, s, ['#3a2618', '#5a3a24', '#e8e0d0', '#2a1a10'][k], k * 0.2);
+    c.fillStyle = '#8a6a3a'; c.beginPath(); c.arc(-4, 0, 6, 0, Math.PI); c.fill();
+    c.fillStyle = kol; c.fillRect(-7, -14, 6, 10); c.fillStyle = '#c08a5e'; c.beginPath(); c.arc(-4, -17, 3, 0, Math.PI * 2); c.fill();
+    c.strokeStyle = '#c08a5e'; c.lineWidth = 1; c.beginPath(); c.moveTo(-2, -10); c.lineTo(14, -4); c.stroke();
+    c.restore();
+  }
+  c.fillStyle = gradL(c, 0, 600, 0, H, [[0, '#8a6a46'], [1, '#5a422a']]);
+  c.fillRect(0, 618, W, H - 618);
+  c.fillStyle = '#4a3220'; for (let i = 0; i < 26; i++) { c.beginPath(); c.moveTo(i * 40 + 6, H); c.lineTo(i * 40 + 6, 636); c.arc(i * 40 + 20, 636, 14, Math.PI, 0); c.lineTo(i * 40 + 34, H); c.fill(); }
+  wykoncz(c, r, 12, 0.45);
+}
+
+function scenaUpadek(c, r) {
+  niebo(c, [[0, '#191530'], [0.32, '#55304a'], [0.55, '#c0563a'], [0.68, '#f0a050']]);
+  slonce(c, 300, 450, 70, '#ffd690', '255,150,70');
+  pasmaChmur(c, r, 'rgba(255,150,120,0.3)', 120, 380, 14);
+  for (let s = 0; s < 3; s++) { let x = 760 + s * 90, y = 440; for (let i = 0; i < 18; i++) { c.fillStyle = `rgba(40,30,40,${0.5 - i * 0.025})`; c.beginPath(); c.arc(x, y, 14 + i * 3, 0, Math.PI * 2); c.fill(); x += 6 + r() * 6; y -= 18; } }
+  grzbiet(c, r, 455, 22, '#4a2a3e', 1.3);
+  c.fillStyle = gradL(c, 0, 450, 0, H, [[0, '#3a2a2a'], [1, '#1d1414']]); c.fillRect(0, 455, W, H - 455);
+  // ruiny
+  const jas = '#c99a78', ciem = '#5a3a32';
+  const kol = [[150, 200], [230, 300], [310, 260], [500, 230], [575, 230], [650, 230], [820, 330], [900, 380]];
+  for (const [x, yT] of kol) {
+    kolumna(c, x, yT, 560, 42, jas, ciem);
+    if (yT > 250 && x !== 650) { c.fillStyle = gradL(c, 0, yT - 20, 0, yT + 30, [[0, '#2a1a1e'], [1, 'rgba(0,0,0,0)']]); }
+  }
+  // poszarpane szczyty kolumn
+  c.fillStyle = gradL(c, 0, 0, 0, H, [[0, '#191530'], [0.32, '#55304a'], [0.55, '#c0563a'], [0.68, '#f0a050']]);
+  for (const [x, yT] of [[230, 300], [310, 260], [820, 330], [900, 380]]) { c.beginPath(); c.moveTo(x - 30, yT - 2); c.lineTo(x - 30, yT + 22); c.lineTo(x - 10, yT + 10); c.lineTo(x + 4, yT + 26); c.lineTo(x + 30, yT + 8); c.lineTo(x + 30, yT - 2); c.closePath(); c.fill(); }
+  c.fillStyle = gradL(c, 0, 190, 0, 230, [[0, '#d9aa86'], [1, '#6a463a']]); c.fillRect(470, 196, 210, 34);
+  c.fillStyle = '#3a2a2a'; c.fillRect(470, 214, 210, 3);
+  c.fillStyle = gradL(c, 0, 545, 0, 575, [[0, '#a87e62'], [1, '#4a3028']]); c.fillRect(100, 555, 880, 22);
+  // leżące bębny kolumn
+  for (const [x, y, w] of [[360, 600, 70], [420, 615, 64], [700, 610, 80], [760, 640, 60], [80, 630, 70]]) {
+    c.fillStyle = gradL(c, 0, y - 18, 0, y + 18, [[0, jas], [1, ciem]]); c.fillRect(x, y - 18, w, 36);
+    c.fillStyle = '#8a6450'; c.beginPath(); c.ellipse(x + w, y, 8, 18, 0, 0, Math.PI * 2); c.fill();
+    c.strokeStyle = 'rgba(0,0,0,0.25)'; c.beginPath(); c.moveTo(x, y - 6); c.lineTo(x + w, y - 6); c.moveTo(x, y + 6); c.lineTo(x + w, y + 6); c.stroke();
+  }
+  // bluszcz i trawa
+  for (let i = 0; i < 160; i++) { c.fillStyle = r() < 0.5 ? 'rgba(50,80,40,0.85)' : 'rgba(70,100,50,0.8)'; const k = kol[Math.floor(r() * kol.length)]; c.beginPath(); c.arc(k[0] + (r() - 0.5) * 40, 560 - r() * r() * (560 - k[1]), 3 + r() * 5, 0, Math.PI * 2); c.fill(); }
+  c.strokeStyle = '#2a3a22'; c.lineWidth = 1.5;
+  for (let i = 0; i < 260; i++) { const x = r() * W, y = 580 + r() * 92; c.beginPath(); c.moveTo(x, y); c.lineTo(x + (r() - 0.5) * 8, y - 8 - r() * 14); c.stroke(); }
+  ptaki(c, r, 9, 380, 780, 120, 280, 'rgba(20,10,20,0.8)');
+  wykoncz(c, r, 16, 0.6);
+}
+
+/* =========================================================================
+   POZIOMY
+   ========================================================================= */
+const POZIOMY = [
+  { tytul: 'Wilczyca i założenie Rzymu', data: '753 p.n.e.', maluj: scenaZalozenie, kolor: '#f08a5d',
+    zajawka: 'Legenda mówi o bliźniętach porzuconych nad Tybrem i wilczycy, która je wykarmiła…',
+    opis: '<p>Według legendy Romulus i Remus, synowie boga Marsa i westalki Rei Sylwii, zostali porzuceni w koszyku na wodach Tybru. Wykarmiła ich wilczyca pod figowcem, a wychował pasterz Faustulus.</p><p>W <b>753 p.n.e.</b> Romulus wyznaczył pługiem bruzdę wokół Palatynu — granicę nowego miasta. Po kłótni z Remusem został pierwszym królem Rzymu. Okres królewski trwał do <b>509 p.n.e.</b></p><p><i>Archeolodzy rzeczywiście odkryli na Palatynie ślady chat z VIII w. p.n.e.</i></p>',
+    pytanie: 'Kto według legendy założył Rzym?', odp: ['Romulus', 'Eneasz', 'Juliusz Cezar', 'Oktawian August'], ok: 0,
+    wyjasn: 'Eneasz to legendarny przodek Rzymian, uciekinier z Troi — ale miasto założył jego potomek Romulus.' },
+  { tytul: 'Forum Romanum — serce Republiki', data: '509–27 p.n.e.', maluj: scenaForum, kolor: '#e8cd8a',
+    zajawka: 'Po wygnaniu ostatniego króla Rzymianie sami wybierają swoich urzędników…',
+    opis: '<p>W <b>509 p.n.e.</b> Rzymianie wygnali króla Tarkwiniusza Pysznego i utworzyli <b>republikę</b> (<i>res publica</i> — „rzecz wspólna”). Władzę sprawowali dwaj <b>konsulowie</b> wybierani na rok, doradzał im <b>senat</b>, a prawa uchwalały zgromadzenia ludowe.</p><p>Centrum życia było <b>Forum Romanum</b>: tu stała Kuria (siedziba senatu), świątynie Saturna oraz Kastora i Polluksa, a z mównicy <b>Rostra</b>, ozdobionej dziobami zdobytych okrętów, przemawiali politycy.</p>',
+    pytanie: 'Ilu konsulów wybierano co roku w republice rzymskiej?', odp: ['Jednego', 'Dwóch', 'Trzech', 'Dziesięciu'], ok: 1,
+    wyjasn: 'Dwóch konsulów wzajemnie się kontrolowało — żeby żaden nie stał się nowym królem.' },
+  { tytul: 'Cezar nad Rubikonem', data: '10 stycznia 49 p.n.e.', maluj: scenaRubikon, kolor: '#d9573a',
+    zajawka: 'Mała rzeka na granicy Italii. Wódz, który ją przekroczy z wojskiem, staje się wrogiem republiki…',
+    opis: '<p>Rubikon oddzielał prowincję Galię Przedalpejską od Italii. Prawo zabraniało namiestnikowi wprowadzać legiony do Italii. <b>Juliusz Cezar</b>, zdobywca Galii, przekroczył rzekę z XIII legionem, mówiąc podobno <b><i>Alea iacta est</i> — „Kości zostały rzucone”</b>.</p><p>Wybuchła wojna domowa z Pompejuszem. Cezar zwyciężył i został dyktatorem, a w <b>idy marcowe 44 p.n.e.</b> zginął zamordowany przez spiskowców w senacie.</p><p><i>Legion liczył ok. 5000 żołnierzy, a jego najważniejszym znakiem był złoty orzeł — aquila.</i></p>',
+    pytanie: 'Jakie słowa przypisuje się Cezarowi nad Rubikonem?', odp: ['Veni, vidi, vici', 'Alea iacta est', 'Et tu, Brute?', 'Carpe diem'], ok: 1,
+    wyjasn: '„Veni, vidi, vici” (przybyłem, zobaczyłem, zwyciężyłem) Cezar napisał po bitwie pod Zelą w 47 p.n.e.' },
+  { tytul: 'Akwedukt — Pont du Gard', data: 'I w. n.e.', maluj: scenaAkwedukt, kolor: '#c39e66',
+    zajawka: 'Rzymscy inżynierowie potrafili poprowadzić rzekę ponad doliną…',
+    opis: '<p><b>Akwedukty</b> doprowadzały do miast czystą wodę do łaźni, fontann i domów. Woda płynęła wyłącznie <b>siłą grawitacji</b>, więc kanał musiał mieć stały, minimalny spadek — w akwedukcie zasilającym Nemausus (dziś Nîmes) to ok. 25 cm na kilometr.</p><p><b>Pont du Gard</b> w Galii ma trzy kondygnacje łuków i blisko <b>49 m wysokości</b>. Kamienne bloki układano bez zaprawy. Sam Rzym zasilało w czasach cesarstwa 11 akweduktów.</p>',
+    pytanie: 'Co sprawiało, że woda płynęła rzymskim akweduktem?', odp: ['Pompy parowe', 'Niewolnicy noszący wiadra', 'Grawitacja i lekki spadek kanału', 'Koła wodne'], ok: 2,
+    wyjasn: 'Rzymianie nie mieli pomp do tak dużych ilości wody — cały akwedukt to precyzyjnie wyliczona pochylnia.' },
+  { tytul: 'Koloseum — Amfiteatr Flawiuszów', data: '80 n.e.', maluj: scenaKoloseum, kolor: '#ecd8ae',
+    zajawka: 'Największy amfiteatr świata rzymskiego. Na jego arenie walczyli gladiatorzy…',
+    opis: '<p>Budowę rozpoczął cesarz <b>Wespazjan</b> ok. 70–72 n.e., a otworzył ją jego syn <b>Tytus w 80 n.e.</b> studniowymi igrzyskami. Obie postaci pochodziły z dynastii Flawiuszów, stąd nazwa <b>Amfiteatr Flawiuszów</b>.</p><p>Koloseum mieściło ok. <b>50 000 widzów</b>. Odbywały się tu walki gladiatorów, polowania na dzikie zwierzęta (<i>venationes</i>) i egzekucje. Przed słońcem chronił widzów płócienny dach — <b>velarium</b>, rozpinany przez marynarzy floty.</p>',
+    pytanie: 'Jak brzmi starożytna nazwa Koloseum?', odp: ['Circus Maximus', 'Amfiteatr Flawiuszów', 'Panteon', 'Kuria Juliusza'], ok: 1,
+    wyjasn: 'Nazwa „Koloseum” pojawiła się dopiero w średniowieczu — prawdopodobnie od stojącego obok kolosa, posągu Nerona.' },
+  { tytul: 'Panteon — świątynia wszystkich bogów', data: 'ok. 125 n.e.', maluj: scenaPanteon, kolor: '#b6bec2',
+    zajawka: 'Na fryzie widnieje imię Agryppy, ale budowlę, którą znamy, wzniesiono znacznie później…',
+    opis: '<p>Pierwszy Panteon zbudował <b>Marek Agryppa</b>, przyjaciel Augusta. Obecną budowlę wzniesiono za cesarza <b>Hadriana</b> (ok. 113–125 n.e.), który zostawił na fryzie dawny napis: <i>M·AGRIPPA·L·F·COS·TERTIVM·FECIT</i> — „Marek Agryppa, syn Lucjusza, trzykrotny konsul, zbudował”.</p><p>Kopuła ma <b>43,3 m średnicy</b> — tyle samo, ile wynosi wysokość wnętrza. Na szczycie znajduje się okrągły otwór, <b>oculus</b>, jedyne źródło światła. To wciąż największa na świecie kopuła z niezbrojonego betonu. Od 609 r. Panteon jest kościołem — dlatego przetrwał.</p>',
+    pytanie: 'Jak nazywa się otwór w szczycie kopuły Panteonu?', odp: ['Oculus', 'Atrium', 'Forum', 'Apsyda'], ok: 0,
+    wyjasn: 'Oculus („oko”) ma ok. 9 m średnicy — gdy pada deszcz, woda spływa do odpływów w posadzce.' },
+  { tytul: 'Zagłada Pompejów', data: '79 n.e.', maluj: scenaPompeje, kolor: '#ff7a26',
+    zajawka: 'Nad Zatoką Neapolitańską góra, którą uważano za wygasłą, nagle się budzi…',
+    opis: '<p>W <b>79 n.e.</b> wybuchł <b>Wezuwiusz</b>. Słup popiołu wzniósł się na kilkadziesiąt kilometrów i — jak pisał naoczny świadek <b>Pliniusz Młodszy</b> — rozłożył się na kształt korony <b>piniii</b>. Jego wuj, Pliniusz Starszy, zginął, płynąc na ratunek mieszkańcom.</p><p>Pompeje i Herkulanum zasypały popiół i gorące lawiny piroklastyczne. Miasta odkryto ponownie w <b>XVIII wieku</b> (wykopaliska w Pompejach od 1748 r.). Dzięki temu znamy domy, freski, a nawet napisy na murach sprzed blisko 2000 lat.</p>',
+    pytanie: 'Który wulkan zniszczył Pompeje?', odp: ['Etna', 'Wezuwiusz', 'Stromboli', 'Hekla'], ok: 1,
+    wyjasn: 'Wezuwiusz to jedyny czynny wulkan na kontynentalnej części Europy — wybuchał też m.in. w 1944 r.' },
+  { tytul: 'Wyścig rydwanów w Circus Maximus', data: 'I–IV w. n.e.', maluj: scenaCyrk, kolor: '#d4b048',
+    zajawka: 'Ćwierć miliona gardeł kibicuje swoim stronnictwom…',
+    opis: '<p><b>Circus Maximus</b> u stóp Palatynu był największą budowlą rozrywkową Rzymu — mieścił nawet <b>150–250 tysięcy widzów</b>. Woźnice w kwadrygach (rydwanach zaprzężonych w cztery konie) pokonywali <b>7 okrążeń</b> wokół <b>spiny</b> — środkowego muru z obeliskiem i metami na końcach.</p><p>Kibice dzielili się na stronnictwa: <b>Czerwonych, Białych, Zielonych i Niebieskich</b>. Poeta Juwenalis drwił, że lud pragnie tylko <i>panem et circenses</i> — „chleba i igrzysk”.</p>',
+    pytanie: 'Co oznacza łacińskie „panem et circenses”?', odp: ['Pokój i porządek', 'Chleba i igrzysk', 'Wojny i zwycięstwa', 'Pracy i modlitwy'], ok: 1,
+    wyjasn: 'Cesarze rozdawali zboże i organizowali widowiska, by zyskać przychylność ludu.' },
+  { tytul: 'Upadek Cesarstwa Zachodniorzymskiego', data: '476 n.e.', maluj: scenaUpadek, kolor: '#c0563a',
+    zajawka: 'Ostatni cesarz Zachodu nosi imię założyciela miasta. Historia zatacza koło…',
+    opis: '<p>W 395 r. cesarstwo podzielono na wschodnie i zachodnie. Zachód słabł: kryzysy gospodarcze, wojny domowe i najazdy plemion germańskich (Wizygoci złupili Rzym w 410 r., Wandalowie w 455 r.).</p><p>W <b>476 r.</b> germański wódz <b>Odoaker</b> zdetronizował ostatniego cesarza zachodniego, chłopca <b>Romulusa Augustulusa</b>, i odesłał insygnia do Konstantynopola. Tę datę uznaje się za <b>koniec starożytności</b>. Cesarstwo Wschodnie (Bizancjum) przetrwało aż do 1453 r.</p>',
+    pytanie: 'Kto w 476 r. zdetronizował ostatniego cesarza zachodniorzymskiego?', odp: ['Attyla', 'Odoaker', 'Hannibal', 'Konstantyn Wielki'], ok: 1,
+    wyjasn: 'Attyla, wódz Hunów, zmarł już w 453 r.; Hannibal walczył z Rzymem 700 lat wcześniej.' },
+];
+const TRUDNOSC = [
+  { zycia: 5, predkosc: 0.75, cel: -0.05, nazwa: 'Łatwy' },
+  { zycia: 3, predkosc: 1, cel: 0, nazwa: 'Normalny' },
+  { zycia: 3, predkosc: 1.2, cel: 0.04, nazwa: 'Legionista' },
+];
+function ustawieniaPoziomu(i) {
+  const t = TRUDNOSC[G.trudnosc];
+  return {
+    cel: Math.min(0.85, 0.70 + i * 0.01 + t.cel),
+    bossy: i === 8 ? 2 : 1,
+    bossV: (0.30 + 0.022 * i) * t.predkosc,
+    sludzy: [0, 0, 1, 1, 2, 2, 2, 3, 2][i],
+    iskry: [0, 1, 1, 1, 2, 2, 2, 3, 3][i],
+    iskraInterwal: G.trudnosc === 0 ? 5 : (i < 4 ? 4 : 3),
+  };
+}
+
+/* =========================================================================
+   ZASŁONA (velum)
+   ========================================================================= */
+function malujZaslone(c, nr) {
+  const r = losowanie(900 + nr);
+  c.fillStyle = gradR(c, W / 2, H / 2, 50, W * 0.7, [[0, '#262a36'], [1, '#101219']]); c.fillRect(0, 0, W, H);
+  for (let i = 0; i < 46; i++) {
+    c.strokeStyle = `rgba(200,210,230,${0.03 + r() * 0.08})`; c.lineWidth = 0.6 + r() * 2.2;
+    c.beginPath(); const x = r() * W, y = r() * H; c.moveTo(x, y);
+    c.bezierCurveTo(x + (r() - 0.5) * 400, y + (r() - 0.5) * 300, x + (r() - 0.5) * 400, y + (r() - 0.5) * 300, x + (r() - 0.5) * 600, y + (r() - 0.5) * 400); c.stroke();
+  }
+  const t = document.createElement('canvas'); t.width = t.height = 32; const k = t.getContext('2d');
+  k.strokeStyle = 'rgba(201,165,92,0.09)'; k.lineWidth = 2;
+  k.beginPath(); k.moveTo(2, 30); k.lineTo(2, 2); k.lineTo(26, 2); k.lineTo(26, 22); k.lineTo(10, 22); k.lineTo(10, 10); k.lineTo(18, 10); k.lineTo(18, 16); k.stroke();
+  c.fillStyle = c.createPattern(t, 'repeat'); c.fillRect(0, 0, W, H);
+  c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.fillStyle = 'rgba(201,165,92,0.14)'; c.font = '700 150px Cinzel, Georgia, serif'; c.fillText('S·P·Q·R', W / 2, H / 2 - 40);
+  c.font = '700 70px Cinzel, Georgia, serif'; c.fillText(rzymska(nr + 1), W / 2, H / 2 + 80);
+  c.strokeStyle = 'rgba(201,165,92,0.16)'; c.lineWidth = 3;
+  for (const s of [-1, 1]) for (let i = 0; i < 10; i++) {
+    const t = Math.PI / 2 + s * (0.45 + i * 0.21), x = W / 2 + Math.cos(t) * 330, y = H / 2 + 10 + Math.sin(t) * 250;
+    c.beginPath(); c.ellipse(x, y, 20, 7, t + Math.PI / 2 + s * 0.5, 0, Math.PI * 2); c.stroke();
+  }
+}
+
+/* =========================================================================
+   STAN GRY
+   ========================================================================= */
+const plotno = document.getElementById('gra'), ctx = plotno.getContext('2d');
+const g = new Uint8Array(N);               // 0 — zasłona, 1 — odsłonięte, 2 — ślad cięcia
+let obraz = null, zaslona = null;
+const komp = document.createElement('canvas'); komp.width = W; komp.height = H; const kctx = komp.getContext('2d');
+const maska = document.createElement('canvas'); maska.width = GW; maska.height = GH; const mctx = maska.getContext('2d');
+const maskaDane = mctx.createImageData(GW, GH);
+let krawedzieSciezka = new Path2D();
+const obrazyCache = {};
+
+const G = {
+  stan: 'menu', poziom: 0, punkty: 0, zycia: 3, trudnosc: 1, klatka: 0,
+  px: 0, py: 0, rysuje: false, slad: [], sx: 0, sy: 0, ruchLicznik: 0, bezruch: 0, lont: -1,
+  bossy: [], sludzy: [], iskry: [], czastki: [], niezn: 0, wstrzas: 0, procent: 0, ust: null,
+  odslonaT: 0, dzwiek: true, iskraDoSpawnu: 0, poprawne: 0, punktyStartPoziomu: 0,
+};
+let zapis = { odkryte: [], rekord: 0 };
+try { const z = JSON.parse(localStorage.getItem('velum-rzym') || 'null'); if (z && Array.isArray(z.odkryte)) zapis = z; } catch (e) {}
+function zapisz() { try { localStorage.setItem('velum-rzym', JSON.stringify(zapis)); } catch (e) {} }
+
+function pobierzObraz(i) {
+  if (!obrazyCache[i]) { const cv = document.createElement('canvas'); cv.width = W; cv.height = H; POZIOMY[i].maluj(cv.getContext('2d'), losowanie(17 + i * 101)); obrazyCache[i] = cv; }
+  return obrazyCache[i];
+}
+
+/* ---------- siatka ---------- */
+const idx = (x, y) => y * GW + x;
+function krawedz(n) {
+  if (g[n] !== 1) return false;
+  const x = n % GW, y = (n / GW) | 0;
+  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+    if (!dx && !dy) continue; const nx = x + dx, ny = y + dy;
+    if (nx < 0 || ny < 0 || nx >= GW || ny >= GH) continue;
+    if (g[ny * GW + nx] !== 1) return true;
+  }
+  return false;
+}
+function najblizszaKrawedz(start) {
+  const odw = new Uint8Array(N), q = [start]; odw[start] = 1;
+  for (let h = 0; h < q.length; h++) {
+    const c = q[h]; if (krawedz(c)) return c;
+    const x = c % GW, y = (c / GW) | 0;
+    for (const [dx, dy] of D4) { const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx >= GW || ny >= GH) continue; const n = ny * GW + nx; if (!odw[n] && g[n] === 1) { odw[n] = 1; q.push(n); } }
+  }
+  return -1;
+}
+function odswiezMaske() {
+  const d = maskaDane.data;
+  for (let i = 0; i < N; i++) d[i * 4 + 3] = g[i] === 1 ? 0 : 255;
+  mctx.putImageData(maskaDane, 0, 0);
+  kctx.globalCompositeOperation = 'source-over'; kctx.clearRect(0, 0, W, H); kctx.drawImage(zaslona, 0, 0);
+  kctx.globalCompositeOperation = 'destination-in'; kctx.imageSmoothingEnabled = false; kctx.drawImage(maska, 0, 0, W, H);
+  kctx.globalCompositeOperation = 'source-over';
+  const p = new Path2D();
+  for (let y = 0; y < GH; y++) for (let x = 0; x < GW; x++) {
+    if (g[y * GW + x] !== 1) continue;
+    if (x + 1 < GW && g[y * GW + x + 1] !== 1) { p.moveTo((x + 1) * CS, y * CS); p.lineTo((x + 1) * CS, (y + 1) * CS); }
+    if (x > 0 && g[y * GW + x - 1] !== 1) { p.moveTo(x * CS, y * CS); p.lineTo(x * CS, (y + 1) * CS); }
+    if (y + 1 < GH && g[(y + 1) * GW + x] !== 1) { p.moveTo(x * CS, (y + 1) * CS); p.lineTo((x + 1) * CS, (y + 1) * CS); }
+    if (y > 0 && g[(y - 1) * GW + x] !== 1) { p.moveTo(x * CS, y * CS); p.lineTo((x + 1) * CS, y * CS); }
+  }
+  krawedzieSciezka = p;
+  let zajete = 0; for (let y = 1; y < GH - 1; y++) for (let x = 1; x < GW - 1; x++) if (g[y * GW + x] === 1) zajete++;
+  G.procent = zajete / ((GW - 2) * (GH - 2));
+}
+
+/* ---------- start poziomu ---------- */
+function przygotujPoziom(i) {
+  G.poziom = i; G.ust = ustawieniaPoziomu(i);
+  obraz = pobierzObraz(i);
+  zaslona = document.createElement('canvas'); zaslona.width = W; zaslona.height = H; malujZaslone(zaslona.getContext('2d'), i);
+  g.fill(0);
+  for (let x = 0; x < GW; x++) { g[x] = 1; g[(GH - 1) * GW + x] = 1; }
+  for (let y = 0; y < GH; y++) { g[y * GW] = 1; g[y * GW + GW - 1] = 1; }
+  G.px = GW >> 1; G.py = GH - 1; G.rysuje = false; G.slad = []; G.lont = -1; G.bezruch = 0; G.niezn = 0;
+  G.bossy = []; G.sludzy = []; G.iskry = []; G.czastki = [];
+  for (let b = 0; b < G.ust.bossy; b++) {
+    const a = Math.random() * Math.PI * 2;
+    G.bossy.push({ x: GW / 2 + (b ? 20 : 0), y: GH / 2 - 6, vx: Math.cos(a) * G.ust.bossV, vy: Math.sin(a) * G.ust.bossV, v: G.ust.bossV, r: 2, kat: 0, hist: [], boss: true, odcien: b ? 200 : 0 });
+  }
+  for (let s = 0; s < G.ust.sludzy; s++) {
+    const a = Math.random() * Math.PI * 2, v = G.ust.bossV * 1.5;
+    G.sludzy.push({ x: 20 + Math.random() * (GW - 40), y: 15 + Math.random() * (GH - 40), vx: Math.cos(a) * v, vy: Math.sin(a) * v, r: 0.8, ogon: [] });
+  }
+  G.iskraDoSpawnu = G.ust.iskry; G.klatka = 0; G.punktyStartPoziomu = G.punkty;
+  odswiezMaske();
+}
+
+/* ---------- ruch gracza ---------- */
+const wcisniete = [];
+function kierunek() { return wcisniete.length ? KIER[wcisniete[wcisniete.length - 1]] : null; }
+function ruchGracza(d) {
+  const nx = G.px + d[0], ny = G.py + d[1];
+  if (nx < 0 || ny < 0 || nx >= GW || ny >= GH) return false;
+  const n = idx(nx, ny), c = g[n];
+  if (!G.rysuje) {
+    if (c === 1) { if (!krawedz(n)) return false; G.px = nx; G.py = ny; return true; }
+    if (c === 0) { G.rysuje = true; G.sx = G.px; G.sy = G.py; G.slad = [n]; g[n] = 2; G.px = nx; G.py = ny; ton(520, 0.05, 'square', 0.04); return true; }
+    return false;
+  }
+  if (c === 0) { g[n] = 2; G.slad.push(n); G.px = nx; G.py = ny; return true; }
+  if (c === 1) { G.px = nx; G.py = ny; zamknij(); return true; }
+  return false;
+}
+function zamknij() {
+  for (const t of G.slad) g[t] = 1;
+  const znak = new Uint8Array(N);
+  for (const b of G.bossy) {
+    let s = idx(Math.floor(b.x), Math.floor(b.y));
+    if (g[s] !== 0) s = najblizszaPusta(b.x, b.y);
+    if (s < 0 || znak[s]) continue;
+    const st = [s]; znak[s] = 1;
+    while (st.length) {
+      const c = st.pop(), x = c % GW, y = (c / GW) | 0;
+      for (const [dx, dy] of D4) { const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx >= GW || ny >= GH) continue; const n = ny * GW + nx; if (!znak[n] && g[n] === 0) { znak[n] = 1; st.push(n); } }
+    }
+  }
+  const nowe = [];
+  for (let i = 0; i < N; i++) if (g[i] === 0 && !znak[i]) { g[i] = 1; nowe.push(i); }
+  const ile = nowe.length + G.slad.length;
+  const mnoznik = ile > 1200 ? 2 : ile > 500 ? 1.5 : 1;
+  dodajPunkty(Math.round(ile * 10 * mnoznik), G.px, G.py);
+  for (let k = 0; k < Math.min(70, nowe.length); k++) { const c = nowe[(Math.random() * nowe.length) | 0]; iskierki((c % GW + 0.5) * CS, (((c / GW) | 0) + 0.5) * CS, 1, '#ffe08a'); }
+  for (let k = G.sludzy.length - 1; k >= 0; k--) {
+    const s = G.sludzy[k];
+    if (g[idx(Math.floor(s.x), Math.floor(s.y))] === 1) { iskierki(s.x * CS, s.y * CS, 24, '#ff9a3c'); dodajPunkty(500, s.x, s.y); G.sludzy.splice(k, 1); ton(220, 0.25, 'sawtooth', 0.06); }
+  }
+  G.rysuje = false; G.slad = []; G.lont = -1;
+  odswiezMaske();
+  if (!krawedz(idx(G.px, G.py))) { const k = najblizszaKrawedz(idx(G.px, G.py)); if (k >= 0) { G.px = k % GW; G.py = (k / GW) | 0; } }
+  for (const s of G.iskry) if (!krawedz(s.c)) { s.c = najblizszaKrawedz(s.c); s.prev = -1; }
+  arpeggio([523, 659, 784, 1046], 0.07);
+  if (G.procent >= G.ust.cel) wygranaPoziomu();
+}
+function najblizszaPusta(fx, fy) {
+  const cx = Math.floor(fx), cy = Math.floor(fy);
+  for (let rr = 1; rr < 8; rr++) for (let dy = -rr; dy <= rr; dy++) for (let dx = -rr; dx <= rr; dx++) {
+    const x = cx + dx, y = cy + dy; if (x < 0 || y < 0 || x >= GW || y >= GH) continue; if (g[idx(x, y)] === 0) return idx(x, y);
+  }
+  return -1;
+}
+function smierc(zrodloX, zrodloY) {
+  if (G.niezn > 0 || G.stan !== 'gra') return;
+  iskierki((G.px + 0.5) * CS, (G.py + 0.5) * CS, 40, '#ff4a3a');
+  if (G.rysuje) { for (const t of G.slad) g[t] = 0; G.px = G.sx; G.py = G.sy; }
+  G.rysuje = false; G.slad = []; G.lont = -1; G.bezruch = 0;
+  G.zycia--; G.wstrzas = 18; G.niezn = 120;
+  ton(180, 0.5, 'sawtooth', 0.09, 60);
+  if (!krawedz(idx(G.px, G.py))) { const k = najblizszaKrawedz(idx(G.px, G.py)); if (k >= 0) { G.px = k % GW; G.py = (k / GW) | 0; } }
+  if (G.zycia <= 0) koniecGry();
+}
+
+/* ---------- wrogowie ---------- */
+function zablokowane(x, y) { const cx = Math.floor(x), cy = Math.floor(y); if (cx < 0 || cy < 0 || cx >= GW || cy >= GH) return true; return g[cy * GW + cx] === 1; }
+function ruchOdbijacza(b, chaos) {
+  if (chaos && Math.random() < 0.025) { const a = Math.atan2(b.vy, b.vx) + (Math.random() - 0.5) * 1.6, v = Math.hypot(b.vx, b.vy); b.vx = Math.cos(a) * v; b.vy = Math.sin(a) * v; }
+  const sx = Math.sign(b.vx) || 1, sy = Math.sign(b.vy) || 1;
+  if (zablokowane(b.x + b.vx + sx * b.r, b.y) || zablokowane(b.x + b.vx + sx * b.r, b.y + b.r * 0.7) || zablokowane(b.x + b.vx + sx * b.r, b.y - b.r * 0.7)) b.vx = -b.vx; else b.x += b.vx;
+  if (zablokowane(b.x, b.y + b.vy + sy * b.r) || zablokowane(b.x + b.r * 0.7, b.y + b.vy + sy * b.r) || zablokowane(b.x - b.r * 0.7, b.y + b.vy + sy * b.r)) b.vy = -b.vy; else b.y += b.vy;
+  if (zablokowane(b.x, b.y)) { const s = najblizszaPusta(b.x, b.y); if (s >= 0) { b.x = s % GW + 0.5; b.y = ((s / GW) | 0) + 0.5; } }
+}
+function kolizjaZeSladem(b) {
+  if (!G.rysuje) return false;
+  const r = b.r, x0 = Math.floor(b.x - r), x1 = Math.floor(b.x + r), y0 = Math.floor(b.y - r), y1 = Math.floor(b.y + r);
+  for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+    if (x < 0 || y < 0 || x >= GW || y >= GH) continue;
+    if (g[y * GW + x] === 2 && Math.hypot(x + 0.5 - b.x, y + 0.5 - b.y) < r + 0.45) return true;
+  }
+  return Math.hypot(G.px + 0.5 - b.x, G.py + 0.5 - b.y) < r + 0.5;
+}
+function ruchIskry(s) {
+  if (s.c < 0 || !krawedz(s.c)) { s.c = najblizszaKrawedz(s.c < 0 ? idx(GW >> 1, 0) : s.c); s.prev = -1; if (s.c < 0) return; }
+  const x = s.c % GW, y = (s.c / GW) | 0, kand = [];
+  for (const [dx, dy] of D4) { const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx >= GW || ny >= GH) continue; const n = ny * GW + nx; if (n !== s.prev && krawedz(n)) kand.push([n, dx, dy]); }
+  if (!kand.length) { if (s.prev >= 0 && krawedz(s.prev)) { const t = s.c; s.c = s.prev; s.prev = t; } return; }
+  let w = kand.find(k => k[1] === s.dx && k[2] === s.dy);
+  if (!w || Math.random() < 0.12) w = kand[(Math.random() * kand.length) | 0];
+  s.prev = s.c; s.c = w[0]; s.dx = w[1]; s.dy = w[2];
+}
+
+/* ---------- pętla ---------- */
+function krok() {
+  G.klatka++;
+  aktualizujCzastki();
+  if (G.wstrzas > 0) G.wstrzas--;
+  if (G.stan === 'odslona') { G.odslonaT++; if (G.odslonaT === 80) pokazKarte(); return; }
+  if (G.stan !== 'gra') return;
+  if (G.niezn > 0) G.niezn--;
+  const d = kierunek();
+  G.ruchLicznik++;
+  if (d) { G.bezruch = 0; if (G.lont >= 0) G.lont = -1; if (G.ruchLicznik >= 2) { G.ruchLicznik = 0; ruchGracza(d); if (G.stan !== 'gra') return; } }
+  else if (G.rysuje) {
+    G.bezruch++;
+    if (G.bezruch > 50) { if (G.lont < 0) G.lont = 0; if (G.klatka % 3 === 0) G.lont++; if (G.lont >= G.slad.length) { smierc(); if (G.stan !== 'gra') return; } }
+  }
+  if (G.iskraDoSpawnu > 0 && G.klatka % 200 === 0) { G.iskraDoSpawnu--; const c = najblizszaKrawedz(idx(GW >> 1, 0)); G.iskry.push({ c, prev: -1, dx: Math.random() < 0.5 ? 1 : -1, dy: 0 }); iskierki((c % GW) * CS, 4, 12, '#7fe0ff'); }
+  for (const b of G.bossy) {
+    ruchOdbijacza(b, true); b.kat += 0.11;
+    if (G.niezn <= 0 && kolizjaZeSladem(b)) { smierc(); if (G.stan !== 'gra') return; }
+  }
+  for (const s of G.sludzy) {
+    ruchOdbijacza(s, false); s.ogon.push([s.x, s.y]); if (s.ogon.length > 8) s.ogon.shift();
+    if (G.niezn <= 0 && kolizjaZeSladem(s)) { smierc(); if (G.stan !== 'gra') return; }
+  }
+  for (const s of G.iskry) {
+    if (G.klatka % G.ust.iskraInterwal === 0) ruchIskry(s);
+    if (s.c >= 0 && G.niezn <= 0) { const sx = s.c % GW, sy = (s.c / GW) | 0; if (Math.abs(sx - G.px) <= 1 && Math.abs(sy - G.py) <= 1) { smierc(); if (G.stan !== 'gra') return; } }
+  }
+}
+
+/* ---------- cząstki i punkty ---------- */
+function iskierki(x, y, n, kolor) {
+  for (let i = 0; i < n; i++) { const a = Math.random() * Math.PI * 2, v = 0.5 + Math.random() * 3; G.czastki.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 0.5, zycie: 30 + Math.random() * 30, kolor }); }
+}
+function dodajPunkty(p, cx, cy) { G.punkty += p; G.czastki.push({ x: (cx + 0.5) * CS, y: (cy + 0.5) * CS - 10, vx: 0, vy: -0.6, zycie: 60, tekst: '+' + p, kolor: '#ffe08a' }); }
+function aktualizujCzastki() {
+  for (let i = G.czastki.length - 1; i >= 0; i--) { const p = G.czastki[i]; p.x += p.vx; p.y += p.vy; if (!p.tekst) { p.vy += 0.05; p.vx *= 0.98; } if (--p.zycie <= 0) G.czastki.splice(i, 1); }
+}
+
+/* ---------- rysowanie ---------- */
+function rysuj() {
+  ctx.save();
+  if (G.wstrzas > 0) ctx.translate((Math.random() - 0.5) * G.wstrzas * 0.8, (Math.random() - 0.5) * G.wstrzas * 0.8);
+  if (obraz) ctx.drawImage(obraz, 0, 0); else { ctx.fillStyle = '#111'; ctx.fillRect(0, 0, W, H); }
+  const wGrze = ['gra', 'pauza', 'intro', 'koniec'].includes(G.stan);
+  if (wGrze || G.stan === 'odslona') {
+    ctx.globalAlpha = G.stan === 'odslona' ? Math.max(0, 1 - G.odslonaT / 70) : 1;
+    ctx.drawImage(komp, 0, 0);
+    ctx.globalAlpha = 1;
+  }
+  if (wGrze) {
+    ctx.strokeStyle = 'rgba(255,215,120,0.35)'; ctx.lineWidth = 5; ctx.stroke(krawedzieSciezka);
+    ctx.strokeStyle = '#e8c76f'; ctx.lineWidth = 1.6; ctx.stroke(krawedzieSciezka);
+    rysujSlad(); rysujWrogow(); rysujGracza();
+  }
+  for (const p of G.czastki) {
+    ctx.globalAlpha = Math.min(1, p.zycie / 30);
+    if (p.tekst) { ctx.fillStyle = p.kolor; ctx.font = '700 16px Cinzel, Georgia, serif'; ctx.textAlign = 'center'; ctx.fillText(p.tekst, p.x, p.y); }
+    else { ctx.fillStyle = p.kolor; ctx.fillRect(p.x - 1.5, p.y - 1.5, 3, 3); }
+  }
+  ctx.globalAlpha = 1;
+  ctx.restore();
+  aktualizujHud();
+}
+function rysujSlad() {
+  if (!G.rysuje || !G.slad.length) return;
+  const pkt = [[(G.sx + 0.5) * CS, (G.sy + 0.5) * CS]].concat(G.slad.map(c => [(c % GW + 0.5) * CS, (((c / GW) | 0) + 0.5) * CS]));
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  ctx.strokeStyle = 'rgba(255,90,40,0.35)'; ctx.lineWidth = 7; ctx.beginPath(); pkt.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)); ctx.stroke();
+  ctx.strokeStyle = '#ffd36b'; ctx.lineWidth = 2.6; ctx.stroke();
+  if (G.lont >= 0) {
+    ctx.strokeStyle = '#3a1a10'; ctx.lineWidth = 3; ctx.beginPath(); for (let i = 0; i <= Math.min(G.lont + 1, pkt.length - 1); i++) i ? ctx.lineTo(pkt[i][0], pkt[i][1]) : ctx.moveTo(pkt[i][0], pkt[i][1]); ctx.stroke();
+    const [fx, fy] = pkt[Math.min(G.lont + 1, pkt.length - 1)];
+    ctx.fillStyle = gradR(ctx, fx, fy, 0, 12, [[0, '#fff'], [0.3, '#ffb030'], [1, 'rgba(255,60,0,0)']]); ctx.beginPath(); ctx.arc(fx, fy, 12, 0, Math.PI * 2); ctx.fill();
+    if (G.klatka % 2) iskierki(fx, fy, 1, '#ffb030');
+  }
+  ctx.lineCap = 'butt';
+}
+function rysujGracza() {
+  if (G.niezn > 0 && (G.klatka >> 2) % 2) return;
+  const x = (G.px + 0.5) * CS, y = (G.py + 0.5) * CS, p = 1 + 0.25 * Math.sin(G.klatka * 0.2);
+  ctx.fillStyle = gradR(ctx, x, y, 0, 16 * p, [[0, 'rgba(255,230,150,0.75)'], [1, 'rgba(255,200,80,0)']]); ctx.beginPath(); ctx.arc(x, y, 16 * p, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#b8262a'; ctx.beginPath(); ctx.moveTo(x, y - 8); ctx.lineTo(x + 7, y); ctx.lineTo(x, y + 8); ctx.lineTo(x - 7, y); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = '#ffe08a'; ctx.lineWidth = 2; ctx.stroke();
+  ctx.fillStyle = '#fff6d8'; ctx.beginPath(); ctx.arc(x, y, 2.5, 0, Math.PI * 2); ctx.fill();
+}
+function rysujWrogow() {
+  const kol = POZIOMY[G.poziom].kolor;
+  for (const b of G.bossy) {
+    const x = b.x * CS, y = b.y * CS, L = b.r * CS * 1.9 * (0.75 + 0.25 * Math.sin(G.klatka * 0.07));
+    b.hist.push([x + Math.cos(b.kat) * L, y + Math.sin(b.kat) * L, x - Math.cos(b.kat * 1.7) * L, y - Math.sin(b.kat * 1.7) * L]);
+    if (b.hist.length > 10) b.hist.shift();
+    ctx.fillStyle = gradR(ctx, x, y, 0, L * 1.5, [[0, 'rgba(255,80,60,0.45)'], [1, 'rgba(255,40,40,0)']]); ctx.beginPath(); ctx.arc(x, y, L * 1.5, 0, Math.PI * 2); ctx.fill();
+    b.hist.forEach((h, i) => {
+      ctx.strokeStyle = `hsla(${(G.klatka * 3 + i * 18 + b.odcien) % 360},90%,${55 + i * 3}%,${(i + 1) / b.hist.length})`;
+      ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(h[0], h[1]); ctx.lineTo(h[2], h[3]); ctx.stroke();
+    });
+    ctx.fillStyle = '#1a0a0a'; ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = kol; ctx.lineWidth = 2; ctx.stroke();
+  }
+  for (const s of G.sludzy) {
+    s.ogon.forEach(([ox, oy], i) => { ctx.fillStyle = `rgba(255,140,40,${i / s.ogon.length * 0.5})`; ctx.beginPath(); ctx.arc(ox * CS, oy * CS, 2 + i * 0.4, 0, Math.PI * 2); ctx.fill(); });
+    const x = s.x * CS, y = s.y * CS;
+    ctx.fillStyle = gradR(ctx, x, y, 0, 10, [[0, '#fff3c0'], [0.35, '#ff9a3c'], [1, 'rgba(255,60,0,0)']]); ctx.beginPath(); ctx.arc(x, y, 10, 0, Math.PI * 2); ctx.fill();
+  }
+  for (const s of G.iskry) {
+    if (s.c < 0) continue;
+    const x = (s.c % GW + 0.5) * CS, y = (((s.c / GW) | 0) + 0.5) * CS, a = G.klatka * 0.3;
+    ctx.fillStyle = gradR(ctx, x, y, 0, 12, [[0, 'rgba(160,240,255,0.9)'], [1, 'rgba(60,180,255,0)']]); ctx.beginPath(); ctx.arc(x, y, 12, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#eaffff'; ctx.lineWidth = 2; ctx.beginPath();
+    for (let k = 0; k < 4; k++) { const aa = a + k * Math.PI / 2; ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(aa) * 8, y + Math.sin(aa) * 8); } ctx.stroke();
+  }
+}
+
+/* ---------- HUD ---------- */
+const $ = id => document.getElementById(id);
+let hudPoprz = '';
+function aktualizujHud() {
+  const cel = G.ust ? G.ust.cel : 0.75;
+  const s = [G.poziom, Math.floor(G.procent * 1000), G.zycia, G.punkty, G.stan].join('|');
+  if (s === hudPoprz) return; hudPoprz = s;
+  $('h-poziom').textContent = G.stan === 'menu' ? 'Starożytny Rzym' : `${rzymska(G.poziom + 1)}. ${POZIOMY[G.poziom].tytul}`;
+  $('pasek-wyp').style.width = Math.min(100, G.procent / cel * 100) + '%';
+  $('pasek-cel').style.left = 'calc(100% - 2px)';
+  $('procent').textContent = `${(G.procent * 100).toFixed(1)}% / ${Math.round(cel * 100)}%`;
+  $('zycia').textContent = '♥'.repeat(Math.max(0, G.zycia)) || '—';
+  $('punkty').textContent = G.punkty.toLocaleString('pl-PL');
+}
+
+/* =========================================================================
+   EKRANY
+   ========================================================================= */
+function pokaz(id) {
+  for (const e of ['ekran-start', 'ekran-intro', 'ekran-pauza', 'karta', 'ekran-koniec', 'ekran-galeria']) $(e).classList.toggle('ukryta', e !== id);
+}
+function doMenu() { G.stan = 'menu'; obraz = pobierzObraz(zapis.odkryte.length ? zapis.odkryte[zapis.odkryte.length - 1] : 0); pokaz('ekran-start'); }
+function nowaGra(od = 0) { G.punkty = 0; G.zycia = TRUDNOSC[G.trudnosc].zycia; G.poprawne = 0; intro(od); }
+function intro(i) {
+  przygotujPoziom(i);
+  G.stan = 'intro';
+  $('i-nr').textContent = `OBRAZ ${rzymska(i + 1)} Z ${rzymska(POZIOMY.length)}`;
+  $('i-tytul').textContent = '???';
+  $('i-data').textContent = POZIOMY[i].data;
+  $('i-zajawka').textContent = POZIOMY[i].zajawka;
+  $('i-cel').innerHTML = `Odsłoń <b>${Math.round(G.ust.cel * 100)}%</b> obrazu · wrogowie: ${G.ust.bossy + G.ust.sludzy} · iskry: ${G.ust.iskry}`;
+  pokaz('ekran-intro');
+  setTimeout(() => $('b-start').focus(), 50);
+}
+function startPoziomu() { odblokujAudio(); G.stan = 'gra'; pokaz(null); }
+function pauza(wl) {
+  if (wl && G.stan === 'gra') { G.stan = 'pauza'; pokaz('ekran-pauza'); }
+  else if (!wl && G.stan === 'pauza') { G.stan = 'gra'; pokaz(null); }
+}
+function wygranaPoziomu() {
+  const nadwyzka = Math.max(0, G.procent - G.ust.cel);
+  const bonus = Math.round(nadwyzka * 20000) + G.zycia * 300;
+  G.punkty += bonus;
+  G.ostatniBonus = bonus;
+  G.stan = 'odslona'; G.odslonaT = 0; wcisniete.length = 0;
+  if (!zapis.odkryte.includes(G.poziom)) zapis.odkryte.push(G.poziom);
+  zapisz();
+  arpeggio([392, 523, 659, 784, 1046, 1318], 0.12);
+  for (let i = 0; i < 160; i++) iskierki(Math.random() * W, Math.random() * H, 1, '#ffe08a');
+}
+function pokazKarte() {
+  const p = POZIOMY[G.poziom];
+  G.stan = 'karta';
+  $('k-data').textContent = `${rzymska(G.poziom + 1)} · ${p.data}`;
+  $('k-tytul').textContent = p.tytul;
+  $('k-opis').innerHTML = p.opis;
+  $('k-pyt').textContent = p.pytanie;
+  $('k-werdykt').textContent = '';
+  $('k-bonus').textContent = `Bonus za poziom: +${G.ostatniBonus}`;
+  const box = $('k-odp'); box.innerHTML = '';
+  const kolejnosc = p.odp.map((t, i) => i).sort(() => Math.random() - 0.5);
+  for (const i of kolejnosc) {
+    const b = document.createElement('button'); b.className = 'odp'; b.textContent = p.odp[i];
+    b.onclick = () => {
+      for (const x of box.children) x.disabled = true;
+      if (i === p.ok) {
+        b.classList.add('dobra'); G.punkty += 1000; G.poprawne++;
+        let t = '✔ Brawo! +1000 pkt.'; if (G.zycia < 5) { G.zycia++; t += ' +1 życie.'; }
+        $('k-werdykt').innerHTML = `${t}<br><span style="opacity:.85">${p.wyjasn}</span>`; arpeggio([660, 880, 1320], 0.08);
+      } else {
+        b.classList.add('zla'); [...box.children].find(x => x.textContent === p.odp[p.ok]).classList.add('dobra');
+        $('k-werdykt').innerHTML = `✘ Niestety. Poprawna odpowiedź: <b>${p.odp[p.ok]}</b>.<br><span style="opacity:.85">${p.wyjasn}</span>`; ton(200, 0.3, 'triangle', 0.08);
+      }
+      $('b-dalej').disabled = false; $('b-dalej').focus();
+    };
+    box.appendChild(b);
+  }
+  $('b-dalej').disabled = true;
+  $('karta').classList.remove('schowana'); $('pokaz-obraz').textContent = 'Pokaż obraz';
+  pokaz('karta');
+}
+function dalej() {
+  if (G.poziom + 1 < POZIOMY.length) intro(G.poziom + 1);
+  else {
+    G.stan = 'koniec'; obraz = pobierzObraz(POZIOMY.length - 1);
+    zapis.rekord = Math.max(zapis.rekord, G.punkty); zapisz();
+    $('ko-laur').textContent = '❦ TRIUMF ❦';
+    $('ko-tytul').textContent = 'Ave, odkrywco!';
+    $('ko-tekst').innerHTML = `Odsłoniłeś wszystkie ${POZIOMY.length} obrazów — od założenia Rzymu (753 p.n.e.) po upadek cesarstwa zachodniego (476 n.e.).<br>Wynik: <b>${G.punkty.toLocaleString('pl-PL')}</b> pkt · poprawne odpowiedzi: <b>${G.poprawne}/${POZIOMY.length}</b><br>Rekord: ${zapis.rekord.toLocaleString('pl-PL')} pkt`;
+    $('b-ponow').textContent = 'ZAGRAJ OD NOWA'; G.ponowOd = 0;
+    pokaz('ekran-koniec');
+  }
+}
+function koniecGry() {
+  G.stan = 'koniec';
+  zapis.rekord = Math.max(zapis.rekord, G.punkty); zapisz();
+  $('ko-laur').textContent = '✝';
+  $('ko-tytul').textContent = 'Vae victis! — Biada zwyciężonym!';
+  $('ko-tekst').innerHTML = `Zasłona obrazu „${POZIOMY[G.poziom].tytul}” okazała się zbyt mocna.<br>Odsłonięto ${(G.procent * 100).toFixed(1)}% · wynik: <b>${G.punkty.toLocaleString('pl-PL')}</b> pkt<br>Możesz spróbować ponownie od tego obrazu (wynik liczy się od nowa).`;
+  $('b-ponow').textContent = 'SPRÓBUJ PONOWNIE'; G.ponowOd = G.poziom;
+  ton(140, 0.9, 'sawtooth', 0.08, 50);
+  setTimeout(() => pokaz('ekran-koniec'), 700);
+}
+function galeria() {
+  pokaz('ekran-galeria'); G.stan = 'menu';
+  const s = $('siatka'); s.innerHTML = ''; $('podglad').innerHTML = '';
+  POZIOMY.forEach((p, i) => {
+    const b = document.createElement('button');
+    if (zapis.odkryte.includes(i)) {
+      b.className = 'kafel';
+      const cv = document.createElement('canvas'); cv.width = 256; cv.height = 168; cv.getContext('2d').drawImage(pobierzObraz(i), 0, 0, 256, 168);
+      b.appendChild(cv); const sp = document.createElement('span'); sp.textContent = `${rzymska(i + 1)}. ${p.tytul}`; b.appendChild(sp);
+      b.onclick = () => {
+        const pg = $('podglad'); pg.innerHTML = '';
+        const big = document.createElement('canvas'); big.width = W; big.height = H; big.getContext('2d').drawImage(pobierzObraz(i), 0, 0); pg.appendChild(big);
+        const t = document.createElement('div'); t.style.textAlign = 'left';
+        t.innerHTML = `<h2 style="margin-top:10px">${p.tytul}</h2><div class="data">${p.data}</div>${p.opis}`;
+        const gr = document.createElement('button'); gr.className = 'duzy'; gr.textContent = 'ZAGRAJ OD TEGO OBRAZU'; gr.onclick = () => nowaGra(i);
+        t.appendChild(gr); pg.appendChild(t); pg.scrollIntoView({ behavior: 'smooth' });
+      };
+    } else { b.className = 'kafel zamk'; b.textContent = rzymska(i + 1); b.title = 'Jeszcze zasłonięty'; b.disabled = true; }
+    s.appendChild(b);
+  });
+}
+
+/* =========================================================================
+   DŹWIĘK (WebAudio)
+   ========================================================================= */
+let ac = null;
+function odblokujAudio() { if (!ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} } if (ac && ac.state === 'suspended') ac.resume(); }
+function ton(f, dl, typ = 'sine', gl = 0.06, fKon) {
+  if (!G.dzwiek || !ac) return;
+  const o = ac.createOscillator(), v = ac.createGain(), t = ac.currentTime;
+  o.type = typ; o.frequency.setValueAtTime(f, t); if (fKon) o.frequency.exponentialRampToValueAtTime(fKon, t + dl);
+  v.gain.setValueAtTime(gl, t); v.gain.exponentialRampToValueAtTime(0.0001, t + dl);
+  o.connect(v); v.connect(ac.destination); o.start(t); o.stop(t + dl + 0.02);
+}
+function arpeggio(fs, krok) { fs.forEach((f, i) => setTimeout(() => ton(f, 0.18, 'triangle', 0.06), i * krok * 1000)); }
+
+/* =========================================================================
+   STEROWANIE
+   ========================================================================= */
+const KLAWISZE = { ArrowUp: 'g', KeyW: 'g', ArrowDown: 'd', KeyS: 'd', ArrowLeft: 'l', KeyA: 'l', ArrowRight: 'p', KeyD: 'p' };
+function wcisnij(k) { const i = wcisniete.indexOf(k); if (i >= 0) wcisniete.splice(i, 1); wcisniete.push(k); }
+function pusc(k) { const i = wcisniete.indexOf(k); if (i >= 0) wcisniete.splice(i, 1); }
+addEventListener('keydown', e => {
+  const k = KLAWISZE[e.code];
+  if (k && (G.stan === 'gra')) { e.preventDefault(); wcisnij(k); return; }
+  if (e.code === 'KeyP' || e.code === 'Escape') { pauza(G.stan === 'gra'); }
+  if (e.code === 'KeyM') przelaczDzwiek();
+  if (e.code === 'Space' && G.stan === 'gra') { e.preventDefault(); pauza(true); }
+});
+addEventListener('keyup', e => { const k = KLAWISZE[e.code]; if (k) pusc(k); });
+addEventListener('blur', () => { wcisniete.length = 0; if (G.stan === 'gra') pauza(true); });
+document.querySelectorAll('#pad button').forEach(b => {
+  const k = b.dataset.k;
+  b.addEventListener('pointerdown', e => { e.preventDefault(); b.setPointerCapture(e.pointerId); wcisnij(k); b.classList.add('wcisniety'); odblokujAudio(); });
+  const up = () => { pusc(k); b.classList.remove('wcisniety'); };
+  b.addEventListener('pointerup', up); b.addEventListener('pointercancel', up); b.addEventListener('lostpointercapture', up);
+});
+if (matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window) document.body.classList.add('dotyk');
+function przelaczDzwiek() { G.dzwiek = !G.dzwiek; $('b-dzwiek').textContent = G.dzwiek ? '♪' : '✕'; }
+
+$('b-graj').onclick = () => { odblokujAudio(); nowaGra(0); };
+$('b-galeria').onclick = galeria;
+$('b-start').onclick = startPoziomu;
+$('b-wznow').onclick = () => pauza(false);
+$('b-pauza').onclick = () => pauza(G.stan === 'gra');
+$('b-dzwiek').onclick = przelaczDzwiek;
+$('b-dalej').onclick = dalej;
+$('b-ponow').onclick = () => nowaGra(G.ponowOd || 0);
+for (const id of ['b-menu1', 'b-menu2', 'b-menu3']) $(id).onclick = doMenu;
+$('pokaz-obraz').onclick = () => { const k = $('karta'); k.classList.toggle('schowana'); $('pokaz-obraz').textContent = k.classList.contains('schowana') ? 'Pokaż opis' : 'Pokaż obraz'; };
+document.querySelectorAll('#trudnosc button').forEach(b => b.onclick = () => {
+  G.trudnosc = +b.dataset.t; document.querySelectorAll('#trudnosc button').forEach(x => x.classList.toggle('akt', x === b));
+});
+
+let ostatni = 0, akum = 0;
+function petla(t) {
+  requestAnimationFrame(petla);
+  const dt = Math.min(100, t - (ostatni || t)); ostatni = t; akum += dt;
+  while (akum >= 1000 / 60) { krok(); akum -= 1000 / 60; }
+  rysuj();
+}
+doMenu();
+requestAnimationFrame(petla);
+// haki testowe
+window.__velum = { G, g, krok, krawedz, idx, wcisniete, dalej, POZIOMY, pobierzObraz, przygotujPoziom, zamknij, wygranaPoziomu, nowaGra, startPoziomu };
+</script>
+</body>
+</html>

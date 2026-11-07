@@ -8,6 +8,10 @@ https://adscisel-alt.github.io/gry-historyczne/
 - `os-czasu-konkurs.html` — trening konkursowy, pełna historia Polski 966–2004
 - `os-czasu-historia-7.html` — klasa VII (1815–1939)
 - `os-czasu-historia-6.html` — klasa VI (1450–1815)
+- `velum-rzym.html` — „VELUM — Odsłoń starożytny Rzym”, zręcznościowa gra typu Qix/Volfied: odcinasz kawałki
+  marmurowej zasłony (ok. 70–80% planszy), unikając wrogów, iskier na krawędziach i płonącego lontu, by odsłonić
+  9 obrazów z dziejów Rzymu (753 p.n.e.–476 n.e.); po każdym opis historyczny i pytanie quizowe, galeria,
+  3 poziomy trudności, sterowanie klawiaturą i przyciskami dotykowymi; obrazy malowane kodem na canvasie
 - `forum-romanum.html` — wirtualny spacer 3D po Forum Romanum (three.js w `vendor/`)
 - `cyberdetektyw.html` — „Damian Teacher: Cyberdetektyw”, klockowa gra RPG 3D o zasadach bezpieczeństwa
   w internecie dla klas VI–VIII (Szkoła Mentis): 9 spraw z quizami i słowniczkiem PL–EN (m.in. AI, deepfake,
