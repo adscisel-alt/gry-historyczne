@@ -1,0 +1,45 @@
+name: Zamość — zbuduj EXE dla Windows
+
+# Kompiluje grę „Jan Zamoyski i Miasto Idealne” (Python + Pygame) do jednego
+# pliku ZamoyskiMiastoIdealne.exe na Windows i uruchamia go w trybie zrzutów
+# ekranu jako test. Gotowy EXE jest w artefaktach przebiegu.
+on:
+  push:
+    paths:
+      - "zamosc/**"
+      - ".github/workflows/zamosc-exe.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows-exe:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: zamosc
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Zależności
+        run: python -m pip install -r requirements.txt pyinstaller
+      - name: Kompilacja do EXE
+        run: python -m PyInstaller --noconfirm zamosc.spec
+      - name: Test uruchomienia EXE (zrzuty ekranu)
+        shell: pwsh
+        run: |
+          Start-Process -FilePath "dist\ZamoyskiMiastoIdealne.exe" -ArgumentList "--zrzuty","zrzuty_windows" -Wait
+          Get-ChildItem zrzuty_windows
+          if ((Get-ChildItem zrzuty_windows\*.png).Count -lt 11) { throw "EXE nie wygenerowal zrzutow" }
+          Get-Item dist\ZamoyskiMiastoIdealne.exe | Select-Object Name, Length
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ZamoyskiMiastoIdealne-Windows
+          path: zamosc/dist/ZamoyskiMiastoIdealne.exe
+      - uses: actions/upload-artifact@v4
+        with:
+          name: zrzuty-ekranu-windows
+          path: zamosc/zrzuty_windows/

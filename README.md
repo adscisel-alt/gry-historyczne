@@ -15,6 +15,15 @@ https://adscisel-alt.github.io/gry-historyczne/
 - `kroniki-damiana-scisla/` — „Kroniki Damiana Ścisła”, turowa strategia (Python + Pygame, grafika 3D renderowana w Blenderze, EXE na Windows) o Polsce
   966–1410: 6 rozdziałów, 4 epoki, 20 technologii z zagadkami, bitwy kartami, 12 postaci; EXE buduje
   `.github/workflows/kroniki-exe.yml`
+- `zamosc/` — „Jan Zamoyski i Miasto Idealne”, gra strategiczna pixel-art (Python + Pygame) dla 10–12 lat,
+  kompilowana do `ZamoyskiMiastoIdealne.exe` (Windows) przez `.github/workflows/zamosc-exe.yml`
+- `zamosc3d/` — „Jan Zamoyski i Miasto Idealne 3D”: ta sama gra w 3D (modele z Blendera, silnik Godot 4.3),
+  eksport do `ZamoyskiMiastoIdealne3D.exe` przez `.github/workflows/zamosc3d-exe.yml`
+- `dmowski3d/` — „Roman Dmowski. Droga do Wersalu 3D”: strategia 3D o latach 1914–1919 (4 kampanie: Warszawa,
+  Lozanna, Błękitna Armia we Francji, konferencja w Paryżu), Blender + Godot 4.3, eksport do
+  `DmowskiDrogaDoWersalu3D.exe` przez `.github/workflows/dmowski3d-exe.yml`
+- Obie gry 3D z Godota (`zamosc3d`, `dmowski3d`) mają też wersje przeglądarkowe: `pages.yml` buduje je
+  przy publikacji strony (`/zamosc3d/graj/`, `/dmowski3d/graj/`)
 
 Wszystkie strony są samowystarczalne (działają offline, bez zależności sieciowych).
 Deploy: `.github/workflows/pages.yml` publikuje główną gałąź przy każdym pushu.

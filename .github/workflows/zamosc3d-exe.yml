@@ -1,0 +1,53 @@
+name: Zamość 3D — zbuduj EXE (Godot)
+
+# Eksportuje grę „Jan Zamoyski i Miasto Idealne 3D” (Godot 4.3) do pliku EXE
+# dla Windows, uruchamia autotest przejścia wszystkich rozdziałów i robi
+# zrzuty ekranu z prawdziwego renderowania (Xvfb + Mesa).
+on:
+  push:
+    paths:
+      - "zamosc3d/**"
+      - ".github/workflows/zamosc3d-exe.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  GODOT_VERSION: "4.3"
+
+jobs:
+  eksport:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Godot i szablony eksportu
+        run: |
+          base=https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable
+          curl -sSL -o godot.zip "$base/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
+          unzip -q godot.zip && sudo mv Godot_v${GODOT_VERSION}-stable_linux.x86_64 /usr/local/bin/godot
+          curl -sSL -o szablony.tpz "$base/Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
+          d=~/.local/share/godot/export_templates/${GODOT_VERSION}.stable && mkdir -p $d
+          unzip -joq szablony.tpz templates/windows_release_x86_64.exe templates/windows_debug_x86_64.exe templates/version.txt -d $d
+          sudo apt-get update -qq && sudo apt-get install -y -qq xvfb mesa-utils libgl1-mesa-dri > /dev/null
+      - name: Import zasobów
+        run: godot --headless --path zamosc3d/godot --import || true
+      - name: Autotest (przejście 4 rozdziałów)
+        run: |
+          godot --headless --path zamosc3d/godot -- --samotest | tee test.log
+          grep -q "TEST_WYNIK: OK" test.log
+      - name: Eksport EXE dla Windows
+        run: |
+          mkdir -p zamosc3d/build
+          godot --headless --path zamosc3d/godot --export-release "Windows" ../build/ZamoyskiMiastoIdealne3D.exe
+          ls -la zamosc3d/build
+      - name: Zrzuty ekranu
+        run: xvfb-run -a -s "-screen 0 1280x720x24" godot --path zamosc3d/godot --rendering-driver opengl3 --resolution 1280x720 -- --zrzuty "$PWD/zrzuty3d"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ZamoyskiMiastoIdealne3D-Windows
+          path: zamosc3d/build/ZamoyskiMiastoIdealne3D.exe
+      - uses: actions/upload-artifact@v4
+        with:
+          name: zrzuty-ekranu-3d
+          path: zrzuty3d/
