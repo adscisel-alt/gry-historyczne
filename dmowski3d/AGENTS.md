@@ -36,6 +36,9 @@ godot --headless --path godot --export-release "Web" ../build/web/index.html   #
 - Mini-gra „Przemówienie”: pytania i punktacja argumentów w `PRZEMOWIENIE` (`dane.py`).
 - Lektor: plik `audio/glos/<md5 tekstu>.ogg` (md5 jak `String.md5_text()`); po zmianie tekstu uruchom
   `generuj_lektora.py` ponownie. Nagrania nie są w repozytorium — powstają w workflowach.
+- Wstęp nauczyciela: przerywnik `PRZERYWNIKI["wstep"]` (dekoracja `klasa`, postać `postac_nauczyciel`).
+- Karty postaci: `KARTY_POSTACI` (fakty z ikonami, ciekawostka, warunek odblokowania); ilustracje
+  `ui/ilustracja_<id>.png` z `ilustracja()` w Blenderze (`-- --ilustracje dmowski,haller` renderuje wybrane).
 - Oś czasu: `OS_CZASU`; mapy podróży: `MAPY_PODROZY` (`dane.py`), dane granic: `godot/dane/mapa_europy.json`.
 
 ## Jak dodać kampanię lub budynek

@@ -121,6 +121,7 @@ POSTACIE = {
     "wilson": dict(imie="Woodrow Wilson", rola="prezydent USA"),
     "pilsudski": dict(imie="Józef Piłsudski", rola="Naczelnik Państwa"),
     "narrator": dict(imie="Kronikarz", rola=""),
+    "nauczyciel": dict(imie="Pan Damian", rola="nauczyciel historii"),
 }
 
 ZASOBY = [
@@ -543,6 +544,22 @@ LUZNE = {
 
 # ------------------------------------------------------------------ przerywniki filmowe
 PRZERYWNIKI = {
+    "wstep": [
+        ["nauczyciel", "Dzień dobry! Jestem pan Damian, wasz nauczyciel historii. Dziś zabiorę was w podróż "
+                       "do lat 1914–1919."],
+        ["nauczyciel", "Przez 123 lata Polski nie było na mapie. Jej ziemie podzieliły trzy państwa: Rosja, Prusy "
+                       "i Austria."],
+        ["nauczyciel", "W 1914 r. wybuchła wielka wojna, a zaborcy stanęli przeciwko sobie. Polacy zobaczyli w tym "
+                       "szansę na wolność."],
+        ["nauczyciel", "Do niepodległości prowadziło wiele dróg. Józef Piłsudski tworzył Legiony, a Roman Dmowski "
+                       "przekonywał polityków na Zachodzie."],
+        ["nauczyciel", "W tej grze wcielicie się w Romana Dmowskiego. Założycie Komitet Narodowy Polski, pomożecie "
+                       "stworzyć Błękitną Armię i pojedziecie na konferencję pokojową do Paryża."],
+        ["nauczyciel", "Pamiętajcie: historia to nie opowieść o bohaterach bez wad. Poznacie zasługi Dmowskiego, "
+                       "ale też to, za co dziś się go krytykuje."],
+        ["nauczyciel", "Czytajcie Księgę Wiedzy i karty postaci, rozwiązujcie zagadki — za każdą zdobędziecie "
+                       "Punkty Wiedzy. Powodzenia!"],
+    ],
     "przemowienie": [
         ["narrator", "29 stycznia 1919 r., Paryż, Quai d'Orsay. Obraduje Rada Dziesięciu — przywódcy i ministrowie "
                      "zwycięskich mocarstw."],
@@ -688,6 +705,62 @@ MAPY_PODROZY = {
                             "ustalono dopiero w 1921 r. Mapa pokazuje stan około 1920 r."]),
 }
 
+# ------------------------------------------------------------------ karty postaci (tylko postacie historyczne z gry)
+# fakty: [ikona, tekst]; odblokuj: ["start"] / ["flaga", nazwa] / ["kampania", numer]
+def karta(imie, daty, rola, fakty, ciekawostka, odblokuj, kampania):
+    tekst = "%s, %s. %s %s Ciekawostka: %s" % (imie, rola, " ".join(f[1] for f in fakty), "", ciekawostka)
+    return dict(imie=imie, daty=daty, rola=rola, fakty=fakty, ciekawostka=ciekawostka, odblokuj=odblokuj,
+                kampania=kampania, lektor=" ".join(tekst.split()))
+
+
+KARTY_POSTACI = {
+    "dmowski": karta("Roman Dmowski", "1864–1939", "polityk, pisarz i dyplomata", [
+        ["kalendarz", "Urodził się 9 sierpnia 1864 r. na warszawskiej Pradze, w Kamionku."],
+        ["ksiega", "Studiował nauki przyrodnicze na Uniwersytecie Warszawskim."],
+        ["pioro", "Napisał książkę „Myśli nowoczesnego Polaka” (1903) i współtworzył obóz narodowy."],
+        ["medal", "W 1919 r. stał na czele polskiej delegacji w Paryżu i podpisał traktat wersalski."]],
+        "W 1923 r. był przez kilka tygodni ministrem spraw zagranicznych Polski.", ["start"], 1),
+    "zamoyski": karta("Maurycy Zamoyski", "1871–1939", "ziemianin i dyplomata", [
+        ["miejsce", "Był ordynatem zamojskim — właścicielem ogromnych dóbr, także w okolicach Zamościa."],
+        ["sakiewka", "Wspierał finansowo Komitet Narodowy Polski i był jego wiceprezesem."],
+        ["flaga", "W latach 1919–1924 był posłem Polski we Francji."],
+        ["kalendarz", "W 1922 r. kandydował na prezydenta — przegrał z Gabrielem Narutowiczem."]],
+        "Pochodził z rodu Zamoyskich, tak jak Jan Zamoyski — założyciel Zamościa z drugiej gry w tym repozytorium!",
+        ["flaga", "rozm_zamoyski_1"], 1),
+    "haller": karta("gen. Józef Haller", "1873–1960", "generał, dowódca Błękitnej Armii", [
+        ["miejsce", "Urodził się w Jurczycach koło Krakowa."],
+        ["statek", "W 1918 r. przedostał się z Rosji do Francji przez Murmańsk."],
+        ["ochotnicy", "Dowodził Armią Polską we Francji, która w 1919 r. wróciła do kraju."],
+        ["kotwica", "10 lutego 1920 r. w Pucku dokonał zaślubin Polski z morzem."]],
+        "Nazywano go „błękitnym generałem” — od koloru mundurów jego żołnierzy.", ["flaga", "rozm_haller_3"], 3),
+    "paderewski": karta("Ignacy Jan Paderewski", "1860–1941", "pianista, kompozytor i premier", [
+        ["miejsce", "Urodził się w Kuryłówce na Podolu."],
+        ["nuta", "Był jednym z najsłynniejszych pianistów świata; skomponował m.in. „Menuet G-dur”."],
+        ["flaga", "W styczniu 1919 r. został premierem i ministrem spraw zagranicznych."],
+        ["pioro", "Razem z Dmowskim podpisał 28 czerwca 1919 r. traktat wersalski."]],
+        "W 1992 r. jego prochy sprowadzono z USA i złożono w archikatedrze warszawskiej.",
+        ["flaga", "rozm_paderewski_4"], 4),
+    "clemenceau": karta("Georges Clemenceau", "1841–1929", "premier Francji", [
+        ["flaga", "Był premierem Francji w latach 1906–1909 i 1917–1920."],
+        ["ksiega", "Z wykształcenia był lekarzem, pracował też jako dziennikarz."],
+        ["gwiazda", "Ze względu na twardy charakter nazywano go „Tygrysem”."],
+        ["medal", "Przewodniczył konferencji pokojowej w Paryżu."]],
+        "W lutym 1919 r. został postrzelony w zamachu, ale szybko wrócił do obrad.",
+        ["flaga", "rozm_clemenceau_4"], 4),
+    "wilson": karta("Woodrow Wilson", "1856–1924", "prezydent Stanów Zjednoczonych", [
+        ["flaga", "Był 28. prezydentem USA w latach 1913–1921."],
+        ["ksiega", "Wcześniej był profesorem i rektorem Uniwersytetu Princeton."],
+        ["dokument", "W 14 punktach (1918) zapowiedział niepodległą Polskę z dostępem do morza."],
+        ["medal", "Otrzymał Pokojową Nagrodę Nobla za rok 1919."]],
+        "W Poznaniu jest park jego imienia i pomnik prezydenta Wilsona.", ["flaga", "rozm_wilson_4"], 4),
+    "pilsudski": karta("Józef Piłsudski", "1867–1935", "Naczelnik Państwa i marszałek", [
+        ["miejsce", "Urodził się w Zułowie koło Wilna."],
+        ["ochotnicy", "W 1914 r. utworzył Legiony Polskie."],
+        ["flaga", "Od listopada 1918 r. był Naczelnikiem Państwa."],
+        ["medal", "W 1920 r. dowodził w zwycięskiej bitwie warszawskiej."]],
+        "Jego czapka-maciejówka stała się symbolem legionistów.", ["kampania", 4], 3),
+}
+
 POWITANIE = [
     ["dmowski", "Warszawa, 1914. Trzeba działać — Polacy potrzebują wspólnego głosu."],
     ["hanna", "Panie Romanie, jestem Hanna. Będę panu pomagać we wszystkich kampaniach!"],
@@ -721,7 +794,8 @@ def main():
         przedmioty=PRZEDMIOTY, wiedza={k: list(v) for k, v in WIEDZA.items()}, wiedza_kolejnosc=list(WIEDZA),
         karty_startowe=KARTY_STARTOWE, karta_budynku=KARTA_BUDYNKU, rangi=RANGI, quiz_glowny=QUIZ_GLOWNY,
         zagadki=ZAGADKI, rozmowy=ROZMOWY, przerywniki=PRZERYWNIKI, przemowienie=PRZEMOWIENIE,
-        os_czasu=OS_CZASU, os_czasu_klasa7=OS_CZASU_KLASA7, mapy_podrozy=MAPY_PODROZY, powitanie=POWITANIE, luzne=LUZNE, pomoc=POMOC, start_ekwipunek=["kompas", "datki", "paczka"],
+        os_czasu=OS_CZASU, os_czasu_klasa7=OS_CZASU_KLASA7, mapy_podrozy=MAPY_PODROZY, powitanie=POWITANIE,
+        karty_postaci=KARTY_POSTACI, luzne=LUZNE, pomoc=POMOC, start_ekwipunek=["kompas", "datki", "paczka"],
         rozdzialy={str(k): dict(v, mapa=["".join(w) for w in v["mapa"]]) for k, v in ROZDZIALY.items()},
         liczba_rozdzialow=len(ROZDZIALY),
     )

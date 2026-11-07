@@ -89,7 +89,60 @@ def dokument(s):
     pygame.draw.circle(s, (40, 56, 120), (11, 13), 2)
 
 
-IKONY = {"poparcie": poparcie, "prasa": prasa, "ochotnicy": ochotnicy, "teczka": teczka, "paczka": paczka,
+def kalendarz(s):
+    G.prost(s, 2, 3, 12, 11, G.BIEL)
+    G.prost(s, 2, 3, 12, 3, (200, 40, 50))
+    G.prost(s, 4, 1, 2, 3, (60, 60, 70))
+    G.prost(s, 10, 1, 2, 3, (60, 60, 70))
+    for y in (8, 11):
+        for x in (4, 7, 10):
+            G.prost(s, x, y, 2, 2, (90, 90, 100))
+
+
+def miejsce(s):
+    pygame.draw.circle(s, (200, 40, 50), (8, 6), 5)
+    pygame.draw.polygon(s, (200, 40, 50), [(4, 8), (12, 8), (8, 15)])
+    pygame.draw.circle(s, G.BIEL, (8, 6), 2)
+
+
+def medal(s):
+    pygame.draw.polygon(s, (60, 80, 160), [(4, 1), (8, 7), (12, 1)])
+    pygame.draw.circle(s, G.ZLOTO[1], (8, 10), 5)
+    pygame.draw.circle(s, G.ZLOTO[2], (8, 10), 3)
+    G.px(s, 7, 9, G.ZLOTO[3])
+
+
+def statek(s):
+    pygame.draw.polygon(s, (60, 60, 70), [(1, 10), (15, 10), (12, 14), (4, 14)])
+    G.prost(s, 4, 6, 7, 4, G.BIEL)
+    G.prost(s, 9, 2, 2, 4, (200, 40, 50))
+    G.prost(s, 1, 14, 14, 1, (70, 120, 190))
+
+
+def kotwica(s):
+    G.prost(s, 7, 3, 2, 10, (60, 70, 90))
+    pygame.draw.circle(s, (60, 70, 90), (8, 3), 2, 1)
+    G.prost(s, 4, 5, 8, 1, (60, 70, 90))
+    pygame.draw.arc(s, (60, 70, 90), (2, 6, 12, 9), 3.14, 6.28, 2)
+
+
+def nuta(s):
+    G.prost(s, 9, 2, 2, 10, (30, 30, 36))
+    G.prost(s, 9, 2, 5, 2, (30, 30, 36))
+    pygame.draw.ellipse(s, (30, 30, 36), (4, 10, 7, 5))
+
+
+def gwiazda(s):
+    pts = []
+    for i in range(10):
+        a = -1.5708 + i * 3.14159 / 5
+        r = 7 if i % 2 == 0 else 3
+        pts.append((8 + r * G.math.cos(a), 8 + r * G.math.sin(a)))
+    pygame.draw.polygon(s, G.ZLOTO[2], pts)
+
+
+IKONY = {"kalendarz": kalendarz, "miejsce": miejsce, "medal": medal, "statek": statek, "kotwica": kotwica,
+         "nuta": nuta, "gwiazda": gwiazda, "flaga": poparcie,"poparcie": poparcie, "prasa": prasa, "ochotnicy": ochotnicy, "teczka": teczka, "paczka": paczka,
          "legitymacja": legitymacja, "odznaka": odznaka, "telegram": telegram, "dokument": dokument}
 Z_ZAMOSCIA = {"fundusze": "zloto", "dzialacze": "ludnosc", "wiedza": "wiedza", "dzien": "dzien",
               "robotnicy": "robotnicy", "kompas": "kompas", "sakiewka": "sakiewka", "mapa": "plan",

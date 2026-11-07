@@ -35,6 +35,13 @@ i Hanna — sekretarka Komitetu (postać fikcyjna).
 - **Wersja przeglądarkowa (HTML5)** — po scaleniu z gałęzią `main` strona GitHub Pages buduje grę
   i udostępnia ją pod adresem `…/dmowski3d/graj/` (bez instalowania EXE).
 
+**Wstęp nauczyciela i karty postaci:**
+- Po „Nowa gra” (i z menu tytułowego) **Pan Damian, nauczyciel historii**, prowadzi w klasie 3D krótki wstęp
+  z lektorem: zabory, wybuch wojny, dwie drogi do niepodległości, cel gry i uczciwe spojrzenie na Dmowskiego.
+- **Karty postaci** (Księga Wiedzy → „Karty postaci”) dla 7 postaci historycznych z gry: duża ilustracja
+  z Blendera, daty i rola, 4 fakty z ikonami oraz ramka z ciekawostką. Karta odblokowuje się po spotkaniu
+  postaci (+2 PW za poznanie), lektor czyta ją na głos. Hanna, postać fikcyjna, nie ma karty.
+
 **Lektor, oś czasu i mapa Europy:**
 - **Lektor** czyta po polsku kwestie postaci, wstępy, przerywniki, zagadki, karty Księgi i podpisy mapy
   (syntezator Piper: osobne głosy dla Dmowskiego, Hanny i Kronikarza). Klawisz **G** lub Menu włącza i wyłącza

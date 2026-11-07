@@ -243,7 +243,7 @@ func nowy_stan() -> void:
 		zas[z.id] = int(z.start)
 	stan = {
 		"rozdzial": 1, "zasoby": zas, "ludnosc": 6.0, "pw": 0, "budynki": [], "flagi": [],
-		"ekwipunek": D.start_ekwipunek.duplicate(), "karty": D.karty_startowe.duplicate(), "przeczytane": [],
+		"ekwipunek": D.start_ekwipunek.duplicate(), "karty": D.karty_startowe.duplicate(), "przeczytane": [], "karty_postaci": [],
 		"zagadki": [], "dzien": 0, "prowiant": 0, "bohater": [0, 0],
 	}
 	_ustaw_start()
@@ -1062,7 +1062,37 @@ func pokaz_tytul() -> void:
 func nowa_gra() -> void:
 	nowy_stan()
 	zbuduj_swiat()
-	pokaz_mape("start", zacznij_rozdzial)
+	scena = "wstep"
+	ui.pokaz_ekran()
+	pokaz_przerywnik("wstep", func(): pokaz_mape("start", zacznij_rozdzial))
+
+
+func powtorz_wstep() -> void:
+	scena = "wstep"
+	ui.pokaz_ekran()
+	pokaz_przerywnik("wstep", pokaz_tytul)
+
+
+func karta_odblokowana(id: String) -> bool:
+	var o: Array = D.karty_postaci[id].odblokuj
+	match o[0]:
+		"start":
+			return true
+		"flaga":
+			return o[1] in stan.flagi
+		"kampania":
+			return int(stan.rozdzial) >= int(o[1]) or scena == "koniec"
+	return false
+
+
+func czytaj_karte_postaci(id: String) -> void:
+	lektor(D.karty_postaci[id].lektor)
+	if not stan.has("karty_postaci"):
+		stan["karty_postaci"] = []
+	if not id in stan.karty_postaci:
+		stan.karty_postaci.append(id)
+		stan.pw += 2
+		ui.toast("+2 PW za poznanie postaci: %s" % D.karty_postaci[id].imie)
 
 
 func zacznij_rozdzial() -> void:
@@ -1708,6 +1738,15 @@ func pokaz_przerywnik(nazwa: String, na_koniec: Callable) -> void:
 	add_child(kino)
 	slonce.shadow_enabled = false
 	match nazwa:
+		"wstep":
+			_kino_model("klasa", Vector3.ZERO, 0)
+			_kino_postac("postac_nauczyciel", Vector3(0.3, 0, -1.9), Vector3(0.3, 0, 4), true)
+			_kino_swiatlo(Vector3(0, 3.2, 0))
+			_kino_swiatlo(Vector3(0, 3.2, -3))
+			kino_ujecia = [[Vector3(0, 2.3, 5.2), Vector3(0, 1.3, -3)], [Vector3(0.8, 1.8, 0.4), Vector3(0.3, 1.55, -1.9)],
+				[Vector3(1.4, 1.7, -1.2), Vector3(0, 1.5, -4.4)], [Vector3(-0.6, 1.8, 0.6), Vector3(0.3, 1.55, -1.9)],
+				[Vector3(2.4, 2.2, 3.0), Vector3(0, 1.2, -2.5)], [Vector3(0.5, 1.75, -0.2), Vector3(0.3, 1.6, -1.9)],
+				[Vector3(0, 2.6, 6.0), Vector3(0, 1.3, -3)]]
 		"przemowienie":
 			_kino_model("sala_rady", Vector3.ZERO, 0)
 			_kino_postac("postac_dmowski", Vector3(-3.6, 0, 1.2), Vector3(0, 0, -1.5), true)
@@ -1933,6 +1972,10 @@ func _zrzuty() -> void:
 	ui.mapa_w.przejscie = 1.0
 	await zrob("02b_mapa_1918")
 	nowa_gra()
+	kino_i = 1
+	ui.odswiez_kino()
+	await zrob("02w_wstep_nauczyciela")
+	zakoncz_kino()
 	await zrob("02c_mapa_1914")
 	zakoncz_mape()
 	ui.intro_pelny()
@@ -2028,6 +2071,11 @@ func _zrzuty() -> void:
 	ui.wybrane_wydarzenie = 15
 	ui.pokaz_okno("ksiega")
 	await zrob("10b_os_czasu")
+	ui.ksiega_tryb = "postacie"
+	stan.flagi += ["rozm_haller_3", "rozm_paderewski_4"]
+	ui.wybrana_postac = "paderewski"
+	ui.pokaz_okno("ksiega")
+	await zrob("10c_karta_postaci")
 	ui.ksiega_tryb = "karty"
 	ui.zamknij_okno()
 	rozpocznij_przemowienie(Callable())

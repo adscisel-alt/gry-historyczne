@@ -443,6 +443,7 @@ func _ekran_tytul() -> void:
 	var k := _btn("Kontynuuj", func(): g.wczytaj(), "", 20)
 	k.disabled = not g.ma_zapis()
 	m.add_child(k)
+	m.add_child(_btn("Wstęp nauczyciela", func(): g.powtorz_wstep(), "", 20))
 	m.add_child(_btn("Jak grać?", func(): przelacz_okno("pomoc"), "", 20))
 	m.add_child(_btn("Wyjście", func(): get_tree().quit(), "", 20))
 
@@ -753,10 +754,10 @@ var wybrane_wydarzenie := -1
 
 
 func _okno_ksiega() -> void:
-	var vb := _okno("Księga Wiedzy", Vector2(1000, 560))
+	var vb := _okno("Księga Wiedzy", Vector2(1100, 650) if ksiega_tryb == "postacie" else Vector2(1000, 560))
 	var zakladki := HBoxContainer.new()
 	zakladki.alignment = BoxContainer.ALIGNMENT_CENTER
-	for z in [["karty", "Karty wiedzy"], ["os", "Oś czasu 1914–1919"]]:
+	for z in [["karty", "Karty wiedzy"], ["postacie", "Karty postaci"], ["os", "Oś czasu 1914–1919"]]:
 		var b := _btn(z[1], func(): ksiega_tryb = z[0]; g.ucisz_lektora(); pokaz_okno("ksiega"), "", 17)
 		if ksiega_tryb == z[0]:
 			b.modulate = Color(1.35, 1.2, 0.7)
@@ -764,6 +765,9 @@ func _okno_ksiega() -> void:
 	vb.add_child(zakladki)
 	if ksiega_tryb == "os":
 		_os_czasu(vb)
+		return
+	if ksiega_tryb == "postacie":
+		_karty_postaci(vb)
 		return
 	var hb := HBoxContainer.new()
 	hb.add_theme_constant_override("separation", 16)
@@ -893,7 +897,7 @@ func odswiez_kino() -> void:
 	var b := _btn("Dalej »", func(): g.dalej_kino(), "", 18)
 	b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	hb.add_child(b)
-	var tytul := _label({"przemowienie": "Paryż, 29 stycznia 1919", "listopad": "Warszawa, 11 listopada 1918",
+	var tytul := _label({"wstep": "Lekcja historii — wstęp", "przemowienie": "Paryż, 29 stycznia 1919", "listopad": "Warszawa, 11 listopada 1918",
 		"traktat": "Wersal, 28 czerwca 1919"}.get(g.kino_nazwa, ""), 22, C_ZLOTY)
 	tytul.position = Vector2(60, 22)
 	kino_w.add_child(tytul)
@@ -994,6 +998,101 @@ func odswiez_przemowienie() -> void:
 		var b2 := _btn("Następne pytanie »" if m.runda + 1 < rundy.size() else "Podsumowanie »", func(): g.dalej_przemowienie(), "", 20)
 		b2.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		vb.add_child(b2)
+
+
+# ===================================================================== karty postaci
+var wybrana_postac := "dmowski"
+
+
+func _karty_postaci(vb: VBoxContainer) -> void:
+	var hb := HBoxContainer.new()
+	hb.add_theme_constant_override("separation", 14)
+	vb.add_child(hb)
+	var lista := VBoxContainer.new()
+	lista.custom_minimum_size.x = 230
+	lista.add_theme_constant_override("separation", 6)
+	hb.add_child(lista)
+	var przeczytane: Array = g.stan.get("karty_postaci", [])
+	for id in g.D.karty_postaci:
+		var k = g.D.karty_postaci[id]
+		var otwarta: bool = g.karta_odblokowana(id)
+		var b := Button.new()
+		b.focus_mode = Control.FOCUS_NONE
+		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		b.custom_minimum_size = Vector2(230, 52)
+		b.add_theme_font_size_override("font_size", 15)
+		if otwarta:
+			b.text = k.imie + ("" if id in przeczytane else "  ★")
+			b.icon = load("res://ui/portret_%s.png" % id)
+			b.expand_icon = true
+			b.add_theme_constant_override("icon_max_width", 40)
+			b.pressed.connect(func(): wybrana_postac = id; g.czytaj_karte_postaci(id); pokaz_okno("ksiega"))
+		else:
+			b.text = "???  (kampania %d)" % int(k.kampania)
+			b.disabled = true
+		if id == wybrana_postac:
+			b.modulate = Color(1.3, 1.2, 0.75)
+		lista.add_child(b)
+	if not g.karta_odblokowana(wybrana_postac):
+		wybrana_postac = "dmowski"
+	hb.add_child(_karta(wybrana_postac))
+
+
+func _karta(id: String) -> Control:
+	var k = g.D.karty_postaci[id]
+	var p := PanelContainer.new()
+	var sb := _sb(Color("f8efd6"), Color("a8282c"), 4, 10, 14)
+	sb.shadow_size = 4
+	sb.shadow_color = Color(0, 0, 0, 0.25)
+	p.add_theme_stylebox_override("panel", sb)
+	var hb := HBoxContainer.new()
+	hb.add_theme_constant_override("separation", 16)
+	p.add_child(hb)
+	var ramka := PanelContainer.new()
+	ramka.add_theme_stylebox_override("panel", _sb(Color("3c2616"), Color("e8b84a"), 4, 6, 4))
+	ramka.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	hb.add_child(ramka)
+	var il := TextureRect.new()
+	il.texture = load("res://ui/ilustracja_%s.png" % id)
+	il.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	il.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	il.custom_minimum_size = Vector2(300, 375)
+	ramka.add_child(il)
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 8)
+	vb.custom_minimum_size.x = 500
+	hb.add_child(vb)
+	vb.add_child(_label(k.imie, 30, C_CZERW))
+	vb.add_child(_label("%s  ·  %s" % [k.daty, k.rola], 18, C_SZARY))
+	vb.add_child(HSeparator.new())
+	for f in k.fakty:
+		var r := HBoxContainer.new()
+		r.add_theme_constant_override("separation", 10)
+		var tlo_ik := PanelContainer.new()
+		tlo_ik.add_theme_stylebox_override("panel", _sb(Color("ead9ad"), Color("b89a6a"), 2, 18, 4))
+		tlo_ik.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		tlo_ik.add_child(_ikona("ikona_" + f[0], 30))
+		r.add_child(tlo_ik)
+		var t := _label(f[1], 17)
+		t.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		t.custom_minimum_size.x = 440
+		t.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		r.add_child(t)
+		vb.add_child(r)
+	var cie := PanelContainer.new()
+	cie.add_theme_stylebox_override("panel", _sb(Color("fff3c4"), Color("e8b84a"), 3, 8, 10))
+	vb.add_child(cie)
+	var cv := VBoxContainer.new()
+	cie.add_child(cv)
+	var nag := HBoxContainer.new()
+	nag.add_child(_ikona("ikona_gwiazda", 22))
+	nag.add_child(_label(" Ciekawostka", 18, Color("8a5a10")))
+	cv.add_child(nag)
+	var ct := _label(k.ciekawostka, 17)
+	ct.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	ct.custom_minimum_size.x = 470
+	cv.add_child(ct)
+	return p
 
 
 # ===================================================================== oś czasu 1914–1919

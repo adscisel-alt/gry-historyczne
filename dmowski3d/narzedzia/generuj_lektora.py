@@ -32,6 +32,7 @@ GLOSY = {
     "clemenceau": ("pl_PL-darkman-medium", 1.15),
     "wilson": ("pl_PL-mc_speech-medium", 1.0),
     "pilsudski": ("pl_PL-darkman-medium", 1.1),
+    "nauczyciel": ("pl_PL-mc_speech-medium", 0.95),
 }
 
 
@@ -56,6 +57,7 @@ def kwestie(d):
     w += [("narrator", r["pytanie"]) for r in d["przemowienie"]]
     w += [("narrator", v[1]) for v in d["wiedza"].values()]
     w += [("narrator", e[3]) for e in d["os_czasu"]]
+    w += [("narrator", k["lektor"]) for k in d["karty_postaci"].values()]
     for m in d["mapy_podrozy"].values():
         w += [("narrator", t) for t in m["podpisy"]]
         w += [("narrator", t[3]) for t in m["trasa"]]

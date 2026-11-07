@@ -36,6 +36,10 @@
   "narrator": {
    "imie": "Kronikarz",
    "rola": ""
+  },
+  "nauczyciel": {
+   "imie": "Pan Damian",
+   "rola": "nauczyciel historii"
   }
  },
  "zasoby": [
@@ -934,6 +938,36 @@
   }
  },
  "przerywniki": {
+  "wstep": [
+   [
+    "nauczyciel",
+    "Dzień dobry! Jestem pan Damian, wasz nauczyciel historii. Dziś zabiorę was w podróż do lat 1914–1919."
+   ],
+   [
+    "nauczyciel",
+    "Przez 123 lata Polski nie było na mapie. Jej ziemie podzieliły trzy państwa: Rosja, Prusy i Austria."
+   ],
+   [
+    "nauczyciel",
+    "W 1914 r. wybuchła wielka wojna, a zaborcy stanęli przeciwko sobie. Polacy zobaczyli w tym szansę na wolność."
+   ],
+   [
+    "nauczyciel",
+    "Do niepodległości prowadziło wiele dróg. Józef Piłsudski tworzył Legiony, a Roman Dmowski przekonywał polityków na Zachodzie."
+   ],
+   [
+    "nauczyciel",
+    "W tej grze wcielicie się w Romana Dmowskiego. Założycie Komitet Narodowy Polski, pomożecie stworzyć Błękitną Armię i pojedziecie na konferencję pokojową do Paryża."
+   ],
+   [
+    "nauczyciel",
+    "Pamiętajcie: historia to nie opowieść o bohaterach bez wad. Poznacie zasługi Dmowskiego, ale też to, za co dziś się go krytykuje."
+   ],
+   [
+    "nauczyciel",
+    "Czytajcie Księgę Wiedzy i karty postaci, rozwiązujcie zagadki — za każdą zdobędziecie Punkty Wiedzy. Powodzenia!"
+   ]
+  ],
   "przemowienie": [
    [
     "narrator",
@@ -1407,6 +1441,217 @@
    "Podejdź do postaci z wykrzyknikiem i wciśnij E. Kompas (K) wskaże kierunek do celu. Lektora włączasz i wyłączasz klawiszem G."
   ]
  ],
+ "karty_postaci": {
+  "dmowski": {
+   "imie": "Roman Dmowski",
+   "daty": "1864–1939",
+   "rola": "polityk, pisarz i dyplomata",
+   "fakty": [
+    [
+     "kalendarz",
+     "Urodził się 9 sierpnia 1864 r. na warszawskiej Pradze, w Kamionku."
+    ],
+    [
+     "ksiega",
+     "Studiował nauki przyrodnicze na Uniwersytecie Warszawskim."
+    ],
+    [
+     "pioro",
+     "Napisał książkę „Myśli nowoczesnego Polaka” (1903) i współtworzył obóz narodowy."
+    ],
+    [
+     "medal",
+     "W 1919 r. stał na czele polskiej delegacji w Paryżu i podpisał traktat wersalski."
+    ]
+   ],
+   "ciekawostka": "W 1923 r. był przez kilka tygodni ministrem spraw zagranicznych Polski.",
+   "odblokuj": [
+    "start"
+   ],
+   "kampania": 1,
+   "lektor": "Roman Dmowski, polityk, pisarz i dyplomata. Urodził się 9 sierpnia 1864 r. na warszawskiej Pradze, w Kamionku. Studiował nauki przyrodnicze na Uniwersytecie Warszawskim. Napisał książkę „Myśli nowoczesnego Polaka” (1903) i współtworzył obóz narodowy. W 1919 r. stał na czele polskiej delegacji w Paryżu i podpisał traktat wersalski. Ciekawostka: W 1923 r. był przez kilka tygodni ministrem spraw zagranicznych Polski."
+  },
+  "zamoyski": {
+   "imie": "Maurycy Zamoyski",
+   "daty": "1871–1939",
+   "rola": "ziemianin i dyplomata",
+   "fakty": [
+    [
+     "miejsce",
+     "Był ordynatem zamojskim — właścicielem ogromnych dóbr, także w okolicach Zamościa."
+    ],
+    [
+     "sakiewka",
+     "Wspierał finansowo Komitet Narodowy Polski i był jego wiceprezesem."
+    ],
+    [
+     "flaga",
+     "W latach 1919–1924 był posłem Polski we Francji."
+    ],
+    [
+     "kalendarz",
+     "W 1922 r. kandydował na prezydenta — przegrał z Gabrielem Narutowiczem."
+    ]
+   ],
+   "ciekawostka": "Pochodził z rodu Zamoyskich, tak jak Jan Zamoyski — założyciel Zamościa z drugiej gry w tym repozytorium!",
+   "odblokuj": [
+    "flaga",
+    "rozm_zamoyski_1"
+   ],
+   "kampania": 1,
+   "lektor": "Maurycy Zamoyski, ziemianin i dyplomata. Był ordynatem zamojskim — właścicielem ogromnych dóbr, także w okolicach Zamościa. Wspierał finansowo Komitet Narodowy Polski i był jego wiceprezesem. W latach 1919–1924 był posłem Polski we Francji. W 1922 r. kandydował na prezydenta — przegrał z Gabrielem Narutowiczem. Ciekawostka: Pochodził z rodu Zamoyskich, tak jak Jan Zamoyski — założyciel Zamościa z drugiej gry w tym repozytorium!"
+  },
+  "haller": {
+   "imie": "gen. Józef Haller",
+   "daty": "1873–1960",
+   "rola": "generał, dowódca Błękitnej Armii",
+   "fakty": [
+    [
+     "miejsce",
+     "Urodził się w Jurczycach koło Krakowa."
+    ],
+    [
+     "statek",
+     "W 1918 r. przedostał się z Rosji do Francji przez Murmańsk."
+    ],
+    [
+     "ochotnicy",
+     "Dowodził Armią Polską we Francji, która w 1919 r. wróciła do kraju."
+    ],
+    [
+     "kotwica",
+     "10 lutego 1920 r. w Pucku dokonał zaślubin Polski z morzem."
+    ]
+   ],
+   "ciekawostka": "Nazywano go „błękitnym generałem” — od koloru mundurów jego żołnierzy.",
+   "odblokuj": [
+    "flaga",
+    "rozm_haller_3"
+   ],
+   "kampania": 3,
+   "lektor": "gen. Józef Haller, generał, dowódca Błękitnej Armii. Urodził się w Jurczycach koło Krakowa. W 1918 r. przedostał się z Rosji do Francji przez Murmańsk. Dowodził Armią Polską we Francji, która w 1919 r. wróciła do kraju. 10 lutego 1920 r. w Pucku dokonał zaślubin Polski z morzem. Ciekawostka: Nazywano go „błękitnym generałem” — od koloru mundurów jego żołnierzy."
+  },
+  "paderewski": {
+   "imie": "Ignacy Jan Paderewski",
+   "daty": "1860–1941",
+   "rola": "pianista, kompozytor i premier",
+   "fakty": [
+    [
+     "miejsce",
+     "Urodził się w Kuryłówce na Podolu."
+    ],
+    [
+     "nuta",
+     "Był jednym z najsłynniejszych pianistów świata; skomponował m.in. „Menuet G-dur”."
+    ],
+    [
+     "flaga",
+     "W styczniu 1919 r. został premierem i ministrem spraw zagranicznych."
+    ],
+    [
+     "pioro",
+     "Razem z Dmowskim podpisał 28 czerwca 1919 r. traktat wersalski."
+    ]
+   ],
+   "ciekawostka": "W 1992 r. jego prochy sprowadzono z USA i złożono w archikatedrze warszawskiej.",
+   "odblokuj": [
+    "flaga",
+    "rozm_paderewski_4"
+   ],
+   "kampania": 4,
+   "lektor": "Ignacy Jan Paderewski, pianista, kompozytor i premier. Urodził się w Kuryłówce na Podolu. Był jednym z najsłynniejszych pianistów świata; skomponował m.in. „Menuet G-dur”. W styczniu 1919 r. został premierem i ministrem spraw zagranicznych. Razem z Dmowskim podpisał 28 czerwca 1919 r. traktat wersalski. Ciekawostka: W 1992 r. jego prochy sprowadzono z USA i złożono w archikatedrze warszawskiej."
+  },
+  "clemenceau": {
+   "imie": "Georges Clemenceau",
+   "daty": "1841–1929",
+   "rola": "premier Francji",
+   "fakty": [
+    [
+     "flaga",
+     "Był premierem Francji w latach 1906–1909 i 1917–1920."
+    ],
+    [
+     "ksiega",
+     "Z wykształcenia był lekarzem, pracował też jako dziennikarz."
+    ],
+    [
+     "gwiazda",
+     "Ze względu na twardy charakter nazywano go „Tygrysem”."
+    ],
+    [
+     "medal",
+     "Przewodniczył konferencji pokojowej w Paryżu."
+    ]
+   ],
+   "ciekawostka": "W lutym 1919 r. został postrzelony w zamachu, ale szybko wrócił do obrad.",
+   "odblokuj": [
+    "flaga",
+    "rozm_clemenceau_4"
+   ],
+   "kampania": 4,
+   "lektor": "Georges Clemenceau, premier Francji. Był premierem Francji w latach 1906–1909 i 1917–1920. Z wykształcenia był lekarzem, pracował też jako dziennikarz. Ze względu na twardy charakter nazywano go „Tygrysem”. Przewodniczył konferencji pokojowej w Paryżu. Ciekawostka: W lutym 1919 r. został postrzelony w zamachu, ale szybko wrócił do obrad."
+  },
+  "wilson": {
+   "imie": "Woodrow Wilson",
+   "daty": "1856–1924",
+   "rola": "prezydent Stanów Zjednoczonych",
+   "fakty": [
+    [
+     "flaga",
+     "Był 28. prezydentem USA w latach 1913–1921."
+    ],
+    [
+     "ksiega",
+     "Wcześniej był profesorem i rektorem Uniwersytetu Princeton."
+    ],
+    [
+     "dokument",
+     "W 14 punktach (1918) zapowiedział niepodległą Polskę z dostępem do morza."
+    ],
+    [
+     "medal",
+     "Otrzymał Pokojową Nagrodę Nobla za rok 1919."
+    ]
+   ],
+   "ciekawostka": "W Poznaniu jest park jego imienia i pomnik prezydenta Wilsona.",
+   "odblokuj": [
+    "flaga",
+    "rozm_wilson_4"
+   ],
+   "kampania": 4,
+   "lektor": "Woodrow Wilson, prezydent Stanów Zjednoczonych. Był 28. prezydentem USA w latach 1913–1921. Wcześniej był profesorem i rektorem Uniwersytetu Princeton. W 14 punktach (1918) zapowiedział niepodległą Polskę z dostępem do morza. Otrzymał Pokojową Nagrodę Nobla za rok 1919. Ciekawostka: W Poznaniu jest park jego imienia i pomnik prezydenta Wilsona."
+  },
+  "pilsudski": {
+   "imie": "Józef Piłsudski",
+   "daty": "1867–1935",
+   "rola": "Naczelnik Państwa i marszałek",
+   "fakty": [
+    [
+     "miejsce",
+     "Urodził się w Zułowie koło Wilna."
+    ],
+    [
+     "ochotnicy",
+     "W 1914 r. utworzył Legiony Polskie."
+    ],
+    [
+     "flaga",
+     "Od listopada 1918 r. był Naczelnikiem Państwa."
+    ],
+    [
+     "medal",
+     "W 1920 r. dowodził w zwycięskiej bitwie warszawskiej."
+    ]
+   ],
+   "ciekawostka": "Jego czapka-maciejówka stała się symbolem legionistów.",
+   "odblokuj": [
+    "kampania",
+    4
+   ],
+   "kampania": 3,
+   "lektor": "Józef Piłsudski, Naczelnik Państwa i marszałek. Urodził się w Zułowie koło Wilna. W 1914 r. utworzył Legiony Polskie. Od listopada 1918 r. był Naczelnikiem Państwa. W 1920 r. dowodził w zwycięskiej bitwie warszawskiej. Ciekawostka: Jego czapka-maciejówka stała się symbolem legionistów."
+  }
+ },
  "luzne": {
   "hanna": [
    [
