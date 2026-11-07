@@ -41,7 +41,8 @@ i naczelnikom.
 
 Mechaniki (zagony, utrzymanie wojska, dowódcy i taktyki, ukryta karta wroga, poziomy trudności, dziennik
 nauki z dyplomem i CSV, zapis w dowolnym momencie, lektor) działają tak samo jak w części I. Postęp zapisuje
-się osobno (`%APPDATA%\KronikiDamianaScisla2\`).
+się osobno (`%APPDATA%\KronikiDamianaScisla2\`). Przycisk **„Nowa kronika (wyczyść postęp)”** w menu głównym
+usuwa postęp (np. dla kolejnego ucznia), zostawiając ustawienia.
 
 ## Pobranie i uruchomienie
 

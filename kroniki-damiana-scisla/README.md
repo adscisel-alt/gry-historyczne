@@ -65,6 +65,9 @@ Wersję web buduje [pygbag](https://pypi.org/project/pygbag/) (Python → WebAss
 Workflow `kroniki-web.yml` buduje ją przy każdej zmianie i sprawdza w Chromium (Playwright), czy menu
 się rysuje. Postęp zapisuje się w pamięci przeglądarki (localStorage).
 
+Przycisk **„Nowa kronika (wyczyść postęp)”** w menu głównym usuwa postęp (np. dla kolejnego ucznia
+na tym samym komputerze); ustawienia lektora, grafiki i trudności zostają.
+
 ## Pobranie EXE
 
 Plik `KronikiDamianaScisla.exe` buduje GitHub Actions (`.github/workflows/kroniki-exe.yml`) na Windowsie:

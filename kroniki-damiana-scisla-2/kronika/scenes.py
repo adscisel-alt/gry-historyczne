@@ -40,11 +40,37 @@ class MenuScene(Scene):
         items += [("Kampania", self.campaign, 22, None), ("Postacie historyczne", self.gallery, 18, None),
                   ("Encyklopedia", self.encyclopedia, 18, None),
                   ("Dziennik nauki", self.journal, 18, (100, 50, 140)), ("Jak grać", self.help, 18, None)]
+        if self.has_progress():
+            items.append(("Nowa kronika (wyczyść postęp)", self.ask_reset, 16, (120, 45, 40)))
         if not storage.WEB:
             items.append(("Wyjście", self.app.quit, 18, (90, 60, 40)))
-        y0 = 300
-        self.buttons = [ui.Button((80, y0 + i * 54, 300, 44), lab, cb, sz, color=col) for i, (lab, cb, sz, col) in enumerate(items)]
+        y0, step = (300, 54) if len(items) <= 7 else (288, 50)
+        self.buttons = [ui.Button((80, y0 + i * step, 300, 44), lab, cb, sz, color=col) for i, (lab, cb, sz, col) in enumerate(items)]
         audio.start_music("music")
+
+    def has_progress(self):
+        from .mapview import MapScene
+        sv = self.app.save
+        return bool(MapScene.has_save() or sv.get("unlocked") or sv.get("completed") or sv.get("dziennik")
+                    or sv.get("scores") or sv.get("techs") or sv.get("encyklopedia") or sv.get("imie"))
+
+    def ask_reset(self):
+        self.app.push(Info(self.app, "Nowa kronika?",
+                           "Czy na pewno chcesz wyczyścić cały postęp tej gry?\n\n"
+                           "Znikną: odblokowane rozdziały, wyniki i gwiazdki, odkryte technologie, wpisy w encyklopedii, "
+                           "dziennik nauki z imieniem ucznia oraz zapisana rozgrywka („Kontynuuj”).\n\n"
+                           "Ustawienia (lektor, grafika, poziom trudności) zostaną. Tej operacji nie da się cofnąć.",
+                           buttons=[("Tak, wyczyść", self.do_reset), ("Anuluj", None)]))
+
+    def do_reset(self):
+        keep = {k: self.app.save[k] for k in ("lektor", "styl", "trudnosc") if k in self.app.save}
+        storage.delete("gra")
+        self.app.save.clear()
+        self.app.save.update({"unlocked": 0, "completed": [], "techs": [], "scores": {}})
+        self.app.save.update(keep)
+        self.app.write_save()
+        self.app.replace(MenuScene(self.app))
+        self.app.push(Info(self.app, "Nowa kronika", "Postęp wyczyszczony. Kampania zaczyna się od pierwszego rozdziału – powodzenia!"))
 
     def campaign(self):
         self.app.push(ChapterSelectScene(self.app))
