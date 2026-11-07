@@ -372,6 +372,10 @@ POSTACIE = {
     "pilsudski": dict(stroj="mundur", kolor=FELDGRAU, spodnie=FELDGRAU, krawat=None, skora=(230, 188, 150),
                       wlosy=(100, 90, 80), fryzura="krotkie", wasy="sumiaste", broda=False, kapelusz="maciejowka",
                       kapelusz_kol=FELDGRAU, okulary=False, trzyma="szabla", buty=(40, 30, 24), brwi=True),
+    # Pan Damian — nauczyciel historii z wstępu (jak w grze „Cyberdetektyw”): blondyn w koszuli
+    "nauczyciel": dict(stroj="garnitur", kolor=(176, 204, 232), spodnie=(52, 56, 70), krawat=None,
+                       skora=(242, 204, 172), wlosy=(226, 192, 110), fryzura="krotkie", wasy=None, broda=False,
+                       kapelusz=None, okulary=False, trzyma="ksiega", buty=(60, 40, 28)),
 }
 
 
@@ -514,7 +518,7 @@ def m_postac(p, ox=0, oy=0, czesci=False):
     elif f == "krotkie":
         kula(ox, oy + 0.02, 1.5, 0.185, p["wlosy"], seg=10, ringi=6, skala=(1.02, 1.0, 0.75))
     elif f == "bujne":
-        kula(ox, oy + 0.05, 1.5, 0.26, p["wlosy"], seg=10, ringi=7, skala=(1.1, 1.0, 0.85))
+        kula(ox, oy + 0.1, 1.53, 0.26, p["wlosy"], seg=10, ringi=7, skala=(1.1, 0.8, 0.78))
     elif f == "kok":
         kula(ox, oy + 0.02, 1.5, 0.19, p["wlosy"], seg=10, ringi=6, skala=(1.02, 1.0, 0.75))
         kula(ox, oy + 0.16, 1.55, 0.09, p["wlosy"], seg=8, ringi=5)
@@ -1069,7 +1073,7 @@ def m_sala_rady():
 
 
 # ================================================================= RENDERY
-TLA_PORTRETOW = {"dmowski": (190, 170, 140), "hanna": (180, 196, 214), "zamoyski": (200, 186, 160),
+TLA_PORTRETOW = {"nauczyciel": (190, 214, 196), "dmowski": (190, 170, 140), "hanna": (180, 196, 214), "zamoyski": (200, 186, 160),
                  "haller": (170, 186, 210), "paderewski": (200, 176, 150), "clemenceau": (190, 196, 206),
                  "wilson": (176, 190, 200), "pilsudski": (186, 180, 160)}
 
@@ -1081,6 +1085,93 @@ def portret(nazwa):
     slonce(rot=(1.0, 0.1, -0.5), energia=3.0)
     kamera((0.5, -2.1, 1.6), (0, 0, 1.4), obiektyw=80)
     renderuj(os.path.join(UI, "portret_%s.png" % nazwa))
+
+
+# ================================================================= KLASA I ILUSTRACJE KART POSTACI
+def m_klasa():
+    """Sala lekcyjna do wstępu nauczyciela: tablica z mapą, ławki, okna, globus, flaga."""
+    box(0, 0, -0.1, 10, 9, 0.1, (150, 110, 74))                          # podłoga
+    box(0, 4.5, 0, 10, 0.2, 3.6, (236, 226, 200))                        # ściana z tablicą
+    box(-5, 0, 0, 0.2, 9, 3.6, (226, 218, 196))                          # ściana z oknami
+    box(0, 4.38, 0.9, 4.6, 0.06, 1.8, (36, 64, 50))                      # tablica
+    box(0, 4.36, 0.86, 4.7, 0.05, 0.06, DREWNO)
+    for (x, z, w, h) in [(-1.2, 1.9, 0.9, 0.6), (-0.3, 2.0, 0.8, 0.5), (0.3, 1.5, 0.7, 0.6), (1.2, 1.7, 0.6, 0.5)]:
+        box(x, 4.33, z, w, 0.02, h, (220, 226, 220))                     # „mapa” kredą
+    box(0.0, 4.32, 1.6, 0.5, 0.02, 0.4, (220, 70, 70))                   # Polska na tablicy
+    for x in (-3.4, 3.4):
+        box(x, 4.36, 1.0, 1.4, 0.04, 1.6, (236, 226, 196))               # plakaty
+        box(x, 4.33, 1.4, 1.0, 0.02, 0.8, (130, 160, 120) if x < 0 else (200, 180, 120))
+    for y in (-2.5, 0, 2.5):                                             # okna
+        box(-4.88, y, 1.0, 0.06, 1.6, 1.8, (190, 214, 236), emisja=0.4)
+    box(0, 2.9, 0, 1.8, 0.8, 0.78, DREWNO)                               # biurko nauczyciela
+    box(0.4, 2.9, 0.78, 0.4, 0.3, 0.06, (120, 40, 40))
+    cyl(-0.6, 2.9, 0.78, 0.04, 0.3, DREWNO_C, v=6)                       # globus
+    kula(-0.6, 2.9, 1.22, 0.18, (70, 120, 180))
+    for rzad in range(3):                                                # ławki uczniów
+        for x in (-2.2, 0.0, 2.2):
+            y = 0.8 - rzad * 1.8
+            box(x, y, 0.0, 1.4, 0.6, 0.72, DREWNO_J)
+            box(x, y - 0.6, 0.0, 1.2, 0.35, 0.42, DREWNO)
+    flaga(3.8, 4.2, 0, h=2.4)
+
+
+def m_fortepian():
+    box(0, 0.3, 0.75, 1.5, 2.0, 0.3, CZARNY)
+    box(0, 0.3, 1.06, 1.5, 2.0, 0.04, CZARNY, rot=(0.0, 0.0, 0.0))
+    box(0.0, 0.8, 1.05, 1.45, 1.2, 0.03, (40, 36, 40), rot=(0.5, 0, 0))       # podniesione wieko
+    box(0, -0.75, 0.8, 1.4, 0.18, 0.06, BIEL)                              # klawiatura
+    for x in (-0.6, 0.6):
+        for y in (-0.5, 1.1):
+            cyl(x, y, 0, 0.06, 0.75, CZARNY, v=6)
+
+
+def m_flaga_usa(x, y):
+    cyl(x, y, 0, 0.035, 2.4, (90, 70, 50), v=6)
+    for i in range(7):
+        box(x + 0.5, y, 2.4 - 0.08 - i * 0.08, 0.9, 0.03, 0.08, (190, 40, 50) if i % 2 == 0 else BIEL)
+    box(x + 0.25, y - 0.01, 2.08, 0.4, 0.03, 0.3, (40, 50, 110))
+
+
+def ilustracja(nazwa):
+    """Duża ilustracja na kartę postaci (Cycles, 480×600): postać w swoim otoczeniu."""
+    czysc()
+    tlo = TLA_PORTRETOW[nazwa]
+    box(0, 0, -0.1, 8, 8, 0.1, tuple(int(c * .7) for c in tlo))
+    box(0, 1.6, 0, 8, 0.1, 5, tlo)
+    m_postac(POSTACIE[nazwa])
+    if nazwa == "dmowski":
+        box(-0.9, 0.6, 0, 1.2, 0.7, 0.75, DREWNO)
+        for i in range(3):
+            box(-0.9 + i * 0.08, 0.6, 0.75 + i * 0.03, 0.5, 0.4, 0.03, BIEL)
+        box(0.8, 1.52, 0.9, 1.2, 0.04, 0.9, (236, 226, 196))
+        box(0.8, 1.49, 1.2, 0.5, 0.02, 0.4, (220, 70, 70))
+        flaga(-1.3, 1.3, 0, h=2.3)
+    elif nazwa == "zamoyski":
+        for i in range(4):
+            for j in range(9):
+                box(-1.4 + j * 0.16, 1.4, 0.2 + i * 0.5, 0.12, 0.25, 0.36,
+                    [(120, 40, 40), (40, 70, 110), (50, 100, 60), (150, 120, 60)][(i + j) % 4])
+        box(-0.75, 1.42, 0, 1.6, 0.3, 2.2, DREWNO_C)
+    elif nazwa == "haller":
+        namiot(1.3, 0.9, 1.6, 1.6, 1.4, (150, 150, 110))
+        flaga(-1.0, 0.8, 0, h=2.4)
+    elif nazwa == "paderewski":
+        przesun(m_fortepian, -1.1, 0.5)
+    elif nazwa == "clemenceau":
+        flaga_fr(-1.2, 0.9, 0, h=2.4)
+        box(1.0, 0.7, 0, 1.0, 0.6, 0.78, DREWNO)
+    elif nazwa == "wilson":
+        m_flaga_usa(-1.4, 0.9)
+        box(1.0, 0.5, 0, 0.6, 0.5, 1.1, DREWNO)                           # mównica
+    elif nazwa == "pilsudski":
+        flaga(-1.2, 0.9, 0, h=2.6)
+        box(1.0, 0.7, 0, 1.2, 0.8, 0.78, DREWNO)
+        box(1.0, 0.7, 0.78, 1.0, 0.6, 0.02, (220, 210, 170))
+    przygotuj_render(480, 600, False, 96)
+    swiat((235, 225, 210), 0.8)
+    slonce(rot=(0.95, 0.15, -0.55), energia=3.2)
+    kamera((0.95, -2.75, 1.4), (0.05, 0.3, 1.05), obiektyw=45)
+    renderuj(os.path.join(UI, "ilustracja_%s.png" % nazwa))
 
 
 def panorama():
@@ -1119,6 +1210,10 @@ def podglad(nazwy, katalog):
 
 
 def main():
+    if "--ilustracje" in ARGS:
+        for nazwa in ARGS[ARGS.index("--ilustracje") + 1].split(","):
+            ilustracja(nazwa)
+        return
     if "--podglad" in ARGS:
         podglad(ARGS[ARGS.index("--podglad") + 1].split(","), ARGS[ARGS.index("--podglad") + 2])
         return
@@ -1138,7 +1233,8 @@ def main():
             "zamek": m_zamek, "kolumna": m_kolumna, "katedra": m_katedra, "wieza_eiffla": m_wieza_eiffla,
             "quai_dorsay": m_quai_dorsay, "wersal": m_wersal, "gora": m_gora, "lej": m_lej, "snopek": m_snopek,
             "latarnia": m_latarnia, "dorozka": m_dorozka, "automobil": m_automobil, "tramwaj": m_tramwaj,
-            "ptak": m_ptak, "dym": m_dym, "sala_lustrzana": m_sala_lustrzana, "sala_rady": m_sala_rady}
+            "ptak": m_ptak, "dym": m_dym, "sala_lustrzana": m_sala_lustrzana, "sala_rady": m_sala_rady,
+            "klasa": m_klasa}
     for w in range(3):
         inne["drzewo_%d" % w] = (lambda w=w: m_drzewo(w))
         inne["kamienica_wwa_%d" % w] = (lambda w=w: m_kamienica_wwa(w))
@@ -1161,6 +1257,8 @@ def main():
         if RENDERY:
             portret(nazwa)
     if RENDERY:
+        for nazwa in ("dmowski", "zamoyski", "haller", "paderewski", "clemenceau", "wilson", "pilsudski"):
+            ilustracja(nazwa)
         panorama()
     print("GOTOWE")
 

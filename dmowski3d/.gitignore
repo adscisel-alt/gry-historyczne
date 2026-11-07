@@ -1,3 +1,4 @@
 build/
 godot/.godot/
 __pycache__/
+godot/audio/glos/

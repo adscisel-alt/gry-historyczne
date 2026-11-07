@@ -36,6 +36,10 @@
   "narrator": {
    "imie": "Kronikarz",
    "rola": ""
+  },
+  "nauczyciel": {
+   "imie": "Pan Damian",
+   "rola": "nauczyciel historii"
   }
  },
  "zasoby": [
@@ -934,6 +938,36 @@
   }
  },
  "przerywniki": {
+  "wstep": [
+   [
+    "nauczyciel",
+    "Dzień dobry! Jestem pan Damian, wasz nauczyciel historii. Dziś zabiorę was w podróż do lat 1914–1919."
+   ],
+   [
+    "nauczyciel",
+    "Przez 123 lata Polski nie było na mapie. Jej ziemie podzieliły trzy państwa: Rosja, Prusy i Austria."
+   ],
+   [
+    "nauczyciel",
+    "W 1914 r. wybuchła wielka wojna, a zaborcy stanęli przeciwko sobie. Polacy zobaczyli w tym szansę na wolność."
+   ],
+   [
+    "nauczyciel",
+    "Do niepodległości prowadziło wiele dróg. Józef Piłsudski tworzył Legiony, a Roman Dmowski przekonywał polityków na Zachodzie."
+   ],
+   [
+    "nauczyciel",
+    "W tej grze wcielicie się w Romana Dmowskiego. Założycie Komitet Narodowy Polski, pomożecie stworzyć Błękitną Armię i pojedziecie na konferencję pokojową do Paryża."
+   ],
+   [
+    "nauczyciel",
+    "Pamiętajcie: historia to nie opowieść o bohaterach bez wad. Poznacie zasługi Dmowskiego, ale też to, za co dziś się go krytykuje."
+   ],
+   [
+    "nauczyciel",
+    "Czytajcie Księgę Wiedzy i karty postaci, rozwiązujcie zagadki — za każdą zdobędziecie Punkty Wiedzy. Powodzenia!"
+   ]
+  ],
   "przemowienie": [
    [
     "narrator",
@@ -1102,6 +1136,522 @@
    "reakcja": "Błękitna Armia generała Hallera była dowodem, że Polacy walczyli razem z aliantami."
   }
  ],
+ "os_czasu": [
+  [
+   1914.49,
+   "28 czerwca 1914",
+   "Zamach w Sarajewie",
+   "Zabójstwo austriackiego następcy tronu w Sarajewie stało się iskrą, od której wybuchła wielka wojna.",
+   "sw",
+   true
+  ],
+  [
+   1914.57,
+   "28 lipca 1914",
+   "Wybuch I wojny światowej",
+   "Austro-Węgry wypowiadają wojnę Serbii. W ciągu kilku dni walczy już niemal cała Europa.",
+   "sw",
+   false
+  ],
+  [
+   1914.6,
+   "6 sierpnia 1914",
+   "Wymarsz Pierwszej Kompanii Kadrowej",
+   "Strzelcy Józefa Piłsudskiego wyruszają z Krakowa. Powstają Legiony Polskie.",
+   "pl",
+   true
+  ],
+  [
+   1914.9,
+   "25 listopada 1914",
+   "Komitet Narodowy Polski",
+   "W Warszawie powstaje Komitet Narodowy Polski, którym kieruje Roman Dmowski.",
+   "pl",
+   false
+  ],
+  [
+   1915.59,
+   "5 sierpnia 1915",
+   "Niemcy zajmują Warszawę",
+   "Wojska rosyjskie wycofują się. Dmowski wyjeżdża na Zachód, by tam walczyć o sprawę polską.",
+   "pl",
+   false
+  ],
+  [
+   1916.15,
+   "1916",
+   "Bitwa pod Verdun",
+   "Jedna z najdłuższych i najkrwawszych bitew wojny — symbol okrucieństwa walk w okopach.",
+   "sw",
+   true
+  ],
+  [
+   1916.85,
+   "5 listopada 1916",
+   "Akt 5 listopada",
+   "Niemcy i Austro-Węgry zapowiadają utworzenie Królestwa Polskiego zależnego od nich.",
+   "pl",
+   true
+  ],
+  [
+   1917.2,
+   "1917",
+   "Rewolucje w Rosji",
+   "Upada car, a potem władzę przejmują bolszewicy. Rosja wycofuje się z wojny.",
+   "sw",
+   true
+  ],
+  [
+   1917.27,
+   "6 kwietnia 1917",
+   "USA przystępują do wojny",
+   "Stany Zjednoczone dołączają do aliantów. Prezydentem jest Woodrow Wilson.",
+   "sw",
+   true
+  ],
+  [
+   1917.43,
+   "4 czerwca 1917",
+   "Armia Polska we Francji",
+   "Dekret prezydenta Francji pozwala utworzyć polskie wojsko — przyszłą Błękitną Armię.",
+   "pl",
+   false
+  ],
+  [
+   1917.62,
+   "15 sierpnia 1917",
+   "Komitet w Lozannie",
+   "Dmowski odnawia w Lozannie Komitet Narodowy Polski, który wkrótce przenosi się do Paryża.",
+   "pl",
+   false
+  ],
+  [
+   1918.02,
+   "8 stycznia 1918",
+   "13. punkt Wilsona",
+   "Prezydent USA zapowiada niepodległe państwo polskie z dostępem do morza.",
+   "pl",
+   true
+  ],
+  [
+   1918.86,
+   "11 listopada 1918",
+   "Odzyskanie niepodległości",
+   "Koniec I wojny światowej. Józef Piłsudski przejmuje dowództwo nad wojskiem w Warszawie.",
+   "pl",
+   true
+  ],
+  [
+   1918.99,
+   "27 grudnia 1918",
+   "Powstanie wielkopolskie",
+   "Wybucha zwycięskie powstanie, które przywraca Polsce większość Wielkopolski.",
+   "pl",
+   true
+  ],
+  [
+   1919.05,
+   "18 stycznia 1919",
+   "Konferencja pokojowa w Paryżu",
+   "Zwycięzcy wojny zbierają się w Paryżu, by ustalić nowe granice Europy.",
+   "sw",
+   false
+  ],
+  [
+   1919.08,
+   "29 stycznia 1919",
+   "Przemówienie Dmowskiego",
+   "Dmowski przedstawia polskie postulaty przed Radą Dziesięciu.",
+   "pl",
+   false
+  ],
+  [
+   1919.49,
+   "28 czerwca 1919",
+   "Traktat wersalski",
+   "Podpisanie traktatu pokojowego z Niemcami. Za Polskę podpisują Paderewski i Dmowski.",
+   "sw",
+   true
+  ]
+ ],
+ "os_czasu_klasa7": "https://adscisel-alt.github.io/gry-historyczne/os-czasu-historia-7.html",
+ "mapy_podrozy": {
+  "start": {
+   "rok": "1914",
+   "od": "1914",
+   "do": "1914",
+   "wyroznij": [
+    "German Empire",
+    "Austro-Hungarian Empire",
+    "Russian Empire"
+   ],
+   "miasta": [
+    "Warszawa",
+    "Poznań",
+    "Gdańsk",
+    "Kraków",
+    "Berlin",
+    "Wiedeń",
+    "Piotrogród"
+   ],
+   "trasa": [],
+   "podpisy": [
+    "Rok 1914. Polski nie ma na mapie Europy — od 1795 r. jej ziemie należą do trzech zaborców: Niemiec, Austro-Węgier i Rosji.",
+    "Warszawa leży w zaborze rosyjskim, Poznań i Gdańsk — w niemieckim, a Kraków — w austriackim. Zaraz wybuchnie wielka wojna."
+   ]
+  },
+  "2": {
+   "rok": "1915–1917",
+   "od": "1914",
+   "do": "1914",
+   "wyroznij": [
+    "German Empire",
+    "Austro-Hungarian Empire",
+    "Russian Empire"
+   ],
+   "miasta": [
+    "Warszawa",
+    "Piotrogród",
+    "Sztokholm",
+    "Londyn",
+    "Paryż",
+    "Lozanna"
+   ],
+   "trasa": [
+    [
+     "Warszawa",
+     "Piotrogród",
+     "pociag",
+     "Sierpień 1915: Niemcy zajmują Warszawę. Dmowski wyjeżdża do Piotrogrodu."
+    ],
+    [
+     "Piotrogród",
+     "Sztokholm",
+     "pociag",
+     "Przez Skandynawię jedzie na Zachód…"
+    ],
+    [
+     "Sztokholm",
+     "Bergen",
+     "pociag",
+     "Przez Skandynawię jedzie na Zachód…"
+    ],
+    [
+     "Bergen",
+     "Londyn",
+     "statek",
+     "…i dociera do Londynu, gdzie pisze memoriały dla aliantów."
+    ],
+    [
+     "Londyn",
+     "Paryż",
+     "pociag",
+     "1917: przez Paryż jedzie do neutralnej Szwajcarii."
+    ],
+    [
+     "Paryż",
+     "Lozanna",
+     "pociag",
+     "W Lozannie odnawia Komitet Narodowy Polski."
+    ]
+   ],
+   "podpisy": []
+  },
+  "3": {
+   "rok": "1917",
+   "od": "1914",
+   "do": "1914",
+   "wyroznij": [
+    "France",
+    "German Empire"
+   ],
+   "miasta": [
+    "Lozanna",
+    "Paryż",
+    "Londyn",
+    "Warszawa"
+   ],
+   "trasa": [
+    [
+     "Lozanna",
+     "Paryż",
+     "pociag",
+     "Komitet przenosi się do Paryża. We Francji powstaje Armia Polska — Błękitna Armia."
+    ]
+   ],
+   "podpisy": []
+  },
+  "4": {
+   "rok": "1918",
+   "od": "1914",
+   "do": "1920",
+   "wyroznij": [
+    "Poland"
+   ],
+   "miasta": [
+    "Paryż",
+    "Warszawa",
+    "Poznań",
+    "Gdańsk",
+    "Kraków"
+   ],
+   "trasa": [],
+   "podpisy": [
+    "Jesień 1918: zaborcy przegrywają wojnę. Upadają cesarstwa Niemiec, Austro-Węgier i Rosji.",
+    "11 listopada 1918 r. Polska odzyskuje niepodległość! Wraca na mapę Europy po 123 latach.",
+    "Ale granice nie są jeszcze ustalone. Teraz rozstrzygnie o nich konferencja pokojowa w Paryżu — i walki w latach 1918–1921."
+   ]
+  },
+  "koniec": {
+   "rok": "1919–1921",
+   "od": "1920",
+   "do": "1920",
+   "wyroznij": [
+    "Poland"
+   ],
+   "miasta": [
+    "Warszawa",
+    "Poznań",
+    "Gdańsk",
+    "Kraków",
+    "Paryż"
+   ],
+   "trasa": [],
+   "podpisy": [
+    "Traktat wersalski (1919) przyznał Polsce Wielkopolskę i większość Pomorza z dostępem do Bałtyku. Gdańsk został Wolnym Miastem.",
+    "O Górnym Śląsku oraz Warmii i Mazurach zdecydowały plebiscyty, a granicę wschodnią ustalono dopiero w 1921 r. Mapa pokazuje stan około 1920 r."
+   ]
+  }
+ },
+ "powitanie": [
+  [
+   "dmowski",
+   "Warszawa, 1914. Trzeba działać — Polacy potrzebują wspólnego głosu."
+  ],
+  [
+   "hanna",
+   "Panie Romanie, jestem Hanna. Będę panu pomagać we wszystkich kampaniach!"
+  ],
+  [
+   "narrator",
+   "Chodź klawiszami WASD lub strzałkami. Kamerę obracasz klawiszami Q i R albo prawym przyciskiem myszy, a kółkiem przybliżasz."
+  ],
+  [
+   "narrator",
+   "Podejdź do postaci z wykrzyknikiem i wciśnij E. Kompas (K) wskaże kierunek do celu. Lektora włączasz i wyłączasz klawiszem G."
+  ]
+ ],
+ "karty_postaci": {
+  "dmowski": {
+   "imie": "Roman Dmowski",
+   "daty": "1864–1939",
+   "rola": "polityk, pisarz i dyplomata",
+   "fakty": [
+    [
+     "kalendarz",
+     "Urodził się 9 sierpnia 1864 r. na warszawskiej Pradze, w Kamionku."
+    ],
+    [
+     "ksiega",
+     "Studiował nauki przyrodnicze na Uniwersytecie Warszawskim."
+    ],
+    [
+     "pioro",
+     "Napisał książkę „Myśli nowoczesnego Polaka” (1903) i współtworzył obóz narodowy."
+    ],
+    [
+     "medal",
+     "W 1919 r. stał na czele polskiej delegacji w Paryżu i podpisał traktat wersalski."
+    ]
+   ],
+   "ciekawostka": "W 1923 r. był przez kilka tygodni ministrem spraw zagranicznych Polski.",
+   "odblokuj": [
+    "start"
+   ],
+   "kampania": 1,
+   "lektor": "Roman Dmowski, polityk, pisarz i dyplomata. Urodził się 9 sierpnia 1864 r. na warszawskiej Pradze, w Kamionku. Studiował nauki przyrodnicze na Uniwersytecie Warszawskim. Napisał książkę „Myśli nowoczesnego Polaka” (1903) i współtworzył obóz narodowy. W 1919 r. stał na czele polskiej delegacji w Paryżu i podpisał traktat wersalski. Ciekawostka: W 1923 r. był przez kilka tygodni ministrem spraw zagranicznych Polski."
+  },
+  "zamoyski": {
+   "imie": "Maurycy Zamoyski",
+   "daty": "1871–1939",
+   "rola": "ziemianin i dyplomata",
+   "fakty": [
+    [
+     "miejsce",
+     "Był ordynatem zamojskim — właścicielem ogromnych dóbr, także w okolicach Zamościa."
+    ],
+    [
+     "sakiewka",
+     "Wspierał finansowo Komitet Narodowy Polski i był jego wiceprezesem."
+    ],
+    [
+     "flaga",
+     "W latach 1919–1924 był posłem Polski we Francji."
+    ],
+    [
+     "kalendarz",
+     "W 1922 r. kandydował na prezydenta — przegrał z Gabrielem Narutowiczem."
+    ]
+   ],
+   "ciekawostka": "Pochodził z rodu Zamoyskich, tak jak Jan Zamoyski — założyciel Zamościa z drugiej gry w tym repozytorium!",
+   "odblokuj": [
+    "flaga",
+    "rozm_zamoyski_1"
+   ],
+   "kampania": 1,
+   "lektor": "Maurycy Zamoyski, ziemianin i dyplomata. Był ordynatem zamojskim — właścicielem ogromnych dóbr, także w okolicach Zamościa. Wspierał finansowo Komitet Narodowy Polski i był jego wiceprezesem. W latach 1919–1924 był posłem Polski we Francji. W 1922 r. kandydował na prezydenta — przegrał z Gabrielem Narutowiczem. Ciekawostka: Pochodził z rodu Zamoyskich, tak jak Jan Zamoyski — założyciel Zamościa z drugiej gry w tym repozytorium!"
+  },
+  "haller": {
+   "imie": "gen. Józef Haller",
+   "daty": "1873–1960",
+   "rola": "generał, dowódca Błękitnej Armii",
+   "fakty": [
+    [
+     "miejsce",
+     "Urodził się w Jurczycach koło Krakowa."
+    ],
+    [
+     "statek",
+     "W 1918 r. przedostał się z Rosji do Francji przez Murmańsk."
+    ],
+    [
+     "ochotnicy",
+     "Dowodził Armią Polską we Francji, która w 1919 r. wróciła do kraju."
+    ],
+    [
+     "kotwica",
+     "10 lutego 1920 r. w Pucku dokonał zaślubin Polski z morzem."
+    ]
+   ],
+   "ciekawostka": "Nazywano go „błękitnym generałem” — od koloru mundurów jego żołnierzy.",
+   "odblokuj": [
+    "flaga",
+    "rozm_haller_3"
+   ],
+   "kampania": 3,
+   "lektor": "gen. Józef Haller, generał, dowódca Błękitnej Armii. Urodził się w Jurczycach koło Krakowa. W 1918 r. przedostał się z Rosji do Francji przez Murmańsk. Dowodził Armią Polską we Francji, która w 1919 r. wróciła do kraju. 10 lutego 1920 r. w Pucku dokonał zaślubin Polski z morzem. Ciekawostka: Nazywano go „błękitnym generałem” — od koloru mundurów jego żołnierzy."
+  },
+  "paderewski": {
+   "imie": "Ignacy Jan Paderewski",
+   "daty": "1860–1941",
+   "rola": "pianista, kompozytor i premier",
+   "fakty": [
+    [
+     "miejsce",
+     "Urodził się w Kuryłówce na Podolu."
+    ],
+    [
+     "nuta",
+     "Był jednym z najsłynniejszych pianistów świata; skomponował m.in. „Menuet G-dur”."
+    ],
+    [
+     "flaga",
+     "W styczniu 1919 r. został premierem i ministrem spraw zagranicznych."
+    ],
+    [
+     "pioro",
+     "Razem z Dmowskim podpisał 28 czerwca 1919 r. traktat wersalski."
+    ]
+   ],
+   "ciekawostka": "W 1992 r. jego prochy sprowadzono z USA i złożono w archikatedrze warszawskiej.",
+   "odblokuj": [
+    "flaga",
+    "rozm_paderewski_4"
+   ],
+   "kampania": 4,
+   "lektor": "Ignacy Jan Paderewski, pianista, kompozytor i premier. Urodził się w Kuryłówce na Podolu. Był jednym z najsłynniejszych pianistów świata; skomponował m.in. „Menuet G-dur”. W styczniu 1919 r. został premierem i ministrem spraw zagranicznych. Razem z Dmowskim podpisał 28 czerwca 1919 r. traktat wersalski. Ciekawostka: W 1992 r. jego prochy sprowadzono z USA i złożono w archikatedrze warszawskiej."
+  },
+  "clemenceau": {
+   "imie": "Georges Clemenceau",
+   "daty": "1841–1929",
+   "rola": "premier Francji",
+   "fakty": [
+    [
+     "flaga",
+     "Był premierem Francji w latach 1906–1909 i 1917–1920."
+    ],
+    [
+     "ksiega",
+     "Z wykształcenia był lekarzem, pracował też jako dziennikarz."
+    ],
+    [
+     "gwiazda",
+     "Ze względu na twardy charakter nazywano go „Tygrysem”."
+    ],
+    [
+     "medal",
+     "Przewodniczył konferencji pokojowej w Paryżu."
+    ]
+   ],
+   "ciekawostka": "W lutym 1919 r. został postrzelony w zamachu, ale szybko wrócił do obrad.",
+   "odblokuj": [
+    "flaga",
+    "rozm_clemenceau_4"
+   ],
+   "kampania": 4,
+   "lektor": "Georges Clemenceau, premier Francji. Był premierem Francji w latach 1906–1909 i 1917–1920. Z wykształcenia był lekarzem, pracował też jako dziennikarz. Ze względu na twardy charakter nazywano go „Tygrysem”. Przewodniczył konferencji pokojowej w Paryżu. Ciekawostka: W lutym 1919 r. został postrzelony w zamachu, ale szybko wrócił do obrad."
+  },
+  "wilson": {
+   "imie": "Woodrow Wilson",
+   "daty": "1856–1924",
+   "rola": "prezydent Stanów Zjednoczonych",
+   "fakty": [
+    [
+     "flaga",
+     "Był 28. prezydentem USA w latach 1913–1921."
+    ],
+    [
+     "ksiega",
+     "Wcześniej był profesorem i rektorem Uniwersytetu Princeton."
+    ],
+    [
+     "dokument",
+     "W 14 punktach (1918) zapowiedział niepodległą Polskę z dostępem do morza."
+    ],
+    [
+     "medal",
+     "Otrzymał Pokojową Nagrodę Nobla za rok 1919."
+    ]
+   ],
+   "ciekawostka": "W Poznaniu jest park jego imienia i pomnik prezydenta Wilsona.",
+   "odblokuj": [
+    "flaga",
+    "rozm_wilson_4"
+   ],
+   "kampania": 4,
+   "lektor": "Woodrow Wilson, prezydent Stanów Zjednoczonych. Był 28. prezydentem USA w latach 1913–1921. Wcześniej był profesorem i rektorem Uniwersytetu Princeton. W 14 punktach (1918) zapowiedział niepodległą Polskę z dostępem do morza. Otrzymał Pokojową Nagrodę Nobla za rok 1919. Ciekawostka: W Poznaniu jest park jego imienia i pomnik prezydenta Wilsona."
+  },
+  "pilsudski": {
+   "imie": "Józef Piłsudski",
+   "daty": "1867–1935",
+   "rola": "Naczelnik Państwa i marszałek",
+   "fakty": [
+    [
+     "miejsce",
+     "Urodził się w Zułowie koło Wilna."
+    ],
+    [
+     "ochotnicy",
+     "W 1914 r. utworzył Legiony Polskie."
+    ],
+    [
+     "flaga",
+     "Od listopada 1918 r. był Naczelnikiem Państwa."
+    ],
+    [
+     "medal",
+     "W 1920 r. dowodził w zwycięskiej bitwie warszawskiej."
+    ]
+   ],
+   "ciekawostka": "Jego czapka-maciejówka stała się symbolem legionistów.",
+   "odblokuj": [
+    "kampania",
+    4
+   ],
+   "kampania": 3,
+   "lektor": "Józef Piłsudski, Naczelnik Państwa i marszałek. Urodził się w Zułowie koło Wilna. W 1914 r. utworzył Legiony Polskie. Od listopada 1918 r. był Naczelnikiem Państwa. W 1920 r. dowodził w zwycięskiej bitwie warszawskiej. Ciekawostka: Jego czapka-maciejówka stała się symbolem legionistów."
+  }
+ },
  "luzne": {
   "hanna": [
    [
@@ -1146,7 +1696,7 @@
   "Kółko myszy — przybliżanie i oddalanie kamery",
   "E lub Spacja — rozmowa z postacią (podejdź blisko)",
   "Lewy przycisk myszy — wybór i stawianie placówki · Prawy — anuluj",
-  "K — kompas   I — ekwipunek   L — Księga Wiedzy   M — muzyka   F11 — pełny ekran",
+  "K — kompas   I — ekwipunek   L — Księga Wiedzy (i oś czasu)   G — lektor   M — muzyka   F11 — pełny ekran",
   "",
   "JAK GRAĆ",
   "Każda kampania toczy się w innym mieście — wykonuj cele z panelu po prawej.",

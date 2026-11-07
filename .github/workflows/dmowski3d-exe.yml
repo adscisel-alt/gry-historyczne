@@ -30,6 +30,15 @@ jobs:
           d=~/.local/share/godot/export_templates/${GODOT_VERSION}.stable && mkdir -p $d
           unzip -joq szablony.tpz templates/windows_release_x86_64.exe templates/windows_debug_x86_64.exe templates/web_nothreads_release.zip templates/web_nothreads_debug.zip templates/version.txt -d $d
           sudo apt-get update -qq && sudo apt-get install -y -qq xvfb mesa-utils libgl1-mesa-dri > /dev/null
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Lektor (synteza mowy Piper, polskie głosy)
+        run: |
+          sudo apt-get install -y -q ffmpeg > /dev/null
+          python -m pip install -q piper-tts
+          python dmowski3d/narzedzia/generuj_lektora.py || echo "Lektor niedostępny – gra bez nagrań"
+          ls dmowski3d/godot/audio/glos | wc -l
       - name: Import zasobów
         run: godot --headless --path dmowski3d/godot --import || true
       - name: Autotest (przejście 4 kampanii)

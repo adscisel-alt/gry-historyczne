@@ -8,6 +8,7 @@ const DZIEN_SEK := 4.0
 const UI_SKRYPT := preload("res://skrypty/interfejs.gd")
 
 var D := {}
+var D_mapa := {}
 var R := {}                    # dane bieżącej kampanii
 var stan := {}
 var mapa := []
@@ -69,11 +70,17 @@ var kino_i := 0
 var kino_ujecia := []
 var kino_koniec := Callable()
 var minigra = null
+var glos: AudioStreamPlayer
+var lektor_on := true
+var ostatni_glos := ""
+var mapa_scen := ""
+var mapa_koniec := Callable()
 
 
 # ===================================================================== start
 func _ready() -> void:
 	D = JSON.parse_string(FileAccess.get_file_as_string("res://dane/dane.json"))
+	D_mapa = JSON.parse_string(FileAccess.get_file_as_string("res://dane/mapa_europy.json"))
 	_otoczenie()
 	kamera = Camera3D.new()
 	kamera.fov = 50
@@ -159,6 +166,55 @@ func _wczytaj_dzwieki() -> void:
 	muzyka.volume_db = -9
 	muzyka.finished.connect(func(): if muzyka_on: muzyka.play())
 	add_child(muzyka)
+	glos = AudioStreamPlayer.new()
+	add_child(glos)
+
+
+# ===================================================================== lektor
+func lektor(tekst: String) -> void:
+	## Odtwarza nagranie lektora (audio/glos/<md5 tekstu>.ogg), jeśli istnieje.
+	if tryb != "" or (tekst == ostatni_glos and glos.playing):
+		return
+	ostatni_glos = tekst
+	glos.stop()
+	if not lektor_on:
+		return
+	var sciezka := "res://audio/glos/%s.ogg" % tekst.md5_text()
+	if ResourceLoader.exists(sciezka):
+		glos.stream = load(sciezka)
+		glos.play()
+
+
+func ucisz_lektora() -> void:
+	glos.stop()
+	ostatni_glos = ""
+
+
+func przelacz_lektora() -> void:
+	lektor_on = not lektor_on
+	if not lektor_on:
+		ucisz_lektora()
+	ui.toast("Lektor: " + ("włączony" if lektor_on else "wyłączony"))
+
+
+# ===================================================================== mapa Europy między kampaniami
+func pokaz_mape(nazwa: String, na_koniec: Callable) -> void:
+	if tryb == "test":
+		na_koniec.call()
+		return
+	mapa_scen = nazwa
+	mapa_koniec = na_koniec
+	scena = "mapa"
+	nakladka = ""
+	ui.pokaz_ekran()
+
+
+func zakoncz_mape() -> void:
+	ucisz_lektora()
+	var cb := mapa_koniec
+	mapa_koniec = Callable()
+	if cb.is_valid():
+		cb.call()
 
 
 func dzwiek(n: String) -> void:
@@ -187,7 +243,7 @@ func nowy_stan() -> void:
 		zas[z.id] = int(z.start)
 	stan = {
 		"rozdzial": 1, "zasoby": zas, "ludnosc": 6.0, "pw": 0, "budynki": [], "flagi": [],
-		"ekwipunek": D.start_ekwipunek.duplicate(), "karty": D.karty_startowe.duplicate(), "przeczytane": [],
+		"ekwipunek": D.start_ekwipunek.duplicate(), "karty": D.karty_startowe.duplicate(), "przeczytane": [], "karty_postaci": [],
 		"zagadki": [], "dzien": 0, "prowiant": 0, "bohater": [0, 0],
 	}
 	_ustaw_start()
@@ -987,6 +1043,7 @@ func odpowiedz(idx: int) -> void:
 
 
 func zamknij_dialog() -> void:
+	ucisz_lektora()
 	var dl = dialog
 	dialog = null
 	nakladka = ""
@@ -1005,7 +1062,37 @@ func pokaz_tytul() -> void:
 func nowa_gra() -> void:
 	nowy_stan()
 	zbuduj_swiat()
-	zacznij_rozdzial()
+	scena = "wstep"
+	ui.pokaz_ekran()
+	pokaz_przerywnik("wstep", func(): pokaz_mape("start", zacznij_rozdzial))
+
+
+func powtorz_wstep() -> void:
+	scena = "wstep"
+	ui.pokaz_ekran()
+	pokaz_przerywnik("wstep", pokaz_tytul)
+
+
+func karta_odblokowana(id: String) -> bool:
+	var o: Array = D.karty_postaci[id].odblokuj
+	match o[0]:
+		"start":
+			return true
+		"flaga":
+			return o[1] in stan.flagi
+		"kampania":
+			return int(stan.rozdzial) >= int(o[1]) or scena == "koniec"
+	return false
+
+
+func czytaj_karte_postaci(id: String) -> void:
+	lektor(D.karty_postaci[id].lektor)
+	if not stan.has("karty_postaci"):
+		stan["karty_postaci"] = []
+	if not id in stan.karty_postaci:
+		stan.karty_postaci.append(id)
+		stan.pw += 2
+		ui.toast("+2 PW za poznanie postaci: %s" % D.karty_postaci[id].imie)
 
 
 func zacznij_rozdzial() -> void:
@@ -1025,12 +1112,7 @@ func wejdz_do_gry() -> void:
 	ui.pokaz_ekran()
 	if int(stan.rozdzial) == 1 and not "powitanie" in stan.flagi:
 		stan.flagi.append("powitanie")
-		otworz_dialog([
-			["dmowski", "Warszawa, 1914. Trzeba działać — Polacy potrzebują wspólnego głosu."],
-			["hanna", "Panie Romanie, jestem Hanna. Będę panu pomagać we wszystkich kampaniach!"],
-			["narrator", "Chodź klawiszami WASD lub strzałkami. Kamerę obracasz klawiszami Q i R albo prawym przyciskiem myszy, a kółkiem przybliżasz."],
-			["narrator", "Podejdź do postaci z wykrzyknikiem i wciśnij E. Kompas (K) wskaże kierunek do celu."],
-		])
+		otworz_dialog(D.powitanie)
 
 
 func zakoncz_rozdzial() -> void:
@@ -1040,9 +1122,10 @@ func zakoncz_rozdzial() -> void:
 		for k in R.karty:
 			odkryj(k)
 		if int(stan.rozdzial) >= int(D.liczba_rozdzialow):
-			scena = "koniec"
-			zapisz()
-			ui.pokaz_ekran()
+			pokaz_mape("koniec", func():
+				scena = "koniec"
+				zapisz()
+				ui.pokaz_ekran())
 		else:
 			stan.rozdzial = int(stan.rozdzial) + 1
 			stan.budynki = []
@@ -1050,7 +1133,7 @@ func zakoncz_rozdzial() -> void:
 			stan.ludnosc = 6.0
 			_ustaw_start()
 			zbuduj_swiat()
-			zacznij_rozdzial()
+			pokaz_mape(str(int(stan.rozdzial)), zacznij_rozdzial)
 	if R.has("przerywnik"):
 		pokaz_przerywnik(R.przerywnik, func(): otworz_dialog(R.koniec, null, dalej))
 	else:
@@ -1188,6 +1271,15 @@ func _klawisz(k: int) -> void:
 	if k == KEY_M:
 		przelacz_muzyke()
 		return
+	if k == KEY_G:
+		przelacz_lektora()
+		return
+	if scena == "mapa":
+		if k in [KEY_SPACE, KEY_ENTER, KEY_E]:
+			ui.dalej_mapy()
+		elif k == KEY_ESCAPE:
+			zakoncz_mape()
+		return
 	if scena == "tytul":
 		if k == KEY_ENTER:
 			nowa_gra()
@@ -1276,6 +1368,7 @@ func _klik_swiat() -> void:
 # ===================================================================== pętla
 func _process(dt: float) -> void:
 	t += dt
+	muzyka.volume_db = lerpf(muzyka.volume_db, -20.0 if glos.playing else -9.0, min(1.0, dt * 3))
 	if nakladka == "kino":
 		_kamera_kino(dt)
 		return
@@ -1645,6 +1738,15 @@ func pokaz_przerywnik(nazwa: String, na_koniec: Callable) -> void:
 	add_child(kino)
 	slonce.shadow_enabled = false
 	match nazwa:
+		"wstep":
+			_kino_model("klasa", Vector3.ZERO, 0)
+			_kino_postac("postac_nauczyciel", Vector3(0.3, 0, -1.9), Vector3(0.3, 0, 4), true)
+			_kino_swiatlo(Vector3(0, 3.2, 0))
+			_kino_swiatlo(Vector3(0, 3.2, -3))
+			kino_ujecia = [[Vector3(0, 2.3, 5.2), Vector3(0, 1.3, -3)], [Vector3(0.8, 1.8, 0.4), Vector3(0.3, 1.55, -1.9)],
+				[Vector3(1.4, 1.7, -1.2), Vector3(0, 1.5, -4.4)], [Vector3(-0.6, 1.8, 0.6), Vector3(0.3, 1.55, -1.9)],
+				[Vector3(2.4, 2.2, 3.0), Vector3(0, 1.2, -2.5)], [Vector3(0.5, 1.75, -0.2), Vector3(0.3, 1.6, -1.9)],
+				[Vector3(0, 2.6, 6.0), Vector3(0, 1.3, -3)]]
 		"przemowienie":
 			_kino_model("sala_rady", Vector3.ZERO, 0)
 			_kino_postac("postac_dmowski", Vector3(-3.6, 0, 1.2), Vector3(0, 0, -1.5), true)
@@ -1745,6 +1847,7 @@ func dalej_kino() -> void:
 
 
 func zakoncz_kino() -> void:
+	ucisz_lektora()
 	nakladka = ""
 	slonce.shadow_enabled = true
 	if kino:
@@ -1858,7 +1961,23 @@ func _zrzuty() -> void:
 	pokaz_tytul()
 	await klatki(10)
 	await zrob("01_tytul")
+	pokaz_mape("2", Callable())
+	ui.mapa_krok = 3
+	ui._ustaw_krok_mapy()
+	ui.mapa_w.postep = 3.45
+	await zrob("02a_mapa_podroz")
+	pokaz_mape("4", Callable())
+	ui.mapa_krok = 1
+	ui._ustaw_krok_mapy()
+	ui.mapa_w.przejscie = 1.0
+	await zrob("02b_mapa_1918")
 	nowa_gra()
+	kino_i = 1
+	ui.odswiez_kino()
+	await zrob("02w_wstep_nauczyciela")
+	zakoncz_kino()
+	await zrob("02c_mapa_1914")
+	zakoncz_mape()
 	ui.intro_pelny()
 	await zrob("02_kampania1")
 	# Kampania I — Warszawa, Komitet w budowie
@@ -1948,6 +2067,16 @@ func _zrzuty() -> void:
 	ui.pokaz_okno("ksiega")
 	ui.czytaj_karte("przemowienie")
 	await zrob("10_ksiega")
+	ui.ksiega_tryb = "os"
+	ui.wybrane_wydarzenie = 15
+	ui.pokaz_okno("ksiega")
+	await zrob("10b_os_czasu")
+	ui.ksiega_tryb = "postacie"
+	stan.flagi += ["rozm_haller_3", "rozm_paderewski_4"]
+	ui.wybrana_postac = "paderewski"
+	ui.pokaz_okno("ksiega")
+	await zrob("10c_karta_postaci")
+	ui.ksiega_tryb = "karty"
 	ui.zamknij_okno()
 	rozpocznij_przemowienie(Callable())
 	minigra.runda = 1
