@@ -37,6 +37,7 @@ var wybrany_przedm := -1
 var wybrana_karta := ""
 var d_tekst: RichTextLabel
 var przyciski_dolne := {}
+var paski_zaufania := {}
 
 
 # ===================================================================== budowa
@@ -233,6 +234,36 @@ func _zbuduj_hud() -> void:
 	info.add_theme_font_size_override("bold_font_size", 17)
 	info.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	vb.add_child(info)
+	# zaufanie aliantów
+	var zp := PanelContainer.new()
+	zp.add_theme_stylebox_override("panel", _sb(Color(0.12, 0.08, 0.07, 0.82), C_ZLOTY, 2, 6, 6))
+	zp.position = Vector2(10, 52)
+	zp.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hud.add_child(zp)
+	var zv := VBoxContainer.new()
+	zv.add_theme_constant_override("separation", 2)
+	zp.add_child(zv)
+	var zt := _label("Zaufanie aliantów", 14, C_ZLOTY)
+	zv.add_child(zt)
+	for k in [["fr", Color(0.3, 0.45, 0.85)], ["uk", Color(0.8, 0.25, 0.3)], ["usa", Color(0.85, 0.85, 0.9)]]:
+		var r := HBoxContainer.new()
+		var l := _label(g.D.zaufanie_nazwy[k[0]], 13, C_JASNY)
+		l.custom_minimum_size.x = 112
+		r.add_child(l)
+		var pb := ProgressBar.new()
+		pb.max_value = 100
+		pb.show_percentage = false
+		pb.custom_minimum_size = Vector2(90, 10)
+		pb.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		var fill := _sb(k[1], k[1], 0, 3, 0)
+		pb.add_theme_stylebox_override("fill", fill)
+		pb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		r.add_child(pb)
+		var w := _label("50", 13, C_JASNY)
+		w.custom_minimum_size.x = 28
+		r.add_child(w)
+		zv.add_child(r)
+		paski_zaufania[k[0]] = [pb, w]
 	# kompas
 	kompas_w = KompasWidget.new()
 	kompas_w.g = g
@@ -299,6 +330,10 @@ func _process(dt: float) -> void:
 		b.modulate = Color(0.55, 0.5, 0.48) if (zablok or not g.stac(typ)) else Color.WHITE
 		if g.wybrany == typ:
 			b.modulate = Color(1.4, 1.25, 0.6)
+	for k in paski_zaufania:
+		var v := int(s.zaufanie.get(k, 50)) if s.has("zaufanie") else 50
+		paski_zaufania[k][0].value = v
+		paski_zaufania[k][1].text = str(v)
 	_odswiez_cele()
 	_odswiez_info()
 	kompas_w.visible = g.kompas
@@ -330,8 +365,12 @@ func _odswiez_cele() -> void:
 		var opis: String = cele[i][0] + ("" if int(st[1]) == 1 else " (%d/%d)" % [st[0], st[1]])
 		var l := _label(opis, 15, C_ZIELONY if gotowe else C_TEKST)
 		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		l.custom_minimum_size.x = 280
+		l.custom_minimum_size.x = 280 if cele[i][1] != "minigra" or gotowe else 200
 		hb.add_child(l)
+		if cele[i][1] == "minigra" and not gotowe:
+			var zb := _btn("Zagraj ▶", func(): g.rozpocznij_granice(), "", 14)
+			zb.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+			hb.add_child(zb)
 		cele_box.add_child(hb)
 
 
@@ -517,7 +556,9 @@ func _ekran_koniec() -> void:
 	for linia in ["Brawo! Razem z Romanem Dmowskim przeszedłeś drogę od Warszawy 1914 do Wersalu 1919.",
 			"28 czerwca 1919 r. traktat wersalski potwierdził odrodzenie Polski.",
 			"Niepodległość wywalczyło wielu ludzi: politycy, żołnierze, powstańcy i zwykli obywatele.", "",
-			"Dni kampanii: %d   ·   Przedmioty: %d" % [int(s.dzien), s.ekwipunek.size()],
+			"Dni kampanii: %d   ·   Pamiątki: %d/12   ·   Odznaki: %d/%d" % [int(s.dzien), s.get("znajdzki", []).size(), s.get("odznaki", []).size(), g.D.osiagniecia.size()],
+			"Decyzje jak w historii: %d z %d   ·   Zaufanie: Francja %d, Wielka Brytania %d, USA %d" % [g.decyzje_historyczne()[0], g.D.dylematy.size(), int(s.zaufanie.fr), int(s.zaufanie.uk), int(s.zaufanie.usa)],
+			"WYNIK KOŃCOWY: %d punktów" % g.wynik_koncowy(),
 			"Punkty Wiedzy: %d   ·   Karty Księgi: %d/%d" % [int(s.pw), s.przeczytane.size(), g.D.wiedza.size()]]:
 		var l := _label(linia, 20)
 		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -754,10 +795,11 @@ var wybrane_wydarzenie := -1
 
 
 func _okno_ksiega() -> void:
-	var vb := _okno("Księga Wiedzy", Vector2(1100, 650) if ksiega_tryb == "postacie" else Vector2(1000, 560))
+	var vb := _okno("Księga Wiedzy", Vector2(1100, 650) if ksiega_tryb in ["postacie", "album"] else Vector2(1000, 560))
 	var zakladki := HBoxContainer.new()
 	zakladki.alignment = BoxContainer.ALIGNMENT_CENTER
-	for z in [["karty", "Karty wiedzy"], ["postacie", "Karty postaci"], ["os", "Oś czasu 1914–1919"]]:
+	for z in [["karty", "Karty wiedzy"], ["postacie", "Karty postaci"], ["os", "Oś czasu 1914–1919"],
+			["album", "Pamiątki i odznaki"]]:
 		var b := _btn(z[1], func(): ksiega_tryb = z[0]; g.ucisz_lektora(); pokaz_okno("ksiega"), "", 17)
 		if ksiega_tryb == z[0]:
 			b.modulate = Color(1.35, 1.2, 0.7)
@@ -768,6 +810,9 @@ func _okno_ksiega() -> void:
 		return
 	if ksiega_tryb == "postacie":
 		_karty_postaci(vb)
+		return
+	if ksiega_tryb == "album":
+		_album(vb)
 		return
 	var hb := HBoxContainer.new()
 	hb.add_theme_constant_override("separation", 16)
@@ -1321,15 +1366,17 @@ class MapaPodrozy extends Control:
 	var postep := 0.0
 	var przejscie := 1.0
 	var animuj_granice := false
+	var widok := Rect2(0, 0, 1, 1)
+	var kolory_miast := {}
 	var _cache := {}
 	const KOLORY := {"German Empire": Color(0.56, 0.62, 0.78), "Austro-Hungarian Empire": Color(0.9, 0.78, 0.42),
 		"Russian Empire": Color(0.56, 0.72, 0.5), "Poland": Color(0.88, 0.2, 0.25), "France": Color(0.55, 0.66, 0.9)}
 
 	func _pkt(p) -> Vector2:
-		return Vector2(p[0] * size.x, p[1] * size.y)
+		return Vector2((p[0] - widok.position.x) / widok.size.x * size.x, (p[1] - widok.position.y) / widok.size.y * size.y)
 
 	func _wielokaty(epoka: String) -> Array:
-		var klucz := epoka + str(size)
+		var klucz := epoka + str(size) + str(widok)
 		if _cache.has(klucz):
 			return _cache[klucz]
 		var w := []
@@ -1403,8 +1450,9 @@ class MapaPodrozy extends Control:
 		# miasta
 		for nazwa in sc.miasta:
 			var p := _pkt(g.D_mapa.miasta[nazwa])
-			draw_circle(p, 6, Color(0.1, 0.08, 0.06))
-			draw_circle(p, 4, Color(1, 0.92, 0.6))
+			var r := 6.0 if not kolory_miast.has(nazwa) else 11.0
+			draw_circle(p, r, Color(0.1, 0.08, 0.06))
+			draw_circle(p, r - 2, kolory_miast.get(nazwa, Color(1, 0.92, 0.6)))
 			draw_string_outline(f, p + Vector2(8, -6), nazwa, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, 4, Color(1, 1, 1, 0.9))
 			draw_string(f, p + Vector2(8, -6), nazwa, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(0.1, 0.06, 0.04))
 		# pojazd
@@ -1429,6 +1477,347 @@ class MapaPodrozy extends Control:
 					draw_circle(poz + Vector2(dx, 1), 3.5, Color(0.1, 0.1, 0.1))
 				draw_line(poz + Vector2(-14, 4), poz + Vector2(10, 4), Color(0.8, 0.7, 0.3), 1)
 		draw_rect(Rect2(Vector2.ZERO, size), Color(0.9, 0.8, 0.5), false, 3)
+
+
+# ===================================================================== dylematy
+var dyl_w: Control
+
+
+func odswiez_dylemat() -> void:
+	if dyl_w:
+		dyl_w.queue_free()
+		dyl_w = null
+	var d = g.dylemat
+	if d == null or g.tryb == "test":
+		return
+	dyl_w = Control.new()
+	dyl_w.set_anchors_preset(Control.PRESET_FULL_RECT)
+	korzen.add_child(dyl_w)
+	var cien := ColorRect.new()
+	cien.color = Color(0.04, 0.02, 0.06, 0.6)
+	cien.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dyl_w.add_child(cien)
+	var p := PanelContainer.new()
+	p.position = Vector2(190, 70)
+	p.custom_minimum_size = Vector2(900, 0)
+	dyl_w.add_child(p)
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 10)
+	p.add_child(vb)
+	var dl = d.dl
+	vb.add_child(_label("DECYZJA  ·  " + dl.data, 16, C_SZARY))
+	vb.add_child(_label(dl.tytul, 32, C_CZERW))
+	var opis := _label(dl.opis, 20)
+	opis.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	opis.custom_minimum_size.x = 860
+	vb.add_child(opis)
+	if d.etap == "wybor":
+		g.lektor(dl.opis)
+		vb.add_child(_label("Co robisz? (1, 2, 3) — każda decyzja wpływa na zaufanie aliantów.", 16, C_SZARY))
+		for i in dl.opcje.size():
+			var b := _btn("%d.  %s" % [i + 1, dl.opcje[i][0]], func(): g.wybierz_opcje(i), "", 18)
+			b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+			b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			b.custom_minimum_size = Vector2(860, 48)
+			vb.add_child(b)
+	else:
+		var op = dl.opcje[d.wybor]
+		vb.add_child(_label("Twój wybór: " + op[0], 18, C_TEKST))
+		vb.add_child(_label("Skutki: " + g.opis_efektow(op[1]) + ", Punkty Wiedzy +2", 17, Color("2c4a8a")))
+		var ramka := PanelContainer.new()
+		ramka.add_theme_stylebox_override("panel", _sb(Color("e9f3df") if op[2] else Color("fff3c4"),
+			C_ZIELONY if op[2] else Color("e8b84a"), 3, 8, 10))
+		vb.add_child(ramka)
+		var rv := VBoxContainer.new()
+		ramka.add_child(rv)
+		rv.add_child(_label("Tak samo zdecydował Dmowski!" if op[2] else "W historii było inaczej:", 20,
+			C_ZIELONY if op[2] else Color("8a5a10")))
+		var h := _label(dl.historia, 18)
+		h.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		h.custom_minimum_size.x = 830
+		rv.add_child(h)
+		g.lektor(dl.historia)
+		var b2 := _btn("Dalej »", func(): g.zamknij_dylemat(), "", 19)
+		b2.size_flags_horizontal = Control.SIZE_SHRINK_END
+		vb.add_child(b2)
+
+
+# ===================================================================== gazeta
+var gaz_w: Control
+const SEPIA := "shader_type canvas_item;\nvoid fragment() { vec4 c = texture(TEXTURE, UV); float s = dot(c.rgb, vec3(0.3, 0.59, 0.11)); COLOR = vec4(vec3(s) * vec3(1.08, 0.95, 0.76), c.a); }"
+
+
+func odswiez_gazete() -> void:
+	if gaz_w:
+		gaz_w.queue_free()
+		gaz_w = null
+	if g.nakladka != "gazeta" or g.gazeta_id == "":
+		return
+	var gz = g.D.gazety[g.gazeta_id]
+	gaz_w = Control.new()
+	gaz_w.set_anchors_preset(Control.PRESET_FULL_RECT)
+	korzen.add_child(gaz_w)
+	var cien := ColorRect.new()
+	cien.color = Color(0.03, 0.02, 0.02, 0.75)
+	cien.set_anchors_preset(Control.PRESET_FULL_RECT)
+	gaz_w.add_child(cien)
+	var p := PanelContainer.new()
+	p.add_theme_stylebox_override("panel", _sb(Color("efe6cf"), Color("2a2420"), 2, 2, 22))
+	p.custom_minimum_size = Vector2(920, 610)
+	p.size = Vector2(920, 610)
+	p.position = Vector2(180, 50)
+	p.pivot_offset = Vector2(460, 305)
+	gaz_w.add_child(p)
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 6)
+	p.add_child(vb)
+	var tyt := _label("KURIER WOLNOŚCI", 54, Color("1c1814"))
+	tyt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vb.add_child(tyt)
+	var info := HBoxContainer.new()
+	var l1 := _label("Wydanie specjalne", 15, Color("3a332c"))
+	l1.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	info.add_child(l1)
+	info.add_child(_label(gz.data + "   ·   Cena 5 groszy", 15, Color("3a332c")))
+	vb.add_child(info)
+	var lin := ColorRect.new()
+	lin.color = Color("1c1814")
+	lin.custom_minimum_size = Vector2(870, 4)
+	vb.add_child(lin)
+	var nag := _label(gz.tytul, 46, Color("1c1814"))
+	nag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	nag.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	nag.custom_minimum_size.x = 870
+	vb.add_child(nag)
+	var pod := _label(gz.podtytul, 21, Color("3a332c"))
+	pod.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	pod.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	pod.custom_minimum_size.x = 870
+	vb.add_child(pod)
+	var lin2 := ColorRect.new()
+	lin2.color = Color("1c1814")
+	lin2.custom_minimum_size = Vector2(870, 2)
+	vb.add_child(lin2)
+	var hb := HBoxContainer.new()
+	hb.add_theme_constant_override("separation", 18)
+	vb.add_child(hb)
+	var ramka := PanelContainer.new()
+	ramka.add_theme_stylebox_override("panel", _sb(Color("1c1814"), Color("1c1814"), 2, 0, 2))
+	ramka.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	hb.add_child(ramka)
+	var il := TextureRect.new()
+	il.texture = load("res://ui/%s.png" % gz.obraz)
+	il.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	il.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	il.custom_minimum_size = Vector2(250, 280)
+	var sh := Shader.new()
+	sh.code = SEPIA
+	var sm := ShaderMaterial.new()
+	sm.shader = sh
+	il.material = sm
+	ramka.add_child(il)
+	var tv := VBoxContainer.new()
+	hb.add_child(tv)
+	var tekst := _label(gz.tekst, 19, Color("1c1814"))
+	tekst.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	tekst.custom_minimum_size.x = 590
+	tv.add_child(tekst)
+	var stopka := _label("„Kurier Wolności” to gazeta wymyślona na potrzeby gry — opisane wydarzenia są prawdziwe.", 13, Color("6a5f54"))
+	stopka.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	stopka.custom_minimum_size.x = 590
+	tv.add_child(stopka)
+	var b := _btn("Czytaj dalej grę »", func(): g.zamknij_gazete(), "", 18)
+	b.size_flags_horizontal = Control.SIZE_SHRINK_END
+	tv.add_child(b)
+	g.lektor(gz.tytul.capitalize() + " " + gz.podtytul + " " + gz.tekst)
+	if g.tryb == "":
+		p.scale = Vector2(0.1, 0.1)
+		p.rotation = -TAU * 2
+		var tw := p.create_tween().set_parallel().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		tw.tween_property(p, "scale", Vector2.ONE, 0.9)
+		tw.tween_property(p, "rotation", -0.025, 0.9)
+	else:
+		p.rotation = -0.025
+
+
+# ===================================================================== mini-gra: granice
+var gra_w: Control
+
+
+func odswiez_granice() -> void:
+	if gra_w:
+		gra_w.queue_free()
+		gra_w = null
+	var gr = g.granice
+	if gr == null or g.nakladka != "granice":
+		return
+	gra_w = Control.new()
+	gra_w.set_anchors_preset(Control.PRESET_FULL_RECT)
+	korzen.add_child(gra_w)
+	var tlo := ColorRect.new()
+	tlo.color = Color("1f2a33")
+	tlo.set_anchors_preset(Control.PRESET_FULL_RECT)
+	gra_w.add_child(tlo)
+	var t := _label("Mini-gra: granice Polski po traktacie wersalskim", 26, C_ZLOTY)
+	t.position = Vector2(30, 12)
+	gra_w.add_child(t)
+	var inst := _label("Kliknij region, a potem kategorię: jak rozstrzygnięto jego los w latach 1919–1922?", 16, C_JASNY)
+	inst.position = Vector2(30, 50)
+	gra_w.add_child(inst)
+	# mapa 1920 z zaznaczonymi regionami
+	var m := MapaPodrozy.new()
+	m.clip_contents = true
+	m.g = g
+	var miasta := []
+	for r in g.D.granice.regiony:
+		miasta.append(r[2])
+	m.sc = {"od": "1920", "do": "1920", "wyroznij": ["Poland"], "miasta": miasta, "trasa": [], "podpisy": []}
+	m.przejscie = 1.0
+	var w = g.D_mapa.widok_polska
+	m.widok = Rect2(w[0], w[1], w[2], w[3])
+	for r in g.D.granice.regiony:
+		if gr.przypisane.has(r[0]):
+			m.kolory_miast[r[2]] = Color(0.3, 0.8, 0.35)
+		elif gr.wybrany == r[0]:
+			m.kolory_miast[r[2]] = Color(1.0, 0.75, 0.15)
+		else:
+			m.kolory_miast[r[2]] = Color(0.95, 0.95, 0.95)
+	var prop: float = g.D_mapa.proporcja * (w[2] / w[3])
+	m.position = Vector2(30, 84)
+	m.size = Vector2(min(560 * prop, 600), min(560 * prop, 600) / prop)
+	gra_w.add_child(m)
+	var x0: float = m.position.x + m.size.x + 24
+	var prawa := VBoxContainer.new()
+	prawa.position = Vector2(x0, 84)
+	prawa.custom_minimum_size.x = 1250 - x0
+	prawa.add_theme_constant_override("separation", 8)
+	gra_w.add_child(prawa)
+	prawa.add_child(_label("Regiony:", 18, C_ZLOTY))
+	var rg := GridContainer.new()
+	rg.columns = 2
+	rg.add_theme_constant_override("h_separation", 6)
+	rg.add_theme_constant_override("v_separation", 6)
+	prawa.add_child(rg)
+	for r in g.D.granice.regiony:
+		var b := _btn(r[1], func(): g.wybierz_region(r[0]), "", 17)
+		b.custom_minimum_size = Vector2(300, 40)
+		if gr.przypisane.has(r[0]):
+			b.disabled = true
+			b.text = "✓ " + r[1]
+		elif gr.wybrany == r[0]:
+			b.modulate = Color(1.4, 1.25, 0.6)
+		rg.add_child(b)
+	prawa.add_child(_label("Rozstrzygnięcie:", 18, C_ZLOTY))
+	for kat in g.D.granice.kategorie:
+		var kb := _btn(kat[1], func(): g.przypisz_kategorie(kat[0]), "", 17)
+		kb.custom_minimum_size = Vector2(606, 44)
+		kb.disabled = gr.wybrany == ""
+		var lista := []
+		for r in g.D.granice.regiony:
+			if gr.przypisane.get(r[0], "") == kat[0]:
+				lista.append(r[1])
+		if lista.size() > 0:
+			kb.text += "  —  " + ", ".join(lista)
+		prawa.add_child(kb)
+	var kom := _label(gr.komunikat, 17, C_JASNY)
+	kom.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	kom.custom_minimum_size.x = 546
+	prawa.add_child(kom)
+	var dol := HBoxContainer.new()
+	dol.position = Vector2(30, 660)
+	dol.add_theme_constant_override("separation", 12)
+	gra_w.add_child(dol)
+	dol.add_child(_label("Błędy: %d" % gr.bledy, 18, C_JASNY))
+	if gr.przypisane.size() >= g.D.granice.regiony.size():
+		dol.add_child(_btn("Gotowe! Zakończ mini-grę »", func(): g.zakoncz_granice(), "", 19))
+	else:
+		dol.add_child(_btn("Wróć do gry (Esc)", func(): g.zamknij_granice(), "", 16))
+
+
+# ===================================================================== odznaki i album
+func odznaka(o: Array) -> void:
+	var p := PanelContainer.new()
+	p.add_theme_stylebox_override("panel", _sb(Color("3c2616"), C_ZLOTY, 3, 10, 12))
+	p.position = Vector2(440, -90)
+	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	korzen.add_child(p)
+	var hb := HBoxContainer.new()
+	hb.add_theme_constant_override("separation", 12)
+	p.add_child(hb)
+	hb.add_child(_ikona("ikona_" + o[3], 44))
+	var vb := VBoxContainer.new()
+	hb.add_child(vb)
+	vb.add_child(_label("Nowa odznaka!", 15, C_ZLOTY))
+	vb.add_child(_label(o[1], 22, C_JASNY))
+	vb.add_child(_label(o[2], 14, Color(0.85, 0.8, 0.7)))
+	var tw := p.create_tween()
+	tw.tween_property(p, "position:y", 60.0, 0.5).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_interval(3.5)
+	tw.tween_property(p, "modulate:a", 0.0, 0.6)
+	tw.tween_callback(p.queue_free)
+
+
+func _album(vb: VBoxContainer) -> void:
+	var hb := HBoxContainer.new()
+	hb.add_theme_constant_override("separation", 20)
+	vb.add_child(hb)
+	var lewa := VBoxContainer.new()
+	lewa.custom_minimum_size.x = 500
+	hb.add_child(lewa)
+	var zebrane: Array = g.stan.get("znajdzki", [])
+	lewa.add_child(_label("Pamiątki: %d / 12" % zebrane.size(), 22, C_CZERW))
+	var sc := ScrollContainer.new()
+	sc.custom_minimum_size = Vector2(500, 480)
+	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	lewa.add_child(sc)
+	var lista := VBoxContainer.new()
+	lista.add_theme_constant_override("separation", 6)
+	sc.add_child(lista)
+	for k in ["1", "2", "3", "4"]:
+		var zz = g.D.znajdzki[k]
+		for i in zz.size():
+			var id := "%s:%d" % [k, i]
+			var r := PanelContainer.new()
+			r.add_theme_stylebox_override("panel", _sb(Color("f6ecd0") if id in zebrane else Color("d8d0bd"), Color("b89a6a"), 2, 6, 8))
+			var rv := VBoxContainer.new()
+			r.add_child(rv)
+			if id in zebrane:
+				rv.add_child(_label(zz[i][3] + "  (kampania %s)" % k, 17, C_CZERW))
+				var f := _label(zz[i][4], 15)
+				f.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+				f.custom_minimum_size.x = 460
+				rv.add_child(f)
+			else:
+				rv.add_child(_label("???  — ukryta pamiątka z kampanii %s" % k, 16, C_SZARY))
+			lista.add_child(r)
+	var prawa := VBoxContainer.new()
+	hb.add_child(prawa)
+	var odz: Array = g.stan.get("odznaki", [])
+	prawa.add_child(_label("Odznaki: %d / %d" % [odz.size(), g.D.osiagniecia.size()], 22, C_CZERW))
+	var gr := GridContainer.new()
+	gr.columns = 2
+	gr.add_theme_constant_override("h_separation", 8)
+	gr.add_theme_constant_override("v_separation", 8)
+	prawa.add_child(gr)
+	for o in g.D.osiagniecia:
+		var ma: bool = o[0] in odz
+		var p := PanelContainer.new()
+		p.add_theme_stylebox_override("panel", _sb(Color("fff3c4") if ma else Color("d8d0bd"), C_ZLOTY if ma else Color("a89c8c"), 2, 8, 6))
+		p.custom_minimum_size = Vector2(250, 66)
+		var h := HBoxContainer.new()
+		p.add_child(h)
+		var ik := _ikona("ikona_" + o[3], 34)
+		if not ma:
+			ik.modulate = Color(0.3, 0.3, 0.3, 0.6)
+		h.add_child(ik)
+		var v := VBoxContainer.new()
+		h.add_child(v)
+		v.add_child(_label(o[1], 15, C_TEKST if ma else C_SZARY))
+		var op := _label(o[2], 12, C_SZARY)
+		op.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		op.custom_minimum_size.x = 190
+		v.add_child(op)
+		gr.add_child(p)
 
 
 # ===================================================================== widżety rysowane

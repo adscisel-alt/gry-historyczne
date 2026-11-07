@@ -46,7 +46,8 @@ ETYKIETY = {"Poland": (19.2, 51.15), "Russian Empire": (33.0, 56.0), "German Emp
 MIASTA = {"Warszawa": (21.01, 52.23), "Londyn": (-0.13, 51.51), "Lozanna": (6.63, 46.52), "Paryż": (2.35, 48.86),
           "Piotrogród": (30.31, 59.94), "Sztokholm": (18.07, 59.33), "Poznań": (16.93, 52.41),
           "Gdańsk": (18.65, 54.35), "Kraków": (19.94, 50.06), "Berlin": (13.40, 52.52), "Wiedeń": (16.37, 48.21),
-          "Wersal": (2.13, 48.80), "Bergen": (5.32, 60.39)}
+          "Wersal": (2.13, 48.80), "Bergen": (5.32, 60.39), "Katowice": (19.02, 50.26),
+          "Olsztyn": (20.49, 53.78), "Toruń": (18.60, 53.01)}
 
 
 def rzut(lon, lat):
@@ -107,6 +108,7 @@ def main():
     os.makedirs(CEL, exist_ok=True)
     wynik = {"proporcja": round(W / H, 4), "1914": epoka(1914), "1920": epoka(1920),
              "miasta": {k: rzut(*v) for k, v in MIASTA.items()},
+             "widok_polska": rzut(12.5, 56.2) + [round(a - b, 4) for a, b in zip(rzut(26.5, 48.6), rzut(12.5, 56.2))],
              "zrodlo": "Granice: historical-basemaps (A. Ourednik), licencja GPL-3.0, uproszczone"}
     with open(os.path.join(CEL, "mapa_europy.json"), "w", encoding="utf-8") as f:
         json.dump(wynik, f, ensure_ascii=False, separators=(",", ":"))

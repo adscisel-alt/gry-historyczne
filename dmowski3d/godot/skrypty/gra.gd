@@ -75,6 +75,12 @@ var lektor_on := true
 var ostatni_glos := ""
 var mapa_scen := ""
 var mapa_koniec := Callable()
+var czeka_dylemat = null
+var dylemat = null
+var gazeta_id := ""
+var gazeta_koniec := Callable()
+var granice = null
+var znajdzki_wezel: Node3D
 
 
 # ===================================================================== start
@@ -86,7 +92,7 @@ func _ready() -> void:
 	kamera.fov = 50
 	kamera.far = 500
 	add_child(kamera)
-	for n in ["budynki_wezel", "dzialki_wezel", "npc_wezel", "dekor_wezel", "zycie_wezel"]:
+	for n in ["budynki_wezel", "dzialki_wezel", "npc_wezel", "dekor_wezel", "zycie_wezel", "znajdzki_wezel"]:
 		var w := Node3D.new()
 		add_child(w)
 		set(n, w)
@@ -246,6 +252,16 @@ func nowy_stan() -> void:
 		"ekwipunek": D.start_ekwipunek.duplicate(), "karty": D.karty_startowe.duplicate(), "przeczytane": [], "karty_postaci": [],
 		"zagadki": [], "dzien": 0, "prowiant": 0, "bohater": [0, 0],
 	}
+	_uzupelnij_stan()
+
+
+func _uzupelnij_stan() -> void:
+	## Nowe pola stanu (także dla starszych zapisów gry).
+	var domyslne := {"zaufanie": {"fr": 50, "uk": 50, "usa": 50}, "dylematy": {}, "dzien_kampanii": 0,
+		"znajdzki": [], "odznaki": [], "zbudowane": 0, "granice_bledy": 0, "gwiazdki_mowa": 0, "karty_postaci": []}
+	for k in domyslne:
+		if not stan.has(k):
+			stan[k] = domyslne[k]
 	_ustaw_start()
 
 
@@ -271,6 +287,7 @@ func wczytaj() -> void:
 	if typeof(d) != TYPE_DICTIONARY:
 		return
 	stan = d
+	_uzupelnij_stan()
 	zbuduj_swiat()
 	zacznij_rozdzial()
 
@@ -293,6 +310,7 @@ func zbuduj_swiat() -> void:
 		_npc()
 		_oswietlenie()
 		_zycie_miasta()
+	_znajdzki()
 	odswiez_swiat()
 
 
@@ -646,6 +664,7 @@ func postaw(typ: String, tx: int, ty: int) -> void:
 	for a in k:
 		stan.zasoby[a] -= k[a]
 	stan.budynki.append({"typ": typ, "x": tx, "y": ty, "postep": 0, "wariant": randi() % 3})
+	stan.zbudowane = int(stan.get("zbudowane", 0)) + 1
 	odswiez_swiat()
 	dzwiek("buduj")
 	var d := bud(typ)
@@ -759,6 +778,9 @@ func wydajnosc() -> float:
 
 func nowy_dzien() -> void:
 	stan.dzien += 1
+	stan.dzien_kampanii = int(stan.get("dzien_kampanii", 0)) + 1
+	_sprawdz_dylematy()
+	sprawdz_odznaki()
 	var wyd := wydajnosc() * (2.0 if stan.prowiant > 0 else 1.0)
 	if stan.prowiant > 0:
 		stan.prowiant -= 1
@@ -776,7 +798,7 @@ func nowy_dzien() -> void:
 			continue
 		var prod = d.get("prod", {})
 		for zas in prod:
-			var ile := int(round(prod[zas] * wyd * efekt("mnoznik", zas)))
+			var ile := int(round(prod[zas] * wyd * efekt("mnoznik", zas) * (mnoznik_zaufania() if zas == "poparcie" else 1.0)))
 			stan.zasoby[zas] += ile
 			if ile > 0 and i < wezly_b.size():
 				napis(wezly_b[i].position + Vector3(0, 4, 0), "+%d %s" % [ile, D.zasoby_nazwy[zas]], Color(1, 0.97, 0.8))
@@ -874,10 +896,23 @@ func stan_celu(c: Array) -> Array:
 			return [min(ile, int(stan.pw)), ile]
 		"zasob":
 			return [min(ile, int(stan.zasoby.get(par, 0))), ile]
+		"minigra":
+			return [1 if ("minigra_" + str(par)) in stan.flagi else 0, 1]
 	return [0, 1]
 
 
 func rozdzial_ukonczony() -> bool:
+	## Kampania kończy się po wykonaniu celów i podjęciu wszystkich jej decyzji (dylematów).
+	if not _cele_zrobione():
+		return false
+	for dl in D.dylematy:
+		if int(dl.kampania) == int(stan.rozdzial) and not stan.dylematy.has(dl.id):
+			_sprawdz_dylematy()
+			return false
+	return true
+
+
+func _cele_zrobione() -> bool:
 	for c in cele():
 		var s := stan_celu(c)
 		if s[0] < s[1]:
@@ -916,6 +951,8 @@ func cel_kompasu() -> Array:
 			return [null, "Czytaj Księgę (L) i rozwiązuj zagadki"]
 		if typ == "zasob":
 			return [null, "Zbieraj: %s — buduj placówki" % D.zasoby_nazwy[par]]
+		if typ == "minigra":
+			return [null, "Kliknij „Zagraj” przy celu w panelu po prawej"]
 	return [null, "Wszystkie cele wykonane!"]
 
 
@@ -968,7 +1005,7 @@ func rozmawiaj(npc: String) -> void:
 		if r.has("minigra"):
 			var po_minigrze := func():
 				koniec.call()
-				pokaz_przerywnik(r.minigra, Callable())
+				pokaz_przerywnik(r.minigra, func(): pokaz_gazete("przemowienie", Callable()))
 			otworz_dialog(r.kwestie, null, func(): rozpocznij_przemowienie(po_minigrze))
 			return
 		otworz_dialog(r.kwestie, q, koniec, func(pierwsza): pw_za_zagadke(pierwsza, 5))
@@ -1064,7 +1101,7 @@ func nowa_gra() -> void:
 	zbuduj_swiat()
 	scena = "wstep"
 	ui.pokaz_ekran()
-	pokaz_przerywnik("wstep", func(): pokaz_mape("start", zacznij_rozdzial))
+	pokaz_przerywnik("wstep", func(): pokaz_mape("start", func(): pokaz_gazete("k1", zacznij_rozdzial)))
 
 
 func powtorz_wstep() -> void:
@@ -1124,6 +1161,7 @@ func zakoncz_rozdzial() -> void:
 		if int(stan.rozdzial) >= int(D.liczba_rozdzialow):
 			pokaz_mape("koniec", func():
 				scena = "koniec"
+				sprawdz_odznaki()
 				zapisz()
 				ui.pokaz_ekran())
 		else:
@@ -1133,9 +1171,14 @@ func zakoncz_rozdzial() -> void:
 			stan.ludnosc = 6.0
 			_ustaw_start()
 			zbuduj_swiat()
-			pokaz_mape(str(int(stan.rozdzial)), zacznij_rozdzial)
+			stan.dzien_kampanii = 0
+			pokaz_mape(str(int(stan.rozdzial)), func(): pokaz_gazete("k%d" % int(stan.rozdzial), zacznij_rozdzial))
 	if R.has("przerywnik"):
-		pokaz_przerywnik(R.przerywnik, func(): otworz_dialog(R.koniec, null, dalej))
+		pokaz_przerywnik(R.przerywnik, func():
+			if int(stan.rozdzial) >= int(D.liczba_rozdzialow):
+				pokaz_gazete("traktat", func(): otworz_dialog(R.koniec, null, dalej))
+			else:
+				otworz_dialog(R.koniec, null, dalej))
 	else:
 		otworz_dialog(R.koniec, null, dalej)
 
@@ -1274,6 +1317,20 @@ func _klawisz(k: int) -> void:
 	if k == KEY_G:
 		przelacz_lektora()
 		return
+	if nakladka == "gazeta":
+		if k in [KEY_SPACE, KEY_ENTER, KEY_E, KEY_ESCAPE]:
+			zamknij_gazete()
+		return
+	if nakladka == "dylemat":
+		if dylemat != null and dylemat.etap == "wybor" and k in [KEY_1, KEY_2, KEY_3]:
+			wybierz_opcje(k - KEY_1)
+		elif dylemat != null and dylemat.etap == "historia" and k in [KEY_SPACE, KEY_ENTER]:
+			zamknij_dylemat()
+		return
+	if nakladka == "granice":
+		if k == KEY_ESCAPE:
+			zamknij_granice()
+		return
 	if scena == "mapa":
 		if k in [KEY_SPACE, KEY_ENTER, KEY_E]:
 			ui.dalej_mapy()
@@ -1393,6 +1450,12 @@ func _process(dt: float) -> void:
 	if nakladka != "":
 		return
 	_ruch_bohatera(dt)
+	_animuj_znajdzki(dt)
+	if czeka_dylemat != null:
+		var dl = czeka_dylemat
+		czeka_dylemat = null
+		pokaz_dylemat(dl)
+		return
 	zegar_dnia += dt
 	if zegar_dnia >= DZIEN_SEK:
 		zegar_dnia -= DZIEN_SEK
@@ -1573,7 +1636,7 @@ func _zycie_miasta() -> void:
 		zycie.append({"typ": "pieszy", "w": w, "pole": start, "cel": w.position, "kier": Vector2i(1, 0),
 			"v": rng.randf_range(1.2, 1.9), "faza": rng.randf() * TAU})
 	# pojazdy jeżdżą po długich prostych ulicach
-	var pojazdy: Array = {1: ["tramwaj", "dorozka"], 2: ["dorozka", "automobil"], 3: ["automobil"], 4: ["automobil", "dorozka", "automobil"]}[r]
+	var pojazdy: Array = {1: ["dorozka", "automobil"], 2: ["dorozka", "automobil"], 3: ["automobil"], 4: ["automobil", "dorozka", "automobil"]}[r]
 	var trasy := _trasy()
 	for i in min(pojazdy.size(), trasy.size()):
 		var tr: Array = trasy[i]
@@ -1924,6 +1987,7 @@ func gwiazdki() -> int:
 
 func zakoncz_przemowienie() -> void:
 	var g := gwiazdki()
+	stan.gwiazdki_mowa = max(int(stan.get("gwiazdki_mowa", 0)), g)
 	stan.pw += g * 3
 	stan.zasoby.poparcie += minigra.punkty / 2
 	ui.toast("Przemówienie: %s  (+%d PW, +%d poparcia)" % ["★".repeat(g), g * 3, minigra.punkty / 2])
@@ -1933,6 +1997,270 @@ func zakoncz_przemowienie() -> void:
 	ui.odswiez_przemowienie()
 	if cb.is_valid():
 		cb.call()
+
+
+# ===================================================================== zaufanie aliantów i dylematy
+func mnoznik_zaufania() -> float:
+	var z: Dictionary = stan.zaufanie
+	return 0.5 + (float(z.fr) + float(z.uk) + float(z.usa)) / 300.0
+
+
+func _sprawdz_dylematy() -> void:
+	if czeka_dylemat != null or dylemat != null:
+		return
+	for dl in D.dylematy:
+		if int(dl.kampania) == int(stan.rozdzial) and (int(stan.dzien_kampanii) >= int(dl.dzien) or _cele_zrobione()) and not stan.dylematy.has(dl.id):
+			if tryb == "test":
+				var hist := 0
+				for i in dl.opcje.size():
+					if dl.opcje[i][2]:
+						hist = i
+				pokaz_dylemat(dl)
+				wybierz_opcje(hist)
+				zamknij_dylemat()
+			else:
+				czeka_dylemat = dl
+			return
+
+
+func pokaz_dylemat(dl: Dictionary) -> void:
+	dylemat = {"dl": dl, "etap": "wybor", "wybor": -1}
+	nakladka = "dylemat"
+	dzwiek("strona")
+	ui.odswiez_dylemat()
+
+
+func opis_efektow(ef: Dictionary) -> String:
+	var czesci := []
+	for k in ef:
+		var nazwa: String = D.zaufanie_nazwy.get(k, D.zasoby_nazwy.get(k, k))
+		czesci.append("%s %s%d" % [nazwa, "+" if ef[k] >= 0 else "", ef[k]])
+	return ", ".join(czesci)
+
+
+func wybierz_opcje(i: int) -> void:
+	if dylemat == null or dylemat.etap != "wybor":
+		return
+	var opcja = dylemat.dl.opcje[i]
+	for k in opcja[1]:
+		var v := int(opcja[1][k])
+		if k in ["fr", "uk", "usa"]:
+			stan.zaufanie[k] = clampi(int(stan.zaufanie[k]) + v, 0, 100)
+		elif k == "pw":
+			stan.pw += v
+		else:
+			stan.zasoby[k] = max(0, int(stan.zasoby.get(k, 0)) + v)
+	stan.dylematy[dylemat.dl.id] = i
+	stan.pw += 2
+	dylemat.wybor = i
+	dylemat.etap = "historia"
+	dzwiek("dobrze" if opcja[2] else "klik")
+	ui.odswiez_dylemat()
+
+
+func zamknij_dylemat() -> void:
+	dylemat = null
+	nakladka = ""
+	ucisz_lektora()
+	ui.odswiez_dylemat()
+	sprawdz_odznaki()
+
+
+func decyzje_historyczne() -> Array:
+	## [liczba decyzji jak w historii, liczba innych]
+	var tak := 0
+	var nie := 0
+	for dl in D.dylematy:
+		if stan.dylematy.has(dl.id):
+			if dl.opcje[int(stan.dylematy[dl.id])][2]:
+				tak += 1
+			else:
+				nie += 1
+	return [tak, nie]
+
+
+# ===================================================================== gazeta „Kurier Wolności”
+func pokaz_gazete(id: String, na_koniec: Callable) -> void:
+	if tryb == "test":
+		if na_koniec.is_valid():
+			na_koniec.call()
+		return
+	gazeta_id = id
+	gazeta_koniec = na_koniec
+	nakladka = "gazeta"
+	dzwiek("strona")
+	ui.odswiez_gazete()
+
+
+func zamknij_gazete() -> void:
+	ucisz_lektora()
+	nakladka = ""
+	gazeta_id = ""
+	ui.odswiez_gazete()
+	var cb := gazeta_koniec
+	gazeta_koniec = Callable()
+	if cb.is_valid():
+		cb.call()
+
+
+# ===================================================================== mini-gra: granice Polski
+func rozpocznij_granice() -> void:
+	granice = {"przypisane": {}, "wybrany": "", "komunikat": "", "bledy": 0, "dobrze": 0}
+	if tryb == "test":
+		for r in D.granice.regiony:
+			granice.przypisane[r[0]] = r[3]
+		zakoncz_granice()
+		return
+	nakladka = "granice"
+	ui.odswiez_granice()
+
+
+func wybierz_region(id: String) -> void:
+	if granice == null or granice.przypisane.has(id):
+		return
+	granice.wybrany = id
+	granice.komunikat = ""
+	dzwiek("klik")
+	ui.odswiez_granice()
+
+
+func przypisz_kategorie(kat: String) -> void:
+	if granice == null or granice.wybrany == "":
+		return
+	for r in D.granice.regiony:
+		if r[0] == granice.wybrany:
+			if r[3] == kat:
+				granice.przypisane[r[0]] = kat
+				granice.komunikat = "Dobrze! " + r[4]
+				stan.pw += 4
+				dzwiek("dobrze")
+				lektor(r[4])
+				granice.wybrany = ""
+			else:
+				granice.bledy += 1
+				granice.komunikat = "Nie tym razem — %s miał(a) inne rozstrzygnięcie. Spróbuj jeszcze raz!" % r[1]
+				dzwiek("zle")
+	ui.odswiez_granice()
+
+
+func zakoncz_granice() -> void:
+	stan.granice_bledy = granice.bledy if granice != null else 0
+	if not "minigra_granice" in stan.flagi:
+		stan.flagi.append("minigra_granice")
+	granice = null
+	nakladka = ""
+	ucisz_lektora()
+	if tryb != "test":
+		ui.odswiez_granice()
+		ui.toast("Mapa granic ułożona!")
+	sprawdz_odznaki()
+
+
+func zamknij_granice() -> void:
+	granice = null
+	nakladka = ""
+	ucisz_lektora()
+	ui.odswiez_granice()
+
+
+# ===================================================================== znajdźki
+func _znajdzki() -> void:
+	_wyczysc(znajdzki_wezel)
+	var lista = D.znajdzki.get(str(int(stan.rozdzial)), [])
+	for i in lista.size():
+		var id := "%d:%d" % [int(stan.rozdzial), i]
+		if id in stan.get("znajdzki", []):
+			continue
+		var z = lista[i]
+		var n := Node3D.new()
+		n.name = id.replace(":", "_")
+		n.set_meta("id", id)
+		n.set_meta("dane", z)
+		n.position = Vector3((z[1] + 0.5) * T, 1.0, (z[2] + 0.5) * T)
+		var mi := MeshInstance3D.new()
+		var bm := BoxMesh.new()
+		bm.size = Vector3(0.7, 0.9, 0.06)
+		var m := StandardMaterial3D.new()
+		m.albedo_color = Color(0.98, 0.92, 0.72)
+		m.emission_enabled = true
+		m.emission = Color(1, 0.85, 0.4)
+		m.emission_energy_multiplier = 0.8
+		bm.material = m
+		mi.mesh = bm
+		n.add_child(mi)
+		var ramka := MeshInstance3D.new()
+		var tm := TorusMesh.new()
+		tm.inner_radius = 0.62
+		tm.outer_radius = 0.7
+		var mr := StandardMaterial3D.new()
+		mr.albedo_color = Color(1, 0.8, 0.25)
+		mr.emission_enabled = true
+		mr.emission = Color(1, 0.75, 0.2)
+		tm.material = mr
+		ramka.mesh = tm
+		ramka.rotation.x = PI / 2
+		n.add_child(ramka)
+		znajdzki_wezel.add_child(n)
+
+
+func _animuj_znajdzki(dt: float) -> void:
+	var hp := Vector2(stan.bohater[0], stan.bohater[1])
+	for n in znajdzki_wezel.get_children():
+		n.rotation.y += dt * 1.6
+		n.position.y = 1.0 + sin(t * 2.5 + n.position.x) * 0.15
+		if hp.distance_to(Vector2(n.position.x, n.position.z)) < 1.4:
+			zbierz_znajdzke(n)
+			return
+
+
+func zbierz_znajdzke(n: Node3D) -> void:
+	var id: String = n.get_meta("id")
+	var z = n.get_meta("dane")
+	stan.znajdzki.append(id)
+	stan.pw += 3
+	znajdzki_wezel.remove_child(n)
+	n.queue_free()
+	if tryb == "test":
+		return
+	dzwiek("przedmiot")
+	pyl(bohater.position + Vector3(0, 1.5, 0), Color(1, 0.85, 0.4))
+	ui.toast("Pamiątka %d/12: %s (+3 PW)" % [stan.znajdzki.size(), z[3]])
+	otworz_dialog([["narrator", z[4]]])
+	sprawdz_odznaki()
+
+
+# ===================================================================== odznaki
+func sprawdz_odznaki() -> void:
+	var dh := decyzje_historyczne()
+	var z: Dictionary = stan.zaufanie
+	var zagadki_razem := 0
+	for lista in D.zagadki.values():
+		zagadki_razem += lista.size()
+	var warunki := {
+		"kampania_1": int(stan.rozdzial) >= 2 or scena == "koniec",
+		"mowca": int(stan.get("gwiazdki_mowa", 0)) >= 3,
+		"kartograf": "minigra_granice" in stan.flagi and int(stan.get("granice_bledy", 1)) == 0,
+		"zbieracz": stan.znajdzki.size() >= 12,
+		"mol": stan.przeczytane.size() >= D.wiedza.size(),
+		"postacie": stan.get("karty_postaci", []).size() >= D.karty_postaci.size(),
+		"dyplomata": int(z.fr) >= 70 and int(z.uk) >= 70 and int(z.usa) >= 70,
+		"sladami": dh[0] >= D.dylematy.size(),
+		"wlasna_droga": dh[1] >= 3,
+		"budowniczy": int(stan.get("zbudowane", 0)) >= 25,
+		"zagadki": stan.zagadki.size() >= zagadki_razem,
+		"niepodlegla": scena == "koniec",
+	}
+	for o in D.osiagniecia:
+		if warunki.get(o[0], false) and not o[0] in stan.odznaki:
+			stan.odznaki.append(o[0])
+			if tryb != "test":
+				dzwiek("fanfara")
+				ui.odznaka(o)
+
+
+func wynik_koncowy() -> int:
+	var z: Dictionary = stan.zaufanie
+	return int(stan.pw) + stan.odznaki.size() * 10 + (int(z.fr) + int(z.uk) + int(z.usa)) / 3 + stan.znajdzki.size() * 2
 
 
 # ===================================================================== zrzuty i test
@@ -1978,6 +2306,7 @@ func _zrzuty() -> void:
 	zakoncz_kino()
 	await zrob("02c_mapa_1914")
 	zakoncz_mape()
+	zamknij_gazete()
 	ui.intro_pelny()
 	await zrob("02_kampania1")
 	# Kampania I — Warszawa, Komitet w budowie
@@ -1998,6 +2327,14 @@ func _zrzuty() -> void:
 	kompas = true
 	_odswiez_dzialki()
 	await zrob("03_warszawa")
+	pokaz_dylemat(D.dylematy[0])
+	await zrob("03a_dylemat")
+	wybierz_opcje(0)
+	await zrob("03b_dylemat_historia")
+	zamknij_dylemat()
+	pokaz_gazete("k1", Callable())
+	await zrob("03c_gazeta")
+	zamknij_gazete()
 	kompas = false
 	_odswiez_dzialki()
 	odl = 16
@@ -2060,7 +2397,16 @@ func _zrzuty() -> void:
 	stan.bohater = [17.0 * T, 12.5 * T]
 	yaw = 0.35
 	odl = 36
+	ui.odznaka(D.osiagniecia[1])
+	await klatki(45)
 	await zrob("08_paryz")
+	rozpocznij_granice()
+	granice.przypisane = {"wielkopolska": "polska", "gdansk": "wolne_miasto"}
+	granice.wybrany = "slask"
+	granice.komunikat = "Dobrze! Gdańsk został Wolnym Miastem pod opieką Ligi Narodów, z prawami dla Polski."
+	ui.odswiez_granice()
+	await zrob("08b_granice")
+	zamknij_granice()
 	ui.pokaz_okno("ekwipunek")
 	ui.wybierz_przedmiot(3)
 	await zrob("09_ekwipunek")
@@ -2076,6 +2422,12 @@ func _zrzuty() -> void:
 	ui.wybrana_postac = "paderewski"
 	ui.pokaz_okno("ksiega")
 	await zrob("10c_karta_postaci")
+	stan.znajdzki = ["1:0", "1:1", "2:0", "3:1", "4:2"]
+	stan.odznaki = ["kampania_1", "mowca", "budowniczy", "zbieracz"]
+	stan.odznaki.erase("zbieracz")
+	ui.ksiega_tryb = "album"
+	ui.pokaz_okno("ksiega")
+	await zrob("10d_album")
 	ui.ksiega_tryb = "karty"
 	ui.zamknij_okno()
 	rozpocznij_przemowienie(Callable())
@@ -2126,6 +2478,8 @@ func _test() -> void:
 				var p = _test_miejsce(c[2])
 				if p != null:
 					postaw(c[2], p.x, p.y)
+			elif c[1] == "minigra":
+				rozpocznij_granice()
 		for k in stan.karty:
 			if not k in stan.przeczytane:
 				stan.przeczytane.append(k)
@@ -2152,12 +2506,15 @@ func _test() -> void:
 			if p in stan.ekwipunek:
 				uzyj_przedmiotu(p)
 				ui.zamknij_okno()
+		for n in znajdzki_wezel.get_children():
+			zbierz_znajdzke(n)
 		nowy_dzien()
 		dni += 1
 		if rozdzial_ukonczony() and nakladka == "":
 			zakoncz_rozdzial()
 		_test_dialogi()
 	print("TEST scena=%s dni=%d starty=%s PW=%d ekwipunek=%s zasoby=%s" % [scena, dni, str(starty), stan.pw, str(stan.ekwipunek), str(stan.zasoby)])
+	print("TEST zaufanie=%s decyzje=%s znajdzki=%d odznaki=%s wynik=%d" % [str(stan.zaufanie), str(decyzje_historyczne()), stan.znajdzki.size(), str(stan.odznaki), wynik_koncowy()])
 	if scena != "koniec":
 		for c in cele():
 			print("  cel: ", c[0], " ", stan_celu(c))
