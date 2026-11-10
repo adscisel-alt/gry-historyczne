@@ -1523,9 +1523,38 @@ func baza_pola(x: int, y: int) -> float:
 	return float(D.teren[c].h)
 
 
+var _wzg_wys := {}       # Vector2i pola -> wysokość jego wzgórza (każde wzgórze ma inną)
+
+
 func _przygotuj_wzgorza() -> void:
 	_wzg_cache = {}
 	_klif_pola = {}
+	_wzg_wys = {}
+	# każde wzgórze (spójny obszar pól w/g) dostaje własną wysokość: większe – wyższe, plus losowo ±
+	var nr := 0
+	for y in N:
+		for x in N:
+			var c := teren(x, y)
+			if not c in WZGORZA or _wzg_wys.has(Vector2i(x, y)):
+				continue
+			var kolejka := [Vector2i(x, y)]
+			var pola := []
+			_wzg_wys[Vector2i(x, y)] = 0.0
+			while not kolejka.is_empty():
+				var q: Vector2i = kolejka.pop_back()
+				pola.append(q)
+				for k in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+					var n: Vector2i = q + k
+					if teren(n.x, n.y) == c and not _wzg_wys.has(n):
+						_wzg_wys[n] = 0.0
+						kolejka.append(n)
+			var los := float(absi(hash(Vector3i(x, y, 77 + int(S.get("rozdzial", 0))))) % 1000) / 1000.0
+			var wys := clampf(0.9 + 0.35 * sqrt(float(pola.size())) + (los - 0.5) * 0.6, 1.0, 2.4)
+			if c == "g":
+				wys = 2.0
+			for q in pola:
+				_wzg_wys[q] = wys
+			nr += 1
 	for y in N:
 		for x in N:
 			var c := teren(x, y)
@@ -1538,7 +1567,7 @@ func _przygotuj_wzgorza() -> void:
 			if not przy:
 				continue
 			var los := absi(hash(Vector3i(x, y, int(S.get("rozdzial", 0))))) % 100
-			if _woda(c) or los < 22:
+			if _woda(c) or los < 18:
 				_klif_pola[Vector2i(x, y)] = true
 
 
@@ -1572,7 +1601,11 @@ func wys_punkt(px: float, pz: float) -> float:
 				dk = minf(dk, d)
 			else:
 				dl = minf(dl, d)
-	var h: float = WZGORZA[c] * minf(smoothstep(0.0, 1.05, dl), smoothstep(0.0, 0.24, dk))
+	# łagodny, skośny stok (1,6 m – szczyty małych wzgórz są zaokrąglone), urwisko tylko przy polach z _klif_pola;
+	# wysokość wzgórza falująca szumem, żeby wierzchowina nie była płaską płytą
+	var szczyt: float = _wzg_wys.get(Vector2i(tx, tz), 0.9) * (0.82 + 0.3 * (0.5 + 0.5 * sin(px * 0.83 + 1.7) * sin(pz * 0.67 + 0.4)))
+	var stok := smoothstep(0.0, 1.5, dl)
+	var h: float = szczyt * minf(stok * stok * (1.6 - 0.6 * stok), smoothstep(0.0, 0.2, dk))
 	# drobne falowanie wierzchowiny
 	h += 0.05 * sin(px * 1.3 + pz * 0.7) * sin(pz * 1.1) * smoothstep(0.3, 1.0, minf(dl, dk))
 	_wzg_cache[klucz] = h
@@ -1877,7 +1910,7 @@ func _zbuduj_teren() -> void:
 # Wierzch pól rysuje shader: trawa w dwóch odcieniach, plamy ziemi i ścieżki mieszane szumem.
 # Typy terenu (droga, plaża, wzgórze, bagno…) wtapiają się miękko: kolor i „waga trawy” liczone są
 # w narożnikach pól jako średnia sąsiadów na tej samej wysokości (brak twardych krawędzi i szachownicy).
-const WAGA_TRAWY := {".": 1.0, "l": 0.8, "o": 0.8, "w": 0.32, "g": 0.0, "p": 0.0, "d": 0.0, "b": 0.3, "~": 0.0, "m": 0.0}
+const WAGA_TRAWY := {".": 1.0, "l": 0.8, "o": 0.8, "w": 1.0, "g": 0.0, "p": 0.0, "d": 0.0, "b": 0.3, "~": 0.0, "m": 0.0}
 var siatka_budowy: MeshInstance3D
 var _mat_terenu: ShaderMaterial
 
@@ -1886,7 +1919,7 @@ func _kolor_terenu(c: String) -> Color:
 	match c:
 		"l": return Color("4f6e36")        # ściółka pod drzewami
 		"o": return Color("a3a066")        # sucha ziemia gaju
-		"w": return Color("b3a46a")        # piaszczyste wzgórze
+		"w": return Color("8a9a52")        # wzgórze – ta sama trawa, wysuszana w shaderze
 		"b": return Color("5e7a4c")
 	return Color(D.teren[c].kolor)
 
@@ -1956,6 +1989,7 @@ uniform sampler2D szum : filter_linear_mipmap, repeat_enable;      // duże plam
 uniform sampler2D szum_drobny : filter_linear_mipmap, repeat_enable; // źdźbła, grudki
 uniform vec3 trawa_jasna : source_color = vec3(0.50, 0.68, 0.31);
 uniform vec3 trawa_ciemna : source_color = vec3(0.34, 0.53, 0.22);
+uniform vec3 trawa_sucha : source_color = vec3(0.66, 0.62, 0.36);   // wysuszona trawa na szczytach wzgórz
 uniform vec3 ziemia : source_color = vec3(0.45, 0.35, 0.22);
 uniform vec3 sciezka : source_color = vec3(0.62, 0.53, 0.37);
 uniform float ile_ziemi = 0.62;     // próg plam ziemi (mniej = więcej ziemi)
@@ -1977,9 +2011,12 @@ void fragment() {
 	float d2 = texture(szum_drobny, p * 1.7 + vec2(0.2, 0.6)).r;
 	// trawa: dwa odcienie mieszane dużym szumem + drobne źdźbła
 	vec3 trawa = mix(trawa_ciemna, trawa_jasna, smoothstep(0.3, 0.72, n1 + (d - 0.5) * 0.25));
+	// szczyty wzgórz suchsze: płowa trawa i więcej gołej ziemi, poszarpane szumem
+	float sucho = smoothstep(0.5, 1.6, swiat.y + (n2 - 0.5) * 0.45);
+	trawa = mix(trawa, trawa_sucha * (0.9 + 0.2 * d2), sucho * 0.85);
 	trawa *= 0.88 + 0.22 * d2;
 	// plamy ziemi
-	float plama = smoothstep(ile_ziemi, ile_ziemi + 0.06, n2 * 0.75 + n1 * 0.25 + (d - 0.5) * 0.12);
+	float plama = smoothstep(ile_ziemi - sucho * 0.12, ile_ziemi - sucho * 0.12 + 0.06, n2 * 0.75 + n1 * 0.25 + (d - 0.5) * 0.12);
 	vec3 kolor = mix(trawa, ziemia * (0.85 + 0.25 * d2), plama * 0.85);
 	// ścieżki: wąskie „grzbiety” szumu, wydeptane i poszarpane
 	float g = abs(texture(szum, p * 0.016 + vec2(0.13, 0.52)).r - 0.5);
@@ -2310,11 +2347,18 @@ func _dekoracje() -> void:
 			if c == "w":
 				for k in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
 					if _klif_pola.has(Vector2i(x + k.x, y + k.y)):
-						var srodek := Vector3((x + 0.5) * T, 0, (y + 0.5) * T) + Vector3(k.x, 0, k.y) * (T * 0.5 - 0.12)
-						srodek.y = teren_h(srodek.x + k.x * 0.4, srodek.z + k.y * 0.4) - 0.04
-						var wys: float = (wysokosc(x, y) - srodek.y + 0.06) / 1.15
-						var bas := Basis(Vector3.UP, atan2(float(k.x), float(k.y))).scaled(Vector3(r.randf_range(0.95, 1.1), wys, r.randf_range(0.8, 1.0)))
-						_dodaj(drzewa, _wariant("klif", r), Transform3D(bas, srodek))
+						# urwisko dopasowane do rzeźby: od podnóża do krawędzi stoku 0,4 m w głąb wzgórza;
+						# przy niskim stoku – krótszy, przy bardzo niskim – pominięty
+						var krawedz := Vector3((x + 0.5) * T, 0, (y + 0.5) * T) + Vector3(k.x, 0, k.y) * (T * 0.5)
+						var srodek := krawedz - Vector3(k.x, 0, k.y) * 0.12
+						srodek.y = teren_h(krawedz.x + k.x * 0.4, krawedz.z + k.y * 0.4) - 0.04
+						var gora_k := teren_h(krawedz.x - k.x * 0.4, krawedz.z - k.y * 0.4)
+						if gora_k - srodek.y < 0.32:
+							continue
+						var wys: float = (gora_k - srodek.y + 0.02) / 1.15
+						var szer := r.randf_range(0.7, 1.0)
+						var bas := Basis(Vector3.UP, atan2(float(k.x), float(k.y))) * Basis.from_scale(Vector3(szer, wys, r.randf_range(0.7, 0.9)))
+						_dodaj(drzewa, _wariant("klif", r), Transform3D(bas, srodek + Vector3(k.y, 0, k.x) * r.randf_range(-0.25, 0.25)))
 	for m in drzewa:
 		_rozsiej(m, drzewa[m])
 	_przytnij_cache_wariantow()
@@ -3653,6 +3697,16 @@ func zrzuty(kat: String) -> void:
 		kamera.position = cel_kam + Vector3(0, 30, 20)
 		await get_tree().create_timer(2.5).timeout
 		await _zrzut(kat, ujecie[3])
+	# wzgórza Rzymu z niskiej perspektywy: stoki, suche szczyty, urwiska
+	rozpocznij_rozdzial(0, [{"imie": "Damian", "rod": 0}], "kampania", 1)
+	ui.zamknij_wszystko()
+	scena = "galeria"
+	ui.pokaz_ekran()
+	kamera.position = Vector3(10.5 * T, 6.5, 22.5 * T)
+	kamera.look_at(Vector3(14.0 * T, 0.6, 12.5 * T))
+	ustaw_glebie(22.0)
+	await get_tree().create_timer(1.5).timeout
+	await _zrzut(kat, "23_wzgorza")
 	# ożywione budynki z bliska: dwie klatki, żeby widać było ruch (budynki stawiane bezpośrednio wokół siedziby)
 	rozpocznij_rozdzial(4, [{"imie": "Damian", "rod": 0}], "kampania", 1)
 	var s0 := Vector2i(int(R.start[0][0]), int(R.start[0][1]))

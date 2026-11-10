@@ -96,10 +96,13 @@ osobne węzły z modeli Blendera o nazwach `anim_obrot_*`, `anim_kolys_*`, `anim
 
 ## Modele i teren (Blender)
 
-- **Wzgórza jako rzeźba terenu**: Palatyn, Awentyn, Eskwilin i pozostałe wzgórza to heightmapa – łagodne trawiaste stoki
-  opadające w obrębie pola (`wys_punkt()` w `gra.gd`). Część krawędzi (zawsze nad wodą, poza tym losowo) przechodzi
-  w strome urwisko z modularnych kafli skalnych `klif_0..3` (kanciaste ławice tufu i trawertynu z trawą na koronie);
-  shader terenu maluje strome zbocza warstwami skały, a łagodne stoki – prześwitującą ziemią.
+- **Wzgórza jako rzeźba terenu**: Palatyn, Awentyn, Eskwilin i pozostałe wzgórza to skośne, trawiaste stoki
+  (heightmapa `wys_punkt()` w `gra.gd`) o zaokrąglonych szczytach. Każde wzgórze ma własną wysokość (większe są wyższe)
+  i falującą wierzchowinę. Pokrywa je ta sama tekstura terenu co resztę mapy, tylko na szczytach trawa jest suchsza,
+  płowa i z większą ilością gołej ziemi. W kilku miejscach (zawsze nad wodą, poza tym na ok. 1/5 krawędzi) stok
+  przechodzi w skalne urwisko z modułów `klif_0..3` dopasowanych do wysokości stoku.
+
+![Wzgórza Rzymu](zrzuty/23_wzgorza.png)
 - **Fazowane krawędzie i wypalony AO**: budynki, zabytki i obozy mają bevel (krawędzie łapią światło), a kolor
   z ambient occlusion jest wypalony do tekstury (Cycles, Smart UV). Drzewa, krzewy, skały i trzciny mają AO
   wypalony w kolorach wierzchołków.
