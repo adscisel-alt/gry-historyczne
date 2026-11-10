@@ -2548,7 +2548,7 @@ func _animuj(dt: float) -> void:
 const CZESCI_POSTACI := ["noga_l", "noga_p", "reka_l", "reka_p", "glowa", "peleryna", "kon_noga_lp", "kon_noga_pp",
 	"kon_noga_lt", "kon_noga_pt", "kon_glowa", "kon_ogon", "jezdziec", "slon_noga_lp", "slon_noga_pp", "slon_noga_lt",
 	"slon_noga_pt", "slon_traba", "slon_ucho_l", "slon_ucho_p", "slon_ogon", "balista_ramie_l", "balista_ramie_p",
-	"balista_suwak", "balista_belt", "balista_kolowrot"]
+	"balista_suwak", "balista_belt", "balista_kolowrot", "cieciwa_luku"]
 
 
 func _czesci_postaci(n: Node) -> Dictionary:
@@ -2587,7 +2587,9 @@ func animuj_postac(n: Node, stan: String, faza: float, postep_ataku := 0.0) -> v
 		_obroc(d, "noga_l", Basis(X, sin(faza) * amp))
 		_obroc(d, "noga_p", Basis(X, -sin(faza) * amp))
 		var oddech := sin(t * 1.6 + f0)
-		if stan == "atak":
+		if stan == "atak" and d.has("cieciwa_luku"):
+			pass    # łucznik: ręce prowadzi _animuj_lucznika
+		elif stan == "atak":
 			# zamach i cios: ręka z bronią wznosi się, potem tnie w dół; tarcza wysunięta
 			var k := sin(clampf(postep_ataku, 0.0, 1.0) * PI)
 			var ciecie := -2.0 * k + 0.9 * smoothstep(0.55, 1.0, postep_ataku)
@@ -2631,6 +2633,9 @@ func animuj_postac(n: Node, stan: String, faza: float, postep_ataku := 0.0) -> v
 		_obroc(d, "slon_ucho_l", Basis(Y, -ucho))
 		_obroc(d, "slon_ucho_p", Basis(Y, ucho))
 		_obroc(d, "slon_ogon", Basis(Z, sin(t * 2.4 + f0) * 0.35))
+	# łucznik: naciąganie łuku, celowanie, strzał (cięciwa i nałożona strzała rysowane w grze)
+	if d.has("cieciwa_luku"):
+		_animuj_lucznika(n, d, stan, postep_ataku)
 	# balista: naciągnięta w spoczynku; w ataku strzał, przeładowanie (suwak, kołowrót, cięciwy)
 	if d.has("balista_ramie_l"):
 		_animuj_baliste(n, d, stan, postep_ataku)
@@ -2717,14 +2722,106 @@ func _linka(mi: MeshInstance3D, a: Vector3, b: Vector3) -> void:
 	mi.transform = Transform3D(Basis(x, y, z), (a + b) / 2.0)
 
 
-func lot_belta(rodzic: Node3D, skad: Vector3, dokad: Vector3, czas := 0.4) -> void:
-	## Bełt z balisty leci łukiem do celu, przy trafieniu wzbija kurz.
+# ----------------------------------------------------------------- łucznik
+const DLON_PRAWA := Vector3(0.28, 0.9, 0.26)    # prawa dłoń w spoczynku (współrzędne modelu, Godot)
+
+
+func _cieciwa_konce(d: Dictionary) -> Array:
+	## Końce łuku w układzie lewej ręki (liczone raz z siatki cięciwy z Blendera).
+	var cie: MeshInstance3D = d["cieciwa_luku"][0]
+	if cie.has_meta("konce"):
+		return cie.get_meta("konce")
+	var bb := cie.mesh.get_aabb()
+	var os_ := 0
+	for i in 3:
+		if bb.size[i] > bb.size[os_]:
+			os_ = i
+	var sr := bb.get_center()
+	var pol := Vector3.ZERO
+	pol[os_] = bb.size[os_] / 2.0
+	var tr: Transform3D = d["cieciwa_luku"][1]
+	var reka: Transform3D = d["reka_l"][1]
+	var w := [reka.affine_inverse() * (tr * (sr - pol)), reka.affine_inverse() * (tr * (sr + pol))]
+	cie.set_meta("konce", w)
+	cie.visible = false
+	return w
+
+
+func _animuj_lucznika(n: Node, d: Dictionary, stan: String, p: float) -> void:
+	## Przebieg (p 0..1): naciąganie ze strzałą (0–0.42), celowanie (–0.5), strzał (0.5–0.54), powrót (–0.9).
+	var nap := 0.0
+	var poza := 0.0
+	var nalozona := false
+	if stan == "atak":
+		if p < 0.42:
+			nap = smoothstep(0.0, 0.42, p)
+			poza = nap
+			nalozona = true
+		elif p < 0.5:
+			nap = 1.0
+			poza = 1.0
+			nalozona = true
+		elif p < 0.54:
+			nap = 1.0 - (p - 0.5) / 0.04
+			poza = 1.0
+		else:
+			poza = 1.0 - smoothstep(0.54, 0.9, p)
+		# łuk wysunięty do celu, prawa dłoń ciągnie cięciwę pod brodę
+		_obroc(d, "reka_l", Basis(Vector3.RIGHT, -0.75 * poza) * Basis(Vector3.BACK, -0.25 * poza))
+		_obroc(d, "reka_p", Basis(Vector3.RIGHT, -0.95 * poza) * Basis(Vector3.UP, 0.55 * poza))
+		_obroc(d, "glowa", Basis(Vector3.UP, 0.25 * poza))
+	var konce := _cieciwa_konce(d)
+	var rl: Transform3D = (d["reka_l"][0] as Node3D).transform
+	var rp: Transform3D = (d["reka_p"][0] as Node3D).transform
+	var g1: Vector3 = rl * konce[0]
+	var g2: Vector3 = rl * konce[1]
+	var prosto := (g1 + g2) / 2.0
+	var dlon: Vector3 = rp * ((d["reka_p"][1] as Transform3D).affine_inverse() * DLON_PRAWA)
+	var sr := prosto.lerp(dlon, nap * 0.85)
+	var linki: Array = n.get_meta("cieciwy", [])
+	var korzen: Node3D = (d["reka_l"][0] as Node3D).get_parent()
+	if linki.is_empty():
+		var m := StandardMaterial3D.new()
+		m.albedo_color = Color(0.9, 0.86, 0.74)
+		for i in 3:
+			var mi := MeshInstance3D.new()
+			var cm := CylinderMesh.new()
+			cm.top_radius = 0.006 if i < 2 else 0.011
+			cm.bottom_radius = cm.top_radius
+			cm.height = 1.0
+			cm.radial_segments = 4
+			cm.rings = 1
+			mi.mesh = cm
+			var mm := m
+			if i == 2:                                  # nałożona strzała
+				mm = StandardMaterial3D.new()
+				mm.albedo_color = Color(0.7, 0.52, 0.3)
+			mi.material_override = mm
+			korzen.add_child(mi)
+			linki.append(mi)
+		n.set_meta("cieciwy", linki)
+	_linka(linki[0], g1, sr)
+	_linka(linki[1], g2, sr)
+	var strzala: MeshInstance3D = linki[2]
+	strzala.visible = nalozona and nap > 0.05
+	if strzala.visible:
+		var kier := (prosto - sr).normalized()
+		if kier.length() < 0.5:
+			kier = Vector3.BACK
+		_linka(strzala, sr, sr + kier * 0.78)
+	n.set_meta("grot", korzen.global_transform * (prosto + (prosto - sr).normalized() * 0.3))
+
+
+# ----------------------------------------------------------------- pociski
+func _pocisk(rodzic: Node3D, skad: Vector3, dokad: Vector3, czas: float, rodzaj: String, wysokosc: float, wbij := false) -> Node3D:
+	## Strzała albo bełt lecący łukiem; wbity zostaje w ziemi (ustawiony pod kątem lotu).
+	var belt := rodzaj == "belt"
 	var b := Node3D.new()
 	var drzewce := MeshInstance3D.new()
 	var cm := CylinderMesh.new()
-	cm.top_radius = 0.018
-	cm.bottom_radius = 0.018
-	cm.height = 1.1
+	cm.top_radius = 0.018 if belt else 0.01
+	cm.bottom_radius = cm.top_radius
+	cm.height = 1.1 if belt else 0.8
 	drzewce.mesh = cm
 	drzewce.rotation.x = PI / 2
 	var md := StandardMaterial3D.new()
@@ -2734,28 +2831,56 @@ func lot_belta(rodzic: Node3D, skad: Vector3, dokad: Vector3, czas := 0.4) -> vo
 	var grot := MeshInstance3D.new()
 	var gm := CylinderMesh.new()
 	gm.top_radius = 0.0
-	gm.bottom_radius = 0.04
-	gm.height = 0.14
+	gm.bottom_radius = 0.04 if belt else 0.025
+	gm.height = 0.14 if belt else 0.09
 	grot.mesh = gm
 	grot.rotation.x = -PI / 2
-	grot.position.z = -0.6
+	grot.position.z = -cm.height / 2 - 0.04
 	var mg := StandardMaterial3D.new()
 	mg.albedo_color = Color(0.7, 0.72, 0.76)
 	mg.metallic = 0.6
 	grot.material_override = mg
 	b.add_child(grot)
+	if not belt:                                        # lotki strzały
+		for k in 3:
+			var l := MeshInstance3D.new()
+			var lm := BoxMesh.new()
+			lm.size = Vector3(0.005, 0.05, 0.12)
+			l.mesh = lm
+			l.position = Vector3(0, 0, cm.height / 2 - 0.08)
+			l.rotation.z = k * TAU / 3
+			var ml := StandardMaterial3D.new()
+			ml.albedo_color = Color(0.92, 0.9, 0.86) if k else Color(0.75, 0.15, 0.15)
+			l.material_override = ml
+			b.add_child(l)
 	rodzic.add_child(b)
 	b.global_position = skad
+	var tor := func(u: float) -> Vector3:
+		return skad.lerp(dokad, u) + Vector3.UP * sin(u * PI) * wysokosc
 	var tw := b.create_tween()
 	tw.tween_method(func(u: float):
-		var p := skad.lerp(dokad, u) + Vector3.UP * sin(u * PI) * 0.6
-		var nast := skad.lerp(dokad, minf(u + 0.05, 1.0)) + Vector3.UP * sin(minf(u + 0.05, 1.0) * PI) * 0.6
+		var p: Vector3 = tor.call(u)
+		var nast: Vector3 = tor.call(minf(u + 0.04, 1.0) if u < 0.96 else 1.0)
+		if u >= 0.96:
+			nast = p + (p - tor.call(u - 0.04))
 		b.global_position = p
 		if nast.distance_to(p) > 0.001:
 			b.look_at(nast, Vector3.UP), 0.0, 1.0, czas)
 	tw.tween_callback(func():
-		dzwiek("tarcza")
-		b.queue_free())
+		if not wbij:
+			b.queue_free()
+		else:
+			b.global_position -= b.global_transform.basis.z * 0.15)     # grot wbija się w ziemię
+	return b
+
+
+func lot_belta(rodzic: Node3D, skad: Vector3, dokad: Vector3, czas := 0.4) -> void:
+	_pocisk(rodzic, skad, dokad, czas, "belt", 0.6)
+	get_tree().create_timer(czas).timeout.connect(func(): dzwiek("tarcza"))
+
+
+func lot_strzaly(rodzic: Node3D, skad: Vector3, dokad: Vector3, czas := 0.45, wbij := false) -> Node3D:
+	return _pocisk(rodzic, skad, dokad, czas, "strzala", 1.4, wbij)
 
 
 func _krok(n: Node, faza: float, amp: float) -> void:
@@ -3160,6 +3285,22 @@ func zrzuty(kat: String) -> void:
 	await _zrzut(kat, "13b_bitwa_belt")
 	Engine.time_scale = 1.0
 	await get_tree().create_timer(1.0).timeout
+	# łucznicy strzelają z miejsca do nadbiegającej piechoty wroga (zwolnione tempo)
+	var czekaj := 0
+	while bitwa.faza != "wybor" and czekaj < 400:
+		await get_tree().process_frame
+		czekaj += 1
+	bitwa.reka[0] = "lucznicy"
+	bitwa.karta_wroga = "maksencjusz_pretorianie"
+	bitwa.ukryta = ""
+	Engine.time_scale = 0.1
+	bitwa.zagraj(0)
+	await get_tree().create_timer(0.42).timeout
+	await _zrzut(kat, "13c_lucznik_naciaga")
+	await get_tree().create_timer(0.2).timeout
+	await _zrzut(kat, "13d_strzaly")
+	Engine.time_scale = 1.0
+	await get_tree().create_timer(1.0).timeout
 	await _zrzut(kat, "13_bitwa_starcie")
 	bitwa.zakoncz()
 	rozpocznij_rozdzial(3, [{"imie": "Ala", "rod": 0}, {"imie": "Kuba", "rod": 1}, {"imie": "Ola", "rod": 2}], "hotseat", 1)
@@ -3273,5 +3414,15 @@ func zrzuty(kat: String) -> void:
 	ustaw_glebie(4.8, 0.5, true)
 	for faza in [["21_balista_1_naciagnieta", "stoi", 0.0], ["21_balista_2_strzal", "atak", 0.06], ["21_balista_3_suwak", "atak", 0.3], ["21_balista_4_przeladowanie", "atak", 0.7]]:
 		animuj_postac(bal, faza[1], 0.0, faza[2])
+		await _zrzut(kat, faza[0])
+	# łucznik z bliska: spoczynek, naciąganie, pełne naciągnięcie ze strzałą
+	bal.visible = false
+	var luc := instancja("lucznik")
+	luc.rotation.y = -1.2
+	scenka.add_child(luc)
+	kamera.position = scenka.position + Vector3(1.2, 1.6, 2.9)
+	kamera.look_at(scenka.position + Vector3(0, 1.05, 0))
+	for faza in [["22_lucznik_1_spoczynek", "stoi", 0.0], ["22_lucznik_2_naciaga", "atak", 0.25], ["22_lucznik_3_pelne", "atak", 0.46]]:
+		animuj_postac(luc, faza[1], 0.0, faza[2])
 		await _zrzut(kat, faza[0])
 	get_tree().quit()

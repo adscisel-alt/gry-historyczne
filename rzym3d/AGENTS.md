@@ -54,6 +54,8 @@ Układ: **1 pole mapy = 2 m** (Godot: 2 jednostki), model stoi na z=0, środek p
 
 - Balista: części `balista_ramie_l/p`, `balista_suwak`, `balista_belt`, `balista_kolowrot`; cykl strzału w `_animuj_baliste()`,
   lot bełtu `lot_belta()`; w bitwie (`bitwa.gd`, `_animuj_starcie`) balista strzela z miejsca.
+- Łucznik: cięciwa z Blendera to osobny węzeł `cieciwa_luku` (prefiks `OSOBNE` – Grupa jej nie łączy); Godot ukrywa ją
+  i rysuje własną (`_animuj_lucznika`). Pociski: `_pocisk` / `lot_strzaly` / `lot_belta`; strzelcy w bitwie: `_strzelec()` w `bitwa.gd`.
 
 ## Ożywione budynki
 

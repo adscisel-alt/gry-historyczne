@@ -380,7 +380,18 @@ func _ustaw_szyki() -> void:
 	walczacy.append(s)
 
 
+func _strzelec(karta: String) -> String:
+	## Rodzaj strzelca, który zostaje na miejscu: „balista”, „luk” (łucznicy, konni łucznicy) albo „”.
+	var c: Dictionary = g.D.karty[karta]
+	if c.model == "balista":
+		return "balista"
+	if c.typ == "strzelcy" and c.model in ["lucznik", "hun"]:
+		return "luk"
+	return ""
+
+
 func _animuj_starcie(moja: String, wroga: String, w: Dictionary) -> void:
+	## Starcie w 3D: piechota i jazda biegną do siebie; balista i łucznicy zostają na miejscu i strzelają.
 	var a: Node3D = g.instancja(g.D.karty[moja].model)
 	a.position = Vector3(-3.5, 0, 1.5)
 	a.rotation.y = PI / 2
@@ -392,32 +403,76 @@ func _animuj_starcie(moja: String, wroga: String, w: Dictionary) -> void:
 	z.scale = Vector3.ONE * 1.3
 	scena3d.add_child(z)
 	walczacy.append_array([a, z])
-	for u in [a, z]:
-		u.set_meta("stan", "idzie")
-		u.set_meta("start", t)
+	var sa := _strzelec(moja)
+	var sz := _strzelec(wroga)
+	# miejsca, w których dojdzie do starcia
+	var cel_a := -0.7
+	var cel_z := 0.7
+	if sa != "" and sz != "":
+		cel_a = -3.8
+		cel_z = 3.8
+	elif sa != "":
+		cel_a = -3.8
+		cel_z = -1.6
+	elif sz != "":
+		cel_a = 1.6
+		cel_z = 3.8
+	var T := 0.7 if sa == "" and sz == "" else 1.0       # chwila trafienia / zwarcia
 	var tw := create_tween().set_parallel(true)
-	var balista: bool = g.D.karty[moja].model == "balista"
-	if balista:
-		# balista nie biegnie do starcia: zostaje z tyłu i strzela bełtem w nadbiegającego wroga
-		a.set_meta("balista", true)
-		a.set_meta("stan", "atak")
-		a.position.x = -3.8
-		tw.tween_property(z, "position:x", -1.6, 0.6).set_trans(Tween.TRANS_QUAD)
-		var tb := create_tween()
-		tb.tween_interval(0.12)
-		tb.tween_callback(func():
-			if is_instance_valid(a) and is_instance_valid(scena3d):
-				g.dzwiek("miecz")
-				var start: Vector3 = a.global_position + Vector3(0.9, 1.25, 0)
-				g.lot_belta(scena3d, start, scena3d.global_position + Vector3(-1.6, 1.1, 1.5), 0.45))
-	else:
-		tw.tween_property(a, "position:x", -0.7, 0.6).set_trans(Tween.TRANS_QUAD)
-		tw.tween_property(z, "position:x", 0.7, 0.6).set_trans(Tween.TRANS_QUAD)
+	for para in [[a, cel_a, sa], [z, cel_z, sz]]:
+		var u: Node3D = para[0]
+		u.set_meta("start", t)
+		if para[2] == "":
+			u.set_meta("stan", "idzie")
+			tw.tween_property(u, "position:x", para[1], T - 0.1).set_trans(Tween.TRANS_QUAD)
+		else:
+			u.position.x = para[1]
+			u.set_meta("stan", "atak")
+			u.set_meta("strzelec", para[2])
+			if para[2] == "balista":
+				u.set_meta("start", t + T - 0.47)    # bełt doleci dokładnie w chwili trafienia
+			else:
+				u.set_meta("start", t + T - 0.98)    # strzała zwolniona 0.38 s przed trafieniem
+	# pociski: bełt albo strzała w przeciwnika + salwa łuczników z szeregu
+	for para in [[a, z, sa, cel_z, 1.0], [z, a, sz, cel_a, -1.0]]:
+		var strz: Node3D = para[0]
+		var rodzaj: String = para[2]
+		if rodzaj == "":
+			continue
+		var cel_x: float = para[3]
+		var kier: float = para[4]
+		var tp := create_tween()
+		if rodzaj == "balista":
+			tp.tween_interval(T - 0.45)
+			tp.tween_callback(func():
+				if is_instance_valid(strz) and is_instance_valid(scena3d):
+					g.dzwiek("miecz")
+					g.lot_belta(scena3d, strz.global_position + Vector3(0.9 * kier, 1.25, 0), scena3d.global_position + Vector3(cel_x, 1.1, 1.5), 0.45))
+		else:
+			tp.tween_interval(T - 0.4)
+			tp.tween_callback(func():
+				if not is_instance_valid(strz) or not is_instance_valid(scena3d):
+					return
+				g.dzwiek("klik")
+				var skad: Vector3 = strz.get_meta("grot", strz.global_position + Vector3(0.5 * kier, 1.5, 0))
+				g.lot_strzaly(scena3d, skad, scena3d.global_position + Vector3(cel_x, 1.0, 1.5), 0.4)
+				# salwa z szeregu: strzały spadają wokół celu i wbijają się w ziemię
+				var szereg: Array = moje_wezly if kier > 0 else wrogie_wezly
+				var r := RandomNumberGenerator.new()
+				for k in 5:
+					var zrodlo: Vector3 = scena3d.global_position + Vector3(-5.0 * kier, 1.6, r.randf_range(-2.0, 1.5))
+					if not szereg.is_empty():
+						var u = szereg[r.randi_range(0, szereg.size() - 1)]
+						if is_instance_valid(u):
+							zrodlo = u.global_position + Vector3(0, 1.6, 0)
+					var dokad := scena3d.global_position + Vector3(cel_x + r.randf_range(-1.0, 1.0), 0.0, 1.5 + r.randf_range(-1.2, 1.2))
+					var s: Node3D = g.lot_strzaly(scena3d, zrodlo, dokad, r.randf_range(0.45, 0.6), true)
+					walczacy.append(s))
 	var tw2 := create_tween()
-	tw2.tween_interval(0.7)
+	tw2.tween_interval(T)
 	tw2.tween_callback(func():
 		for u in [a, z]:
-			if is_instance_valid(u) and not u.has_meta("balista"):
+			if is_instance_valid(u) and not u.has_meta("strzelec"):
 				u.set_meta("stan", "atak")
 				u.set_meta("start", t)
 		g.dzwiek("tarcza")
@@ -425,7 +480,12 @@ func _animuj_starcie(moja: String, wroga: String, w: Dictionary) -> void:
 		if przegrany:
 			var t3 := create_tween()
 			t3.tween_property(przegrany, "rotation:z", (PI / 2.2) * (1 if przegrany == z else -1), 0.4)
-		_pyl_bitwy(Vector3(-1.6 if balista else 0.0, 0.5, 1.5)))
+		var miejsce := (cel_a + cel_z) / 2.0
+		if sa != "" and sz == "":
+			miejsce = cel_z
+		elif sz != "" and sa == "":
+			miejsce = cel_a
+		_pyl_bitwy(Vector3(miejsce, 0.5, 1.5)))
 
 
 func _pyl_bitwy(poz: Vector3) -> void:
@@ -461,7 +521,10 @@ func _process(dt: float) -> void:
 			var st: String = n.get_meta("stan")
 			var od: float = t - float(n.get_meta("start", t))
 			if st == "atak":
-				var dl := 2.2 if n.has_meta("balista") else 0.55
+				var dl := 0.55
+				match String(n.get_meta("strzelec", "")):
+					"balista": dl = 2.2
+					"luk": dl = 1.2
 				g.animuj_postac(n, "atak", 0.0, clampf(od / dl, 0.0, 1.0))
 			else:
 				g.animuj_postac(n, st, t * 9.0)

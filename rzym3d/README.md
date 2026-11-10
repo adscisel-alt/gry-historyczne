@@ -54,7 +54,13 @@ plansza wygląda jak prawdziwa makieta. W bitwie pas ostrości obejmuje oba szyk
   zostaje z tyłu: ramiona strzelają do przodu, bełt leci łukiem w nadbiegającego wroga, potem suwak jedzie
   po cięciwę, kołowrót ściąga ją z powrotem, ramiona się napinają i na łożu pojawia się nowy bełt.
 
+- **Łucznicy** (sagittarii, łucznicy daccy i Maksencjusza, konni łucznicy Hunów z kartą „Deszcz strzał”) też
+  strzelają z miejsca – po obu stronach. Łucznik wysuwa łuk, prawą dłonią naciąga cięciwę z nałożoną strzałą,
+  celuje i zwalnia; strzała leci wysokim łukiem w przeciwnika, a szereg łuczników wypuszcza salwę – chybione
+  strzały wbijają się w ziemię wokół celu. Cięciwa i nałożona strzała są rysowane w grze i podążają za dłonią.
+
 ![Ruch postaci](zrzuty/20_ruch_a.png)
+![Salwa łuczników](zrzuty/13d_strzaly.png)
 ![Balista – bełt w locie](zrzuty/13b_bitwa_belt.png)
 
 ## Budynki – detale i animacje

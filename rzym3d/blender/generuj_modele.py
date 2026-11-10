@@ -419,6 +419,9 @@ def eksportuj(nazwa):
     zapisz_glb(nazwa)
 
 
+OSOBNE = ("cieciwa",)        # obiekty, które zostają osobnymi węzłami (np. cięciwa – Godot rysuje ją sam)
+
+
 class Grupa:
     """Zbiera obiekty utworzone w bloku `with` w jedną część z punktem obrotu (staw) — do animacji w Godocie."""
 
@@ -432,7 +435,8 @@ class Grupa:
     def __exit__(self, *a):
         if not self.aktywna:
             return
-        nowe = [o for o in bpy.context.scene.objects if o not in self.przed and o.type == "MESH"]
+        nowe = [o for o in bpy.context.scene.objects if o not in self.przed and o.type == "MESH"
+                and not o.name.startswith(OSOBNE)]
         polacz(nowe, self.nazwa, self.pivot)
 
 
@@ -441,7 +445,8 @@ CZESCI = ("noga_l", "noga_p", "reka_l", "reka_p", "glowa", "peleryna")
 
 def eksportuj_postac(nazwa):
     """Postać z osobnymi częściami (cialo, noga_l/p, reka_l/p) — Godot porusza nimi przy chodzeniu."""
-    reszta = [o for o in bpy.context.scene.objects if o.type == "MESH" and o.name not in CZESCI]
+    reszta = [o for o in bpy.context.scene.objects if o.type == "MESH" and o.name not in CZESCI
+              and not o.name.startswith(OSOBNE)]
     polacz(reszta, "cialo", (0, 0, 0))
     zapisz_glb(nazwa)
 
@@ -1863,14 +1868,20 @@ def tarcza_owalna(x, y, z, kolor, detal, rz, rx=0.26, rz_=0.5):
     kula(x + dx * 0.03, y + dy * 0.03, z, 0.07, detal, seg=8, ringi=5, skala=(1, 1, 1.3), **metal_kw(detal))
 
 
-def luk_bron(x, y, z, kolor=DREWNO_C):
+def luk_bron(x, y, z, kolor=DREWNO_C, osobna_cieciwa=False):
+    """Łuk refleksyjny w dłoni; z osobną cięciwą (węzeł „cieciwa_luku”) Godot animuje naciąganie."""
     pkt = []
     for i in range(7):
         t = -math.pi / 2 + i * math.pi / 6
         pkt.append((x, y - 0.14 * math.cos(t), z + 0.55 * math.sin(t)))
     for a, b in zip(pkt, pkt[1:]):
         walec(a, b, 0.018, kolor, v=5)
-    walec(pkt[0], pkt[-1], 0.005, (230, 220, 190), v=3)
+    for k in (0, -1):                                                         # rogowe końce łuku
+        kula(*pkt[k], 0.024, (210, 196, 160), seg=5, ringi=3)
+    box(x, y - 0.14, z, 0.045, 0.05, 0.12, (120, 74, 40))                     # owijka uchwytu
+    c = walec(pkt[0], pkt[-1], 0.005, (230, 220, 190), v=3)
+    if osobna_cieciwa:
+        c.name = "cieciwa_luku"
 
 
 def przedmiot_prawy(p, hx, hy, hz):
@@ -2085,7 +2096,7 @@ def m_postac(p, ox=0.0, oy=0.0, czesci=False, siedzi=False):
                 elif t == "owalna":
                     tarcza_owalna(ox - 0.36, oy - 0.16, 0.82, p["tarcza_kol"], p["tarcza_detal"], -0.5)
                 if p["lewa"] == "luk":
-                    luk_bron(dlon[0], dlon[1] - 0.02, dlon[2])
+                    luk_bron(dlon[0], dlon[1] - 0.02, dlon[2], osobna_cieciwa=czesci)
                 if p["pioro"]:                                                # gęsie pióro kronikarza
                     walec(dlon, (dlon[0] + 0.03, dlon[1] - 0.08, dlon[2] + 0.22), 0.012, BIEL, v=4)
                     box(dlon[0] + 0.02, dlon[1] - 0.06, dlon[2] + 0.16, 0.012, 0.05, 0.12, BIEL, rot=(-0.35, 0, 0))
