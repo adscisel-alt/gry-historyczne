@@ -362,6 +362,7 @@ func _ustaw_szyki() -> void:
 		var n: Node3D = g.instancja(g.D.karty[moje[i]].model)
 		n.position = Vector3(-4.5 - (i % 4) * 1.3, 0, -2.5 + (i / 4) * 1.5 + (i % 2) * 0.3)
 		n.rotation.y = PI / 2
+		g._cien_kontaktowy(n, 0.9 if g.D.karty[moje[i]].typ == "jazda" else 0.6, 0.5)
 		scena3d.add_child(n)
 		moje_wezly.append(n)
 	var wrogie := wtalia + wodrzut + ([karta_wroga] if karta_wroga != "" else [])
@@ -369,6 +370,7 @@ func _ustaw_szyki() -> void:
 		var n: Node3D = g.instancja(g.D.karty[wrogie[i]].model)
 		n.position = Vector3(4.5 + (i % 4) * 1.3, 0, -2.5 + (i / 4) * 1.5 + (i % 2) * 0.3)
 		n.rotation.y = -PI / 2
+		g._cien_kontaktowy(n, 0.9 if g.D.karty[wrogie[i]].typ == "jazda" else 0.6, 0.5)
 		scena3d.add_child(n)
 		wrogie_wezly.append(n)
 	# sztandary

@@ -66,7 +66,7 @@ jobs:
           godot --headless --path rzym3d/godot --export-release "Web" ../build/web/index.html
           ls -la rzym3d/build/web
       - name: Zrzuty ekranu
-        run: xvfb-run -a -s "-screen 0 1280x720x24" godot --path rzym3d/godot --rendering-driver opengl3 --resolution 1280x720 -- --zrzuty "$PWD/zrzuty3d"
+        run: xvfb-run -a -s "-screen 0 1280x720x24" godot --path rzym3d/godot --rendering-driver opengl3 --rendering-method gl_compatibility --resolution 1280x720 -- --zrzuty "$PWD/zrzuty3d"
       - uses: actions/upload-artifact@v4
         with:
           name: RomanEmpire3D-Windows

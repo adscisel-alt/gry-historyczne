@@ -19,6 +19,19 @@ Gra działa **w przeglądarce** (eksport HTML5) i jako **`RomanEmpire3D.exe`** n
 ![Bitwa](zrzuty/13_bitwa_starcie.png)
 ![Gra wieloosobowa](zrzuty/14_wieloosobowa.png)
 
+## Oświetlenie
+
+Scena ma `WorldEnvironment` z niebem proceduralnym (`ProceduralSky`), które jest źródłem światła otoczenia i odbić,
+tonemapping **ACES**, **SSAO** (cień w miejscach styku obiektów z ziemią), lekki **glow** (miękki blask) i delikatną mgłę
+powietrzną. Słońce stoi nisko (22–34° zależnie od epoki), ma ciepłą barwę i rzuca **miękkie cienie** (PCSS i rozmycie,
+4 kaskady). Każda epoka ma własny klimat – od jasnego południa Królestwa po złoty zmierzch późnego cesarstwa.
+
+- **Komputer (EXE):** renderer **Forward+** – pełne SSAO, glow i cienie PCSS. Bez Vulkana/D3D12 gra sama przełącza się
+  na OpenGL.
+- **Przeglądarka:** renderer **GL Compatibility** (WebGL 2), w którym Godot nie ma SSAO. Styk z ziemią przyciemniają
+  tam miękkie cienie kontaktowe pod budynkami, postaciami i oddziałami, a ekspozycja jest dobrana tak, żeby scena
+  wyglądała podobnie jak w Forward+.
+
 ## Rozdziały
 
 | # | Lata | Epoka | Rozdział | Zadania i bitwa |

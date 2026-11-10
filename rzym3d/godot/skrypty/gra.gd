@@ -133,26 +133,71 @@ func _ready() -> void:
 
 
 func _otoczenie() -> void:
+	## Oświetlenie sceny: niebo proceduralne jako źródło światła otoczenia, tonemapping ACES,
+	## SSAO (cień przy styku obiektów z ziemią), lekki glow i niskie, ciepłe słońce z miękkimi cieniami.
+	## SSAO działa w rendererze Forward+ (wersja na komputer). W przeglądarce (GL Compatibility)
+	## styk z ziemią przyciemniają miękkie cienie kontaktowe pod obiektami (_cien_kontaktowy).
 	srodowisko = Environment.new()
 	srodowisko.background_mode = Environment.BG_SKY
 	var niebo := Sky.new()
 	niebo_mat = ProceduralSkyMaterial.new()
+	niebo_mat.sun_angle_max = 18.0
+	niebo_mat.sun_curve = 0.12
 	niebo.sky_material = niebo_mat
+	niebo.radiance_size = Sky.RADIANCE_SIZE_128
 	srodowisko.sky = niebo
-	srodowisko.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	srodowisko.ambient_light_color = Color(0.62, 0.66, 0.78)
-	srodowisko.ambient_light_energy = 0.45
-	srodowisko.tonemap_mode = Environment.TONE_MAPPER_LINEAR
+	# światło otoczenia i odbicia z nieba
+	srodowisko.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
+	srodowisko.ambient_light_sky_contribution = 1.0
+	srodowisko.ambient_light_energy = 0.8
+	srodowisko.reflected_light_source = Environment.REFLECTION_SOURCE_SKY
+	# tonemapping filmowy
+	srodowisko.tonemap_mode = Environment.TONE_MAPPER_ACES
+	srodowisko.tonemap_exposure = 0.95
+	srodowisko.tonemap_white = 6.0
+	# SSAO – przyciemnienie w zagłębieniach i przy styku z ziemią
+	srodowisko.ssao_enabled = true
+	srodowisko.ssao_radius = 1.4
+	srodowisko.ssao_intensity = 3.0
+	srodowisko.ssao_power = 1.6
+	srodowisko.ssao_detail = 0.6
+	srodowisko.ssao_horizon = 0.06
+	srodowisko.ssao_sharpness = 0.98
+	srodowisko.ssao_light_affect = 0.15
+	# lekki glow (blask jasnych miejsc: słońce na marmurze, woda)
+	srodowisko.glow_enabled = true
+	srodowisko.glow_intensity = 0.32
+	srodowisko.glow_strength = 0.9
+	srodowisko.glow_bloom = 0.04
+	srodowisko.glow_hdr_threshold = 1.05
+	srodowisko.glow_blend_mode = Environment.GLOW_BLEND_MODE_SOFTLIGHT
+	srodowisko.set_glow_level(0, 0.0)
+	srodowisko.set_glow_level(1, 0.6)
+	srodowisko.set_glow_level(2, 1.0)
+	srodowisko.set_glow_level(3, 0.6)
+	# lekka mgła powietrzna
 	srodowisko.fog_enabled = true
-	srodowisko.fog_density = 0.0025
+	srodowisko.fog_density = 0.0011
+	srodowisko.fog_sun_scatter = 0.25
+	srodowisko.fog_aerial_perspective = 0.12
 	var we := WorldEnvironment.new()
+	we.name = "WorldEnvironment"
 	we.environment = srodowisko
 	add_child(we)
+	# słońce: nisko nad horyzontem, ciepłe, z miękkimi cieniami
 	slonce = DirectionalLight3D.new()
-	slonce.rotation_degrees = Vector3(-52, -38, 0)
-	slonce.light_energy = 0.95
+	slonce.name = "Slonce"
+	slonce.rotation_degrees = Vector3(-32, -40, 0)
+	slonce.light_color = Color(1.0, 0.85, 0.64)
+	slonce.light_energy = 1.7
+	slonce.light_angular_distance = 1.6      # miękkie półcienie (PCSS w Forward+)
 	slonce.shadow_enabled = true
-	slonce.directional_shadow_max_distance = 90.0
+	slonce.shadow_blur = 1.6                 # rozmycie krawędzi cieni (także w przeglądarce)
+	slonce.shadow_bias = 0.04
+	slonce.shadow_normal_bias = 1.2
+	slonce.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS
+	slonce.directional_shadow_blend_splits = true
+	slonce.directional_shadow_max_distance = 110.0
 	add_child(slonce)
 	kamera = Camera3D.new()
 	kamera.fov = 34
@@ -185,20 +230,65 @@ func _otoczenie() -> void:
 
 
 func _ustaw_klimat(epoka: String) -> void:
+	## Klimat epoki: kolory nieba, barwa i wysokość słońca, siła światła otoczenia.
+	## [góra nieba, horyzont, kolor słońca, energia słońca, kąt słońca, energia otoczenia]
 	var nieba := {
-		"krolestwo": [Color(0.42, 0.62, 0.86), Color(0.78, 0.84, 0.86), Color(1, 0.96, 0.88), 0.95],
-		"republika": [Color(0.38, 0.6, 0.88), Color(0.82, 0.84, 0.8), Color(1, 0.95, 0.85), 0.95],
-		"cesarstwo": [Color(0.32, 0.55, 0.9), Color(0.9, 0.86, 0.74), Color(1, 0.93, 0.8), 1.0],
-		"schylek": [Color(0.42, 0.44, 0.55), Color(0.86, 0.68, 0.55), Color(1, 0.82, 0.68), 0.85],
+		"krolestwo": [Color(0.36, 0.56, 0.84), Color(0.86, 0.8, 0.7), Color(1.0, 0.86, 0.66), 1.35, -32.0, 0.5],
+		"republika": [Color(0.34, 0.55, 0.86), Color(0.88, 0.82, 0.72), Color(1.0, 0.87, 0.68), 1.4, -34.0, 0.5],
+		"cesarstwo": [Color(0.3, 0.52, 0.88), Color(0.94, 0.84, 0.68), Color(1.0, 0.84, 0.6), 1.45, -30.0, 0.52],
+		"schylek": [Color(0.38, 0.38, 0.52), Color(0.93, 0.66, 0.48), Color(1.0, 0.72, 0.48), 1.3, -22.0, 0.48],
 	}
 	var n: Array = nieba.get(epoka, nieba.republika)
 	niebo_mat.sky_top_color = n[0]
 	niebo_mat.sky_horizon_color = n[1]
-	niebo_mat.ground_horizon_color = n[1]
-	niebo_mat.ground_bottom_color = Color(0.2, 0.22, 0.18)
+	niebo_mat.ground_horizon_color = n[1].darkened(0.15)
+	niebo_mat.ground_bottom_color = Color(0.22, 0.24, 0.2)
+	niebo_mat.sun_angle_max = 18.0
 	slonce.light_color = n[2]
 	slonce.light_energy = n[3]
+	slonce.rotation_degrees = Vector3(n[4], -40, 0)
+	srodowisko.ambient_light_energy = n[5]
 	srodowisko.fog_light_color = n[1]
+	# GL Compatibility (przeglądarka) liczy światło w zakresie LDR i nie ma SSAO – scena wychodzi
+	# jaśniejsza, więc obniżamy ekspozycję i światło otoczenia, żeby wyglądała jak w Forward+.
+	if RenderingServer.get_rendering_device() == null:
+		srodowisko.tonemap_exposure = 0.78
+		srodowisko.ambient_light_energy = n[5] * 0.75
+	else:
+		srodowisko.tonemap_exposure = 0.95
+
+
+func _cien_kontaktowy(rodzic: Node3D, promien: float, sila := 0.45) -> void:
+	## Miękka, ciemna plama pod obiektem – cień kontaktowy (działa także w przeglądarce, bez SSAO).
+	if _tekstura_cienia == null:
+		var gr := Gradient.new()
+		gr.set_color(0, Color(0, 0, 0, 1))
+		gr.set_color(1, Color(0, 0, 0, 0))
+		gr.add_point(0.45, Color(0, 0, 0, 0.55))
+		var gt := GradientTexture2D.new()
+		gt.gradient = gr
+		gt.fill = GradientTexture2D.FILL_RADIAL
+		gt.fill_from = Vector2(0.5, 0.5)
+		gt.fill_to = Vector2(1.0, 0.5)
+		gt.width = 64
+		gt.height = 64
+		_tekstura_cienia = gt
+	var mi := MeshInstance3D.new()
+	var pm := PlaneMesh.new()
+	pm.size = Vector2(promien * 2, promien * 2)
+	mi.mesh = pm
+	var m := StandardMaterial3D.new()
+	m.albedo_texture = _tekstura_cienia
+	m.albedo_color = Color(0.05, 0.04, 0.03, sila)
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mi.material_override = m
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	mi.position.y = 0.015
+	rodzic.add_child(mi)
+
+
+var _tekstura_cienia: GradientTexture2D
 
 
 func _wczytaj_dzwieki() -> void:
@@ -1549,6 +1639,7 @@ func _dekoracje() -> void:
 	for z in R.zabytki:
 		var n := instancja(z[2])
 		n.position = pozycja(z[0], z[1])
+		_cien_kontaktowy(n, 1.35, 0.5)
 		dekor_wezel.add_child(n)
 		var l := etykieta(z[3], 52, Color(1, 0.86, 0.45))
 		l.position = n.position + Vector3(0, 4.2, 0)
@@ -1557,10 +1648,12 @@ func _dekoracje() -> void:
 	for o in R.obozy:
 		var n := instancja("oboz_kartaginy" if o[2] == "kartaginczyk" else "oboz_barbarzyncow")
 		n.position = pozycja(o[0], o[1])
+		_cien_kontaktowy(n, 1.3, 0.45)
 		dekor_wezel.add_child(n)
 		var w := instancja(o[2])
 		w.position = n.position + Vector3(1.2, 0, 1.0)
 		w.scale = Vector3.ONE * SKALA_POSTACI
+		_cien_kontaktowy(w, 0.6, 0.5)
 		dekor_wezel.add_child(w)
 		_postacie.append(w)
 		var l := etykieta(o[3], 56, Color(1, 0.55, 0.45))
@@ -1572,6 +1665,7 @@ func _dekoracje() -> void:
 	dam.position = pozycja(s0[0], s0[1]) + Vector3(-1.3, 0, 1.4)
 	dam.scale = Vector3.ONE * SKALA_POSTACI
 	dam.rotation.y = 0.5
+	_cien_kontaktowy(dam, 0.6, 0.5)
 	dam.set_meta("postac", "damian")
 	dekor_wezel.add_child(dam)
 	_postacie.append(dam)
@@ -1584,6 +1678,7 @@ func _dekoracje() -> void:
 		h.position = pozycja(s0[0], s0[1]) + Vector3(1.4, 0, 1.3)
 		h.scale = Vector3.ONE * SKALA_POSTACI
 		h.rotation.y = -0.4
+		_cien_kontaktowy(h, 0.6, 0.5)
 		dekor_wezel.add_child(h)
 		_postacie.append(h)
 		var hl := etykieta(D.postacie[dow].imie, 40, Color(1, 0.9, 0.6))
@@ -1633,6 +1728,8 @@ func odswiez_swiat() -> void:
 		cm.radial_segments = 20
 		krag.mesh = cm
 		krag.position.y = 0.02
+		if b.gotowy:
+			_cien_kontaktowy(n, 1.05, 0.5)
 		var km := StandardMaterial3D.new()
 		km.albedo_color = Color(D.rody[int(gr(int(b.wl)).rod)].kolor)
 		km.albedo_color.a = 0.55
@@ -1659,6 +1756,7 @@ func odswiez_swiat() -> void:
 				var u := instancja(z.model)
 				u.scale = Vector3.ONE * SKALA_POSTACI
 				u.position = Vector3((k - 1) * 0.55, 0, (k % 2) * 0.4)
+				_cien_kontaktowy(u, 0.75 if z.model in ["hun", "ekwita"] else 0.55, 0.5)
 				n.add_child(u)
 			var l := etykieta("%s (siła %d)" % [z.nazwa, int(z.sila)], 44, Color(1, 0.5, 0.4))
 			l.position.y = 1.7

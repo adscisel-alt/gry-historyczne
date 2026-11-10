@@ -2,7 +2,7 @@
 
 Gra **„Roman Empire — od narodzin przez rozkwit aż po upadek”** (seria *Kroniki Damiana Ścisła*) — edukacyjna
 turowa strategia 3D o starożytnym Rzymie (753 p.n.e. – 476 n.e.) dla uczniów 10–14 lat. Język gry, kodu
-i komentarzy: **polski**. Silnik: **Godot 4.3** (GDScript, renderer *GL Compatibility*, eksport Web + Windows),
+i komentarzy: **polski**. Silnik: **Godot 4.3** (GDScript, renderer *Forward+* na komputer i *GL Compatibility* w przeglądarce – `rendering_method.web`; oświetlenie w `_otoczenie()`/`_ustaw_klimat()` w `gra.gd`),
 modele: **Blender** (skrypt Pythona, działa w Blenderze 4.x i w module `bpy` 5.x).
 
 Rozgrywka jak w `../kroniki-damiana-scisla/` (mapa z kafli, tury, 4 zasoby, budynki poszerzające granice,
