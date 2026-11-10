@@ -1,0 +1,81 @@
+name: Roman Empire 3D — zbuduj EXE i wersję web (Godot)
+
+# Eksportuje grę „Roman Empire — od narodzin przez rozkwit aż po upadek” (Godot 4.3) do pliku EXE
+# dla Windows, uruchamia autotest przejścia 8 rozdziałów i robi
+# zrzuty ekranu z prawdziwego renderowania (Xvfb + Mesa).
+on:
+  push:
+    paths:
+      - "rzym3d/**"
+      - ".github/workflows/rzym3d-exe.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  GODOT_VERSION: "4.3"
+
+jobs:
+  eksport:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Godot i szablony eksportu
+        run: |
+          base=https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable
+          curl -sSL -o godot.zip "$base/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
+          unzip -q godot.zip && sudo mv Godot_v${GODOT_VERSION}-stable_linux.x86_64 /usr/local/bin/godot
+          curl -sSL -o szablony.tpz "$base/Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
+          d=~/.local/share/godot/export_templates/${GODOT_VERSION}.stable && mkdir -p $d
+          unzip -joq szablony.tpz templates/windows_release_x86_64.exe templates/windows_debug_x86_64.exe templates/web_nothreads_release.zip templates/web_nothreads_debug.zip templates/version.txt -d $d
+          sudo apt-get update -qq && sudo apt-get install -y -qq xvfb mesa-utils libgl1-mesa-dri > /dev/null
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Lektor (synteza mowy Piper, polskie głosy)
+        run: |
+          sudo apt-get install -y -q ffmpeg > /dev/null
+          python -m pip install -q piper-tts
+          python rzym3d/narzedzia/generuj_lektora.py || echo "Lektor niedostępny – gra bez nagrań"
+          ls rzym3d/godot/audio/glos | wc -l
+      - name: Import zasobów
+        run: godot --headless --path rzym3d/godot --import || true
+      - name: Autotest (8 rozdziałów, 8 bitew, tryb wieloosobowy, sieć)
+        run: |
+          godot --headless --path rzym3d/godot -- --samotest | tee test.log
+          grep -q "TEST_WYNIK: OK" test.log
+      - name: Test gry online (serwer + 2 prawdziwe gry)
+        run: |
+          cd rzym3d/godot
+          (timeout 120 godot --headless -- --serwer 9082 > serwer.log 2>&1 &)
+          sleep 3
+          (timeout 120 godot --headless -- --bot host ws://127.0.0.1:9082 /tmp/kod.txt > host.log 2>&1 &)
+          timeout 120 godot --headless -- --bot gosc ws://127.0.0.1:9082 /tmp/kod.txt > gosc.log 2>&1 || true
+          sleep 3
+          grep BOT host.log gosc.log
+          grep -q BOT_host_OK host.log && grep -q BOT_gosc_OK gosc.log
+      - name: Eksport EXE dla Windows
+        run: |
+          mkdir -p rzym3d/build
+          godot --headless --path rzym3d/godot --export-release "Windows" ../build/RomanEmpire3D.exe
+          ls -la rzym3d/build
+      - name: Eksport wersji przeglądarkowej (HTML5)
+        run: |
+          mkdir -p rzym3d/build/web
+          godot --headless --path rzym3d/godot --export-release "Web" ../build/web/index.html
+          ls -la rzym3d/build/web
+      - name: Zrzuty ekranu
+        run: xvfb-run -a -s "-screen 0 1280x720x24" godot --path rzym3d/godot --rendering-driver opengl3 --resolution 1280x720 -- --zrzuty "$PWD/zrzuty3d"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RomanEmpire3D-Windows
+          path: rzym3d/build/RomanEmpire3D.exe
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RomanEmpire3D-przegladarka
+          path: rzym3d/build/web/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: zrzuty-ekranu-3d
+          path: zrzuty3d/

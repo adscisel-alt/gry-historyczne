@@ -1,0 +1,1278 @@
+"""Cała treść gry „Roman Empire — od narodzin przez rozkwit aż po upadek” (Kroniki Damiana Ścisła).
+
+Uruchom:  python narzedzia/dane.py   ->  godot/dane/dane.json
+Skrypt sprawdza też spójność danych (identyfikatory, mapy, cele).
+
+Mapa rozdziału: 24 × 24 pola (1 pole = 2 m w Godot). Znaki terenu:
+  .  trawa (łąka)          l  las                 w  wzgórze (kamień)      g  góry (nieprzechodnie)
+  ~  rzeka                 m  morze               p  plaża / piasek        b  bagno (osuszysz: Cloaca Maxima)
+  d  droga (via)           o  gaj oliwny
+"""
+import json
+import math
+import os
+import random
+
+TU = os.path.dirname(os.path.abspath(__file__))
+CEL = os.path.join(TU, "..", "godot", "dane", "dane.json")
+N = 24
+
+TEREN = {
+    ".": {"nazwa": "Łąka", "kolor": "7fae4f", "h": 0.0},
+    "l": {"nazwa": "Las", "kolor": "4f8a3c", "h": 0.0},
+    "w": {"nazwa": "Wzgórze", "kolor": "a6a061", "h": 0.55},
+    "g": {"nazwa": "Góry", "kolor": "8d8577", "h": 1.1},
+    "~": {"nazwa": "Rzeka", "kolor": "4a86b8", "h": -0.35},
+    "m": {"nazwa": "Morze", "kolor": "2f6aa3", "h": -0.45},
+    "p": {"nazwa": "Plaża", "kolor": "dccb8e", "h": -0.05},
+    "b": {"nazwa": "Bagno", "kolor": "5f7a52", "h": -0.12},
+    "d": {"nazwa": "Droga", "kolor": "b9a27a", "h": 0.0},
+    "o": {"nazwa": "Gaj oliwny", "kolor": "93a85a", "h": 0.05},
+}
+
+EPOKI = {
+    "krolestwo": {"nazwa": "Królestwo", "lata": "753–509 p.n.e.", "muzyka": "krolestwo", "kolor": "c9a25b"},
+    "republika": {"nazwa": "Republika", "lata": "509–27 p.n.e.", "muzyka": "republika", "kolor": "b8463a"},
+    "cesarstwo": {"nazwa": "Cesarstwo", "lata": "27 p.n.e.–284 n.e.", "muzyka": "cesarstwo", "kolor": "8a3fa0"},
+    "schylek": {"nazwa": "Późne cesarstwo", "lata": "284–476 n.e.", "muzyka": "upadek", "kolor": "5a6170"},
+}
+
+ZASOBY = {
+    "zboze": {"nazwa": "Zboże", "ikona": "🌾", "kolor": "e8c35a"},
+    "drewno": {"nazwa": "Drewno", "ikona": "🪵", "kolor": "a8743e"},
+    "kamien": {"nazwa": "Kamień", "ikona": "🪨", "kolor": "b9b5ad"},
+    "denary": {"nazwa": "Denary", "ikona": "🪙", "kolor": "f2d16b"},
+}
+
+# ------------------------------------------------------------------------------------------------ budynki
+# teren: na jakim polu wolno stawiać; obok: wymagany sąsiedni teren; daje: produkcja na turę;
+# mieszkancy: miejsca dla ludności; prac: ilu pracowników potrzeba; chwala: punkty chwały za turę.
+BUDYNKI = {
+    "chata": {"nazwa": "Chata", "koszt": {"drewno": 4}, "teren": ".wo", "mieszkancy": 4, "prac": 0, "daje": {},
+              "epoki": ["krolestwo", "republika"],
+              "opis": "Okrągła chata z gliny i trzciny – takie stały na Palatynie w VIII w. p.n.e. Daje 4 mieszkańców."},
+    "domus": {"nazwa": "Domus", "koszt": {"drewno": 3, "kamien": 4}, "teren": ".wo", "mieszkancy": 7, "prac": 0,
+              "daje": {"denary": 1}, "epoki": ["republika", "cesarstwo", "schylek"],
+              "opis": "Dom z atrium i ogrodem (perystylem). Mieszka tu rodzina z niewolnikami. 7 mieszkańców, +1 denar."},
+    "insula": {"nazwa": "Insula", "koszt": {"drewno": 4, "kamien": 6}, "teren": ".d", "mieszkancy": 12, "prac": 0,
+               "daje": {}, "wymaga": "beton", "epoki": ["cesarstwo", "schylek"],
+               "opis": "Kilkupiętrowa kamienica czynszowa. Tłoczno i łatwo o pożar, ale mieści 12 mieszkańców."},
+    "pole": {"nazwa": "Pole zboża", "koszt": {"drewno": 2}, "teren": ".", "prac": 2, "daje": {"zboze": 4},
+             "premia_obok": {"~": {"zboze": 2}}, "epoki": ["krolestwo", "republika", "cesarstwo", "schylek"],
+             "opis": "Pszenica orkisz i jęczmień. Nad rzeką (żyzne namuły) +2 zboża."},
+    "winnica": {"nazwa": "Winnica i oliwki", "koszt": {"drewno": 3}, "teren": "wo.", "prac": 2,
+                "daje": {"denary": 2, "zboze": 1}, "premia_na": {"w": {"denary": 1}, "o": {"denary": 1}},
+                "epoki": ["republika", "cesarstwo", "schylek"],
+                "opis": "Wino i oliwa to towary eksportowe. Na wzgórzu lub w gaju oliwnym +1 denar."},
+    "tartak": {"nazwa": "Obóz drwali", "koszt": {"zboze": 2}, "teren": ".l", "obok": "l", "prac": 2,
+               "daje": {"drewno": 4}, "epoki": ["krolestwo", "republika", "cesarstwo", "schylek"],
+               "opis": "Drwale ścinają dęby i sosny. Stawiaj przy lesie."},
+    "kamieniolom": {"nazwa": "Kamieniołom", "koszt": {"drewno": 3}, "teren": "w.g", "obok": "wg", "prac": 2,
+                    "daje": {"kamien": 3}, "epoki": ["krolestwo", "republika", "cesarstwo", "schylek"],
+                    "opis": "Tuf, trawertyn, a w cesarstwie marmur z Kararry. Stawiaj na wzgórzu lub obok gór."},
+    "targ": {"nazwa": "Targ (forum)", "koszt": {"drewno": 4, "kamien": 2}, "teren": ".d", "prac": 2,
+             "daje": {"denary": 3}, "premia_obok": {"d": {"denary": 1}, "~": {"denary": 1}},
+             "epoki": ["krolestwo", "republika", "cesarstwo", "schylek"],
+             "opis": "Kupcy z Grecji, Etrurii i Kartaginy. Przy drodze lub rzece +1 denar."},
+    "swiatynia": {"nazwa": "Świątynia", "koszt": {"kamien": 6, "denary": 4}, "teren": ".w", "prac": 1,
+                  "daje": {}, "chwala": 2, "epoki": ["krolestwo", "republika", "cesarstwo"],
+                  "opis": "Dom bogów: Jowisza, Junony, Minerwy. +2 chwały co turę."},
+    "koszary": {"nazwa": "Koszary (castra)", "koszt": {"drewno": 5, "kamien": 2}, "teren": ".w", "prac": 2,
+                "daje": {}, "rekrut": 1, "epoki": ["krolestwo", "republika", "cesarstwo", "schylek"],
+                "opis": "Obóz wojskowy. Pozwala werbować oddziały (okno Wojsko); każde koszary to 1 werbunek na turę."},
+    "mury": {"nazwa": "Mury", "koszt": {"kamien": 5}, "teren": ".w", "prac": 0, "daje": {}, "obrona": 2,
+             "epoki": ["krolestwo", "republika", "cesarstwo", "schylek"],
+             "opis": "Kamienne mury chronią budynki w promieniu 2 pól przed zagonami wroga."},
+    "port": {"nazwa": "Port", "koszt": {"drewno": 6, "kamien": 2}, "teren": "p.", "obok": "m~", "prac": 2,
+             "daje": {"denary": 3, "zboze": 2}, "epoki": ["republika", "cesarstwo", "schylek"],
+             "opis": "Statki wiozą zboże z Sycylii i Egiptu. Stawiaj na brzegu morza lub rzeki."},
+    "akwedukt": {"nazwa": "Akwedukt", "koszt": {"kamien": 8, "denary": 4}, "teren": ".wd", "prac": 1,
+                 "daje": {}, "wymaga": "luk", "chwala": 1, "mieszkancy_proc": 25,
+                 "epoki": ["republika", "cesarstwo", "schylek"],
+                 "opis": "Woda płynie łukami z gór. Każdy akwedukt: +25% mieszkańców we wszystkich domach."},
+    "termy": {"nazwa": "Termy", "koszt": {"kamien": 8, "drewno": 4, "denary": 4}, "teren": ".d", "prac": 3,
+              "daje": {}, "chwala": 3, "wymaga": "hypokaustum", "epoki": ["cesarstwo", "schylek"],
+              "opis": "Łaźnie z ciepłą wodą (caldarium), basenem i biblioteką. +3 chwały."},
+    "amfiteatr": {"nazwa": "Amfiteatr", "koszt": {"kamien": 12, "denary": 8}, "teren": ".", "prac": 3,
+                  "daje": {"denary": 1}, "chwala": 4, "wymaga": "beton", "epoki": ["cesarstwo", "schylek"],
+                  "opis": "„Chleba i igrzysk!” Walki gladiatorów i polowania na zwierzęta. +4 chwały."},
+    "kuria": {"nazwa": "Kuria (senat)", "koszt": {"kamien": 6, "drewno": 2, "denary": 6}, "teren": ".d", "prac": 1,
+              "daje": {"denary": 1}, "chwala": 2, "limit": 1, "epoki": ["republika", "cesarstwo", "schylek"],
+              "opis": "Tu obraduje senat. Tylko 1. +2 chwały, +1 denar, a w wydarzeniach senat podpowiada, co wybrali Rzymianie."},
+    "bazylika": {"nazwa": "Bazylika", "koszt": {"kamien": 10, "denary": 6}, "teren": ".d", "prac": 2,
+                 "daje": {}, "chwala": 3, "wymaga": "chrzescijanstwo", "epoki": ["schylek"],
+                 "opis": "Pierwsze wielkie kościoły chrześcijańskie, jak bazylika na Lateranie. +3 chwały."},
+}
+
+# ------------------------------------------------------------------------------------------------ technologie
+# Każdą technologię zdobywa się zagadką: p – pytanie, o – odpowiedzi, d – indeks dobrej odpowiedzi.
+TECHNOLOGIE = {
+    # Królestwo
+    "pismo": {"nazwa": "Alfabet łaciński", "epoka": "krolestwo", "koszt": {"denary": 4}, "efekt": "podpowiedz",
+              "opis": "Rzymianie przejęli pismo od Etrusków, a ci od Greków. Bitwy: +1 podpowiedź w pytaniach.",
+              "p": "Od kogo Rzymianie przejęli alfabet (przez pośrednictwo Etrusków)?",
+              "o": ["Od Greków", "Od Egipcjan", "Od Persów", "Od Celtów"], "d": 0,
+              "ciekawostka": "Nasz alfabet to właśnie alfabet łaciński – piszesz nim codziennie!"},
+    "kloaka": {"nazwa": "Cloaca Maxima", "epoka": "krolestwo", "koszt": {"kamien": 4, "drewno": 2}, "efekt": "osusz",
+               "opis": "Wielki kanał osusza bagna. Pola bagienne zamieniają się w łąki – tak powstało Forum.",
+               "p": "Do czego służyła Cloaca Maxima, zbudowana według tradycji za królów etruskich?",
+               "o": ["Odprowadzała wodę i osuszała bagna", "Była świątynią Marsa", "Była areną", "Była portem"], "d": 0,
+               "ciekawostka": "Cloaca Maxima działa w Rzymie do dziś – ma ponad 2500 lat!"},
+    "falanga": {"nazwa": "Falanga hoplitów", "epoka": "krolestwo", "koszt": {"drewno": 3, "denary": 2},
+                "efekt": "piechota+1", "opis": "Zwarty szyk ciężkozbrojnych z tarczami. Piechota +1.",
+                "p": "Według tradycji który król podzielił obywateli na klasy według majątku i uzbrojenia?",
+                "o": ["Serwiusz Tuliusz", "Romulus", "Numa Pompiliusz", "Tarkwiniusz Pyszny"], "d": 0,
+                "ciekawostka": "Najbogatsi służyli konno – stąd później „ekwici”, czyli jeźdźcy."},
+    "kalendarz_numy": {"nazwa": "Kalendarz Numy", "epoka": "krolestwo", "koszt": {"denary": 3, "zboze": 3},
+                       "efekt": "zboze+1", "opis": "Rok podzielony na 12 miesięcy pomaga rolnikom. Każde pole +1 zboża.",
+                       "p": "Który legendarny król, następca Romulusa, uchodził za twórcę religii i kalendarza?",
+                       "o": ["Numa Pompiliusz", "Ankus Marcjusz", "Tullus Hostiliusz", "Serwiusz Tuliusz"], "d": 0,
+                       "ciekawostka": "Styczeń (Ianuarius) nazwano od Janusa, boga o dwóch twarzach – patrzył w przeszłość i w przyszłość."},
+    # Republika
+    "prawo12": {"nazwa": "Prawo XII tablic", "epoka": "republika", "koszt": {"kamien": 3, "denary": 4},
+                "efekt": "chwala+1", "opis": "Pierwsze spisane prawo rzymskie (451–450 p.n.e.). +1 chwały co turę.",
+                "p": "Dlaczego plebejusze domagali się spisania praw na XII tablicach?",
+                "o": ["Żeby sędziowie-patrycjusze nie mogli ich dowolnie tłumaczyć", "Żeby uczyć dzieci czytać",
+                      "Żeby obniżyć podatki od wina", "Żeby wybrać króla"], "d": 0,
+                "ciekawostka": "Rzymskie dzieci uczyły się Prawa XII tablic na pamięć – jak wierszyka."},
+    "manipul": {"nazwa": "Legion manipularny", "epoka": "republika", "koszt": {"denary": 5, "drewno": 3},
+                "efekt": "karty_manipul", "opis": "Trzy linie: hastati, principes, triarii. Odblokowuje te karty w werbunku.",
+                "p": "Jak nazywała się trzecia, ostatnia linia legionu – najstarsi i najbardziej doświadczeni żołnierze?",
+                "o": ["Triarii", "Welici", "Pretorianie", "Ekwici"], "d": 0,
+                "ciekawostka": "„Doszło do triariuszy” – mówili Rzymianie, gdy sprawa była naprawdę poważna."},
+    "drogi": {"nazwa": "Drogi rzymskie", "epoka": "republika", "koszt": {"kamien": 5, "zboze": 3}, "efekt": "drogi",
+              "opis": "Via Appia (312 p.n.e.) połączyła Rzym z Kapuą. Targi +1 denar, zagony wroga są widoczne wcześniej.",
+              "p": "Która słynna droga, zbudowana z inicjatywy Appiusza Klaudiusza, prowadziła z Rzymu na południe?",
+              "o": ["Via Appia", "Via Sacra", "Jedwabny Szlak", "Szlak bursztynowy"], "d": 0,
+              "ciekawostka": "Fragmenty Via Appia można przejść do dziś – kamienie mają ponad 2000 lat."},
+    "luk": {"nazwa": "Łuk i sklepienie", "epoka": "republika", "koszt": {"kamien": 5, "denary": 3}, "efekt": "akwedukt",
+            "opis": "Łuk z klinowych kamieni utrzymuje ogromny ciężar. Odblokowuje akwedukty.",
+            "p": "Co trzyma w miejscu wszystkie kamienie łuku?",
+            "o": ["Kamień zwornikowy na szczycie", "Lina", "Drewniana belka w środku", "Gwoździe z brązu"], "d": 0,
+            "ciekawostka": "Pierwszy rzymski akwedukt, Aqua Appia, zbudowano w 312 p.n.e. – tym samym roku co Via Appia."},
+    "corvus": {"nazwa": "Corvus (kruk)", "epoka": "republika", "koszt": {"drewno": 6}, "efekt": "port+1",
+               "opis": "Pomost abordażowy z hakiem zamienia bitwę morską w lądową. Porty +1 denar, karta Marynarze.",
+               "p": "Do czego służył „kruk” (corvus) w pierwszej wojnie punickiej?",
+               "o": ["Do przejścia na pokład wrogiego okrętu", "Do łowienia ryb", "Do wysyłania listów", "Do nawigacji nocą"], "d": 0,
+               "ciekawostka": "Dzięki corvusowi Rzymianie, słabi żeglarze, pokonali flotę Kartaginy pod Mylae (260 p.n.e.)."},
+    "reforma_mariusza": {"nazwa": "Reforma Mariusza", "epoka": "republika", "koszt": {"denary": 8, "zboze": 4},
+                         "efekt": "legion+1", "opis": "Armia zawodowa, uzbrojenie od państwa. Legioniści +1, utrzymanie wojska tańsze.",
+                         "p": "Co zmieniła reforma Gajusza Mariusza (ok. 107 p.n.e.)?",
+                         "o": ["Do legionu mogli wstępować biedni, a armia stała się zawodowa", "Zniesiono legiony",
+                               "Wprowadzono słonie bojowe", "Legioniści dostali konie"], "d": 0,
+                         "ciekawostka": "Żołnierzy Mariusza przezywano „mułami Mariusza” – nosili cały ekwunek na plecach."},
+    "kalendarz_julianski": {"nazwa": "Kalendarz juliański", "epoka": "republika", "koszt": {"denary": 6},
+                            "efekt": "zboze+1", "opis": "Rok ma 365 dni, a co 4 lata – 366. Każde pole +1 zboża.",
+                            "p": "Ile dni ma rok w kalendarzu wprowadzonym przez Juliusza Cezara (46 p.n.e.) – poza latami przestępnymi?",
+                            "o": ["365", "354", "360", "400"], "d": 0,
+                            "ciekawostka": "Lipiec po łacinie to Iulius – na cześć Cezara, a sierpień – Augustus – na cześć Augusta."},
+    # Cesarstwo
+    "beton": {"nazwa": "Beton rzymski", "epoka": "cesarstwo", "koszt": {"kamien": 6, "denary": 4}, "efekt": "beton",
+              "opis": "Wapno + popiół wulkaniczny (pucolana) twardnieje nawet pod wodą. Budowle z kamienia –20%, odblokowuje insule i amfiteatr.",
+              "p": "Jaki składnik sprawiał, że rzymski beton był tak trwały?",
+              "o": ["Popiół wulkaniczny (pucolana)", "Cukier", "Piasek pustynny", "Miód"], "d": 0,
+              "ciekawostka": "Kopuła Panteonu z betonu stoi od prawie 1900 lat i nadal jest największą kopułą bez zbrojenia na świecie."},
+    "hypokaustum": {"nazwa": "Hypokaustum", "epoka": "cesarstwo", "koszt": {"kamien": 4, "drewno": 4},
+                    "efekt": "termy", "opis": "Ogrzewanie podłogowe gorącym powietrzem. Odblokowuje termy.",
+                    "p": "Czym było hypokaustum?",
+                    "o": ["Ogrzewaniem pod podłogą", "Rodzajem tarczy", "Wozem bojowym", "Monetą"], "d": 0,
+                    "ciekawostka": "W termach Karakalli mogło kąpać się jednocześnie ok. 1600 osób."},
+    "testudo": {"nazwa": "Żółw (testudo)", "epoka": "cesarstwo", "koszt": {"drewno": 4, "denary": 4},
+                "efekt": "taktyka_testudo", "opis": "Tarcze nad głowami i z boków. W bitwie: taktyka „Żółw” (tarcza +4).",
+                "p": "Przed czym chronił szyk „żółwia” (testudo)?",
+                "o": ["Przed strzałami i kamieniami", "Przed zimnem", "Przed słoniami", "Przed powodzią"], "d": 0,
+                "ciekawostka": "Kolumna Trajana pokazuje legionistów w szyku żółwia podczas szturmu na dackie mury."},
+    "limes": {"nazwa": "Limes", "epoka": "cesarstwo", "koszt": {"kamien": 6, "drewno": 4}, "efekt": "obrona+1",
+              "opis": "Umocniona granica z wałami i strażnicami. Mury chronią w promieniu 3 pól.",
+              "p": "Jak nazywał się mur, który kazał zbudować cesarz Hadrian w Brytanii?",
+              "o": ["Wał Hadriana", "Wielki Mur", "Mur Aureliana", "Linia Maginota"], "d": 0,
+              "ciekawostka": "Wał Hadriana miał ok. 117 km długości. Jego ruiny są dziś na liście UNESCO."},
+    "prawo_rzymskie": {"nazwa": "Prawo rzymskie", "epoka": "cesarstwo", "koszt": {"denary": 8}, "efekt": "chwala+1",
+                       "opis": "Prawnicy (juryści) tworzą zasady obowiązujące do dziś. +1 chwały co turę, +1 denar z kurii.",
+                       "p": "Która zasada prawa rzymska obowiązuje też dziś?",
+                       "o": ["Domniemanie niewinności – kto oskarża, musi udowodnić", "Król zawsze ma rację",
+                             "Sędzia może być stroną sporu", "Prawo nie musi być spisane"], "d": 0,
+                       "ciekawostka": "Polskie prawo cywilne wciąż korzysta z łacińskich zasad, np. „pacta sunt servanda” – umów należy dotrzymywać."},
+    # Późne cesarstwo
+    "solidus": {"nazwa": "Solidus", "epoka": "schylek", "koszt": {"denary": 10}, "efekt": "solidus",
+                "opis": "Złota moneta Konstantyna (309 n.e.) kończy inflację. Kary za psucie monety znikają.",
+                "p": "Co działo się z cenami, gdy cesarze w III w. dodawali do denara coraz mniej srebra?",
+                "o": ["Ceny rosły (inflacja)", "Ceny spadały", "Ceny się nie zmieniały", "Znikały podatki"], "d": 0,
+                "ciekawostka": "Solidus był tak dobrą monetą, że używano go przez ok. 700 lat. Od niego pochodzi słowo „żołd” i „żołnierz”."},
+    "chrzescijanstwo": {"nazwa": "Edykt mediolański", "epoka": "schylek", "koszt": {"denary": 6, "kamien": 4},
+                        "efekt": "bazylika", "opis": "Wolność wyznania (313 n.e.). Odblokowuje bazyliki.",
+                        "p": "Co ogłosił edykt mediolański z 313 r.?",
+                        "o": ["Wolność wyznania, także dla chrześcijan", "Podział cesarstwa", "Koniec igrzysk", "Nowy kalendarz"], "d": 0,
+                        "ciekawostka": "W 380 r. cesarz Teodozjusz uczynił chrześcijaństwo religią państwową."},
+    "foederati": {"nazwa": "Federaci", "epoka": "schylek", "koszt": {"denary": 8, "zboze": 6}, "efekt": "federaci",
+                  "opis": "Plemiona osiedlone w cesarstwie walczą za ziemię. Karty barbarzyńskich sojuszników w werbunku.",
+                  "p": "Kim byli „federaci” (foederati) w późnym cesarstwie?",
+                  "o": ["Ludami barbarzyńskimi walczącymi za Rzym w zamian za ziemię", "Senatorami", "Kupcami z Indii", "Kapłanami Jowisza"], "d": 0,
+                  "ciekawostka": "Pod Polami Katalaunijskimi (451) obok Rzymian walczyli Wizygoci, Frankowie i Burgundowie."},
+    "tetrarchia": {"nazwa": "Tetrarchia", "epoka": "schylek", "koszt": {"denary": 6, "kamien": 4}, "efekt": "rekrut+1",
+                   "opis": "Dioklecjan dzieli władzę między czterech władców. +1 werbunek na turę.",
+                   "p": "Ilu władców rządziło wspólnie w tetrarchii Dioklecjana (od 293 r.)?",
+                   "o": ["Czterech", "Dwóch", "Dziesięciu", "Jeden"], "d": 0,
+                   "ciekawostka": "Słynny posąg czterech tetrarchów z porfiru stoi dziś w Wenecji, przy bazylice św. Marka."},
+}
+
+# ------------------------------------------------------------------------------------------------ karty wojska
+# typy: piechota ▶ jazda ▶ strzelcy ▶ piechota (+3 za przewagę)
+TYPY_KART = {
+    "piechota": {"nazwa": "Piechota", "bije": "jazda", "ikona": "P"},
+    "jazda": {"nazwa": "Jazda", "bije": "strzelcy", "ikona": "J"},
+    "strzelcy": {"nazwa": "Strzelcy", "bije": "piechota", "ikona": "S"},
+}
+KARTY = {
+    # Rzym
+    "pasterze": {"nazwa": "Pasterze z Palatynu", "typ": "piechota", "sila": 3, "frakcja": "rzym", "model": "legionista",
+                 "koszt": {"zboze": 2}, "epoki": ["krolestwo"], "opis": "Towarzysze Romulusa z pałkami i włóczniami."},
+    "hoplici": {"nazwa": "Hoplici", "typ": "piechota", "sila": 4, "frakcja": "rzym", "model": "legionista",
+                "koszt": {"denary": 3, "drewno": 2}, "epoki": ["krolestwo", "republika"], "tarcza": 1,
+                "opis": "Ciężkozbrojni z okrągłą tarczą, w szyku falangi."},
+    "procarze": {"nazwa": "Procarze", "typ": "strzelcy", "sila": 3, "frakcja": "rzym", "model": "welita",
+                 "koszt": {"zboze": 2}, "epoki": ["krolestwo", "republika"], "opis": "Kamień z procy leci dalej niż strzała."},
+    "jezdzcy": {"nazwa": "Jeźdźcy (celeres)", "typ": "jazda", "sila": 4, "frakcja": "rzym", "model": "ekwita",
+                "koszt": {"zboze": 3, "denary": 2}, "epoki": ["krolestwo", "republika"], "opis": "Straż przyboczna królów."},
+    "welici": {"nazwa": "Welici", "typ": "strzelcy", "sila": 4, "frakcja": "rzym", "model": "welita",
+               "koszt": {"zboze": 2, "denary": 1}, "epoki": ["republika"], "opis": "Najmłodsi i najubożsi, z oszczepami i wilczą skórą na hełmie."},
+    "hastati": {"nazwa": "Hastati", "typ": "piechota", "sila": 5, "frakcja": "rzym", "model": "legionista",
+                "koszt": {"denary": 3, "zboze": 2}, "epoki": ["republika"], "wymaga": "manipul",
+                "opis": "Pierwsza linia legionu manipularnego: młodzi żołnierze z mieczem gladius."},
+    "principes": {"nazwa": "Principes", "typ": "piechota", "sila": 6, "frakcja": "rzym", "model": "legionista",
+                  "koszt": {"denary": 4, "zboze": 2}, "epoki": ["republika"], "wymaga": "manipul",
+                  "opis": "Druga linia: mężczyźni w sile wieku."},
+    "triarii": {"nazwa": "Triarii", "typ": "piechota", "sila": 6, "frakcja": "rzym", "model": "pretorianin",
+                "koszt": {"denary": 5, "zboze": 2}, "epoki": ["republika"], "wymaga": "manipul", "tarcza": 2,
+                "opis": "Weterani z długimi włóczniami – ostatnia linia obrony."},
+    "ekwici": {"nazwa": "Ekwici", "typ": "jazda", "sila": 5, "frakcja": "rzym", "model": "ekwita",
+               "koszt": {"denary": 4, "zboze": 3}, "epoki": ["republika", "cesarstwo"], "opis": "Rzymska jazda z bogatych rodów."},
+    "marynarze": {"nazwa": "Marynarze z corvusem", "typ": "piechota", "sila": 5, "frakcja": "rzym", "model": "legionista",
+                  "koszt": {"drewno": 4, "denary": 2}, "epoki": ["republika"], "wymaga": "corvus",
+                  "opis": "Przechodzą po „kruku” na pokład wroga."},
+    "legionisci": {"nazwa": "Legioniści", "typ": "piechota", "sila": 6, "frakcja": "rzym", "model": "legionista",
+                   "koszt": {"denary": 4, "zboze": 2}, "epoki": ["republika", "cesarstwo", "schylek"], "wymaga": "reforma_mariusza",
+                   "tarcza": 1, "opis": "Zawodowi żołnierze z tarczą scutum, mieczem gladius i oszczepem pilum."},
+    "lucznicy": {"nazwa": "Łucznicy (sagittarii)", "typ": "strzelcy", "sila": 5, "frakcja": "rzym", "model": "lucznik",
+                 "koszt": {"denary": 3, "drewno": 2}, "epoki": ["republika", "cesarstwo", "schylek"],
+                 "opis": "Oddziały pomocnicze z Krety i Syrii."},
+    "balista": {"nazwa": "Balista", "typ": "strzelcy", "sila": 7, "frakcja": "rzym", "model": "balista",
+                "koszt": {"drewno": 5, "denary": 4}, "epoki": ["cesarstwo", "schylek"],
+                "opis": "Machina miota bełty jak ogromna kusza."},
+    "pretorianie": {"nazwa": "Pretorianie", "typ": "piechota", "sila": 7, "frakcja": "rzym", "model": "pretorianin",
+                    "koszt": {"denary": 7, "zboze": 2}, "epoki": ["cesarstwo"], "tarcza": 1,
+                    "opis": "Gwardia cesarza. Najlepiej uzbrojeni, ale drodzy."},
+    "ala": {"nazwa": "Ala jazdy", "typ": "jazda", "sila": 6, "frakcja": "rzym", "model": "ekwita",
+            "koszt": {"denary": 5, "zboze": 3}, "epoki": ["cesarstwo", "schylek"], "opis": "Jazda pomocnicza z Galii i Hiszpanii."},
+    "katafrakci": {"nazwa": "Katafrakci", "typ": "jazda", "sila": 7, "frakcja": "rzym", "model": "ekwita",
+                   "koszt": {"denary": 7, "zboze": 3}, "epoki": ["schylek"], "tarcza": 1,
+                   "opis": "Ciężka jazda w łuskowych zbrojach – jeźdźcy i konie."},
+    "federaci_goccy": {"nazwa": "Federaci goccy", "typ": "piechota", "sila": 6, "frakcja": "rzym", "model": "got",
+                       "koszt": {"zboze": 4, "denary": 2}, "epoki": ["schylek"], "wymaga": "foederati",
+                       "opis": "Wizygoci walczą po stronie Rzymu w zamian za ziemię."},
+    "limitanei": {"nazwa": "Limitanei", "typ": "piechota", "sila": 5, "frakcja": "rzym", "model": "legionista",
+                  "koszt": {"zboze": 3, "denary": 1}, "epoki": ["schylek"], "tarcza": 2,
+                  "opis": "Żołnierze-osadnicy pilnujący granicy (limesu)."},
+    # wrogowie
+    "sabinowie": {"nazwa": "Wojownicy sabińscy", "typ": "piechota", "sila": 4, "frakcja": "sabinowie", "model": "galijczyk"},
+    "sabinscy_jezdzcy": {"nazwa": "Jeźdźcy sabińscy", "typ": "jazda", "sila": 4, "frakcja": "sabinowie", "model": "ekwita"},
+    "sabinscy_procarze": {"nazwa": "Procarze sabińscy", "typ": "strzelcy", "sila": 3, "frakcja": "sabinowie", "model": "welita"},
+    "galowie_wojownicy": {"nazwa": "Wojownicy galijscy", "typ": "piechota", "sila": 5, "frakcja": "galowie", "model": "galijczyk"},
+    "galowie_jazda": {"nazwa": "Jazda galijska", "typ": "jazda", "sila": 5, "frakcja": "galowie", "model": "ekwita"},
+    "galowie_procarze": {"nazwa": "Galijscy procarze", "typ": "strzelcy", "sila": 4, "frakcja": "galowie", "model": "welita"},
+    "galowie_wodz": {"nazwa": "Drużyna wodza", "typ": "piechota", "sila": 7, "frakcja": "galowie", "model": "galijczyk"},
+    "kartagina_piechota": {"nazwa": "Piechota libijska", "typ": "piechota", "sila": 5, "frakcja": "kartagina", "model": "kartaginczyk"},
+    "kartagina_numidowie": {"nazwa": "Jazda numidyjska", "typ": "jazda", "sila": 6, "frakcja": "kartagina", "model": "ekwita"},
+    "kartagina_baleary": {"nazwa": "Procarze z Balearów", "typ": "strzelcy", "sila": 5, "frakcja": "kartagina", "model": "welita"},
+    "slonie": {"nazwa": "Słonie bojowe", "typ": "jazda", "sila": 8, "frakcja": "kartagina", "model": "slon"},
+    "weterani_hannibala": {"nazwa": "Weterani Hannibala", "typ": "piechota", "sila": 7, "frakcja": "kartagina", "model": "kartaginczyk"},
+    "germanie": {"nazwa": "Wojownicy germańscy", "typ": "piechota", "sila": 6, "frakcja": "germanie", "model": "german"},
+    "germanie_las": {"nazwa": "Zasadzka w lesie", "typ": "strzelcy", "sila": 6, "frakcja": "germanie", "model": "german"},
+    "germanie_jazda": {"nazwa": "Jazda Cherusków", "typ": "jazda", "sila": 5, "frakcja": "germanie", "model": "ekwita"},
+    "dakowie": {"nazwa": "Dakowie z falksem", "typ": "piechota", "sila": 6, "frakcja": "dakowie", "model": "galijczyk"},
+    "dakowie_lucznicy": {"nazwa": "Łucznicy daccy", "typ": "strzelcy", "sila": 6, "frakcja": "dakowie", "model": "lucznik"},
+    "sarmaci": {"nazwa": "Jazda sarmacka", "typ": "jazda", "sila": 7, "frakcja": "dakowie", "model": "hun"},
+    "maksencjusz_pretorianie": {"nazwa": "Pretorianie Maksencjusza", "typ": "piechota", "sila": 7, "frakcja": "maksencjusz", "model": "pretorianin"},
+    "maksencjusz_katafrakci": {"nazwa": "Katafrakci Maksencjusza", "typ": "jazda", "sila": 7, "frakcja": "maksencjusz", "model": "ekwita"},
+    "maksencjusz_lucznicy": {"nazwa": "Łucznicy Maksencjusza", "typ": "strzelcy", "sila": 5, "frakcja": "maksencjusz", "model": "lucznik"},
+    "hunowie": {"nazwa": "Hunowie – łucznicy konni", "typ": "jazda", "sila": 8, "frakcja": "hunowie", "model": "hun"},
+    "hunowie_strzaly": {"nazwa": "Deszcz strzał", "typ": "strzelcy", "sila": 7, "frakcja": "hunowie", "model": "hun"},
+    "ostrogoci": {"nazwa": "Ostrogoci", "typ": "piechota", "sila": 6, "frakcja": "hunowie", "model": "got"},
+    "gepidzi": {"nazwa": "Gepidzi", "typ": "piechota", "sila": 6, "frakcja": "hunowie", "model": "german"},
+}
+
+FRAKCJE = {
+    "rzym": {"nazwa": "Rzym", "kolor": "b3262e"},
+    "sabinowie": {"nazwa": "Sabinowie", "kolor": "8a6b3a"},
+    "galowie": {"nazwa": "Galowie", "kolor": "2f7a3a"},
+    "kartagina": {"nazwa": "Kartagina", "kolor": "6a3a8a"},
+    "germanie": {"nazwa": "Germanie", "kolor": "5a4632"},
+    "dakowie": {"nazwa": "Dakowie", "kolor": "3a5f8a"},
+    "maksencjusz": {"nazwa": "Wojska Maksencjusza", "kolor": "6b6b6b"},
+    "hunowie": {"nazwa": "Hunowie", "kolor": "8a5a2a"},
+}
+
+# Taktyki – raz w bitwie
+TAKTYKI = {
+    "porwanie": {"nazwa": "Zasadzka na Kapitolu", "opis": "Wróg –3 w tej rundzie.", "efekt": {"wrog_minus": 3}},
+    "geesi": {"nazwa": "Gęsi Junony", "opis": "Gęsi budzą straże! Tarcza +4 w tej rundzie.", "efekt": {"tarcza": 4}},
+    "kamillus": {"nazwa": "Odsiecz Kamillusa", "opis": "Twoja karta +3.", "efekt": {"plus": 3}},
+    "triplex": {"nazwa": "Triplex acies", "opis": "Trzy linie legionu. Piechota +2 w tej rundzie.", "efekt": {"typ_plus": {"piechota": 2}}},
+    "korytarze": {"nazwa": "Korytarze dla słoni", "opis": "Legion rozstępuje się – słonie wroga tracą siłę (–6).", "efekt": {"slonie": 6}},
+    "numidowie": {"nazwa": "Jazda Masynissy", "opis": "Sojusznicza jazda numidyjska: jazda +3.", "efekt": {"typ_plus": {"jazda": 3}}},
+    "podwojny_wal": {"nazwa": "Podwójny wał", "opis": "Fortyfikacje Alezji: tarcza +5.", "efekt": {"tarcza": 5}},
+    "germanska_jazda": {"nazwa": "Germańska jazda Cezara", "opis": "Atak od tyłu: twoja karta +4.", "efekt": {"plus": 4}},
+    "testudo": {"nazwa": "Żółw (testudo)", "opis": "Tarcze w górę! Tarcza +4.", "efekt": {"tarcza": 4}},
+    "rzeka_ren": {"nazwa": "Linia Renu", "opis": "Rzeka chroni przed zasadzką: wróg traci przewagę typu.", "efekt": {"bez_przewagi": True}},
+    "most_trajana": {"nazwa": "Most Apollodora", "opis": "Posiłki przez Dunaj: twoja karta +3, tarcza +1.", "efekt": {"plus": 3, "tarcza": 1}},
+    "chi_rho": {"nazwa": "In hoc signo vinces", "opis": "Znak na tarczach dodaje odwagi: wszystkie karty +2 do końca bitwy.", "efekt": {"stale_plus": 2}},
+    "most_mulwijski": {"nazwa": "Zepchnięcie do Tybru", "opis": "Wróg cofa się na most: wróg –4.", "efekt": {"wrog_minus": 4}},
+    "wizygoci": {"nazwa": "Szarża Wizygotów", "opis": "Sojusznicy Teodoryka: twoja karta +4.", "efekt": {"plus": 4}},
+    "wzgorze": {"nazwa": "Zajęcie wzgórza", "opis": "Aecjusz zajmuje wzniesienie: wróg traci przewagę typu, tarcza +2.",
+                "efekt": {"bez_przewagi": True, "tarcza": 2}},
+    "sabinki": {"nazwa": "Sabinki między wojskami", "opis": "Kobiety wzywają do pokoju: wróg –2, tarcza +2.",
+                "efekt": {"wrog_minus": 2, "tarcza": 2}},
+}
+
+# ------------------------------------------------------------------------------------------------ postacie
+POSTACIE = {
+    "damian": {"imie": "Damian Ścisł", "lata": "kronikarz wędrujący przez wieki", "rola": "Twój doradca",
+               "opis": "Wędrowny kronikarz w fioletowym płaszczu. Przeszedł już przez Polskę Piastów – teraz spisuje dzieje Rzymu.",
+               "fakty": ["Zapisuje wszystko w Kronice", "Doradza, co zbudować i jak walczyć", "Zna łacinę i grekę", "Postać fikcyjna"],
+               "ciekawostka": "Słowo „kronika” pochodzi od greckiego chronos – czas."},
+    "romulus": {"imie": "Romulus", "lata": "legendarny założyciel, 753 p.n.e.", "rola": "Pierwszy król Rzymu (legenda)",
+                "opis": "Według legendy syn boga Marsa i westalki Rei Sylwii. Bliźniacy Romulus i Remus, porzuceni nad Tybrem, zostali wykarmieni przez wilczycę.",
+                "fakty": ["Legenda: założył Rzym 21 kwietnia 753 p.n.e.", "Wytyczył bruzdę wokół Palatynu", "Pokłócił się z Remusem o miejsce miasta", "Archeolodzy znaleźli na Palatynie ślady chat z VIII w. p.n.e."],
+                "ciekawostka": "Rzymianie liczyli lata „ab urbe condita” – od założenia Miasta."},
+    "cyncynat": {"imie": "Cyncynat", "lata": "V w. p.n.e.", "rola": "Dyktator, wzór cnót obywatelskich",
+                 "opis": "Lucjusz Kwinkcjusz Cyncynat orał pole, gdy senat wezwał go na dyktatora (458 p.n.e.). Pokonał wroga i po 16 dniach wrócił do pługa.",
+                 "fakty": ["Dyktator miał władzę tylko na czas zagrożenia", "Zrezygnował z władzy dobrowolnie", "Symbol uczciwości i skromności", "Miasto Cincinnati w USA nosi jego imię"],
+                 "ciekawostka": "Jerzego Waszyngtona nazywano „amerykańskim Cyncynatem”, bo też oddał władzę."},
+    "brennus": {"imie": "Brennus", "lata": "IV w. p.n.e.", "rola": "Wódz Galów Senonów",
+                "opis": "W 390 p.n.e. (lub 387) Galowie pokonali Rzymian nad rzeką Allią i złupili Rzym. Brennus zażądał okupu w złocie.",
+                "fakty": ["Zwyciężył nad rzeką Allią", "Oblegał Kapitol", "Rzucił miecz na szalę z okrzykiem „Vae victis!” – biada zwyciężonym", "Rzymianie długo pamiętali tę klęskę"],
+                "ciekawostka": "Według legendy gęsi z świątyni Junony obudziły obrońców Kapitolu w czasie nocnego ataku."},
+    "hannibal": {"imie": "Hannibal Barkas", "lata": "247–183 p.n.e.", "rola": "Wódz Kartaginy",
+                 "opis": "W II wojnie punickiej przeszedł z Hiszpanii przez Alpy ze słoniami. Pod Kannami (216 p.n.e.) okrążył i rozbił wielką armię rzymską.",
+                 "fakty": ["Przysiągł ojcu wieczną wrogość wobec Rzymu", "Przeszedł Alpy w 218 p.n.e.", "Bitwa pod Kannami – wzór okrążenia", "Pokonany pod Zamą w 202 p.n.e."],
+                 "ciekawostka": "„Hannibal ante portas!” – Hannibal u bram – straszyli dzieci Rzymianie."},
+    "scypion": {"imie": "Scypion Afrykański", "lata": "236–183 p.n.e.", "rola": "Zwycięzca spod Zamy",
+                "opis": "Publiusz Korneliusz Scypion przeniósł wojnę do Afryki i pokonał Hannibala pod Zamą (202 p.n.e.), kończąc II wojnę punicką.",
+                "fakty": ["Zdobył Nową Kartaginę w Hiszpanii", "Sprzymierzył się z Numidyjczykiem Masynissą", "Pod Zamą przepuścił słonie przez korytarze w szyku", "Przydomek „Afrykański” otrzymał za zwycięstwo"],
+                "ciekawostka": "Kartagina ostatecznie upadła w 146 p.n.e. (III wojna punicka)."},
+    "cezar": {"imie": "Gajusz Juliusz Cezar", "lata": "100–44 p.n.e.", "rola": "Zdobywca Galii, dyktator",
+              "opis": "Podbił Galię (58–50 p.n.e.), przekroczył Rubikon i wygrał wojnę domową. Zginął w idy marcowe 44 p.n.e. zamordowany przez senatorów.",
+              "fakty": ["„Kości zostały rzucone” – przy przejściu Rubikonu (49 p.n.e.)", "„Veni, vidi, vici” – przybyłem, zobaczyłem, zwyciężyłem", "Wprowadził kalendarz juliański", "Opisał wojnę w „Pamiętnikach o wojnie galijskiej”"],
+              "ciekawostka": "Od jego imienia pochodzą tytuły „cesarz”, „kajzer” i „car”."},
+    "wercyngetoryks": {"imie": "Wercyngetoryks", "lata": "ok. 82–46 p.n.e.", "rola": "Wódz zjednoczonych Galów",
+                       "opis": "Zjednoczył plemiona Galii przeciw Cezarowi. Po oblężeniu Alezji (52 p.n.e.) poddał się, by ratować swoich ludzi.",
+                       "fakty": ["Wygrał z Cezarem pod Gergowią", "Stosował taktykę spalonej ziemi", "Oblężony w Alezji", "Dziś bohater narodowy Francji"],
+                       "ciekawostka": "Cezar otoczył Alezję dwoma pierścieniami umocnień: jednym przeciw obrońcom, drugim przeciw odsieczy."},
+    "august": {"imie": "Oktawian August", "lata": "63 p.n.e.–14 n.e.", "rola": "Pierwszy cesarz",
+               "opis": "Przybrany syn Cezara. Pokonał Antoniusza i Kleopatrę pod Akcjum (31 p.n.e.), w 27 p.n.e. otrzymał tytuł Augusta. Zaczął się Pax Romana.",
+               "fakty": ["Nazywał siebie princepsem – pierwszym obywatelem", "„Zastałem Rzym ceglany, zostawiam marmurowy”", "Po klęsce Warusa (9 n.e.) wołał: „Warusie, oddaj legiony!”", "Rządził 41 lat"],
+               "ciekawostka": "Za jego panowania w Judei urodził się Jezus – od tego wydarzenia liczymy dziś lata."},
+    "trajan": {"imie": "Trajan", "lata": "53–117 n.e.", "rola": "Cesarz, za którego Rzym był największy",
+               "opis": "Pochodził z Hiszpanii. Podbił Dację (101–106 n.e.). W 117 n.e. imperium osiągnęło największy zasięg.",
+               "fakty": ["Senat nazwał go „Optimus” – najlepszy", "Kolumna Trajana pokazuje wojny dackie", "Most Apollodora na Dunaju", "Pomagał biednym dzieciom (alimenta)"],
+               "ciekawostka": "Rumuni mówią językiem pochodzącym od łaciny – to pamiątka po rzymskiej Dacji."},
+    "konstantyn": {"imie": "Konstantyn Wielki", "lata": "ok. 272–337 n.e.", "rola": "Cesarz, założyciel Konstantynopola",
+                   "opis": "Pokonał Maksencjusza przy Moście Mulwijskim (312), ogłosił z Licyniuszem edykt mediolański (313), a w 330 r. poświęcił nową stolicę – Konstantynopol.",
+                   "fakty": ["Przed bitwą miał ujrzeć znak z napisem „In hoc signo vinces” – pod tym znakiem zwyciężysz", "Wprowadził złotą monetę – solidus", "Zwołał sobór w Nicei (325)", "Ochrzcił się przed śmiercią"],
+                   "ciekawostka": "Konstantynopol (dziś Stambuł) był stolicą cesarstwa wschodniego aż do 1453 r."},
+    "attyla": {"imie": "Attyla", "lata": "zm. 453 n.e.", "rola": "Władca Hunów",
+               "opis": "Nazywany „biczem Bożym”. Jego państwo sięgało od Kaukazu po Ren. Pokonany na Polach Katalaunijskich (451).",
+               "fakty": ["Hunowie przybyli ze stepów Azji", "Ściągał ogromny trybut od Konstantynopola", "W 452 r. wycofał się z Italii po rozmowie z papieżem Leonem I", "Zmarł w noc poślubną w 453 r."],
+               "ciekawostka": "Przybycie Hunów (ok. 375 r.) zepchnęło Gotów na granice Rzymu – tak zaczęła się Wielka wędrówka ludów."},
+    "odoaker": {"imie": "Odoaker", "lata": "433–493 n.e.", "rola": "Germański wódz, król Italii",
+                "opis": "W 476 r. zdetronizował cesarza Romulusa Augustulusa i odesłał insygnia cesarskie do Konstantynopola. Tę datę uznajemy za koniec cesarstwa zachodniego.",
+                "fakty": ["Dowodził germańskimi najemnikami w Italii", "Nie ogłosił się cesarzem", "Rządził Italią jako król", "Pokonany przez Ostrogotę Teodoryka"],
+                "ciekawostka": "Rok 476 to umowna granica między starożytnością a średniowieczem."},
+    "romulus_augustulus": {"imie": "Romulus Augustulus", "lata": "ur. ok. 460 n.e.", "rola": "Ostatni cesarz zachodni",
+                           "opis": "Chłopiec osadzony na tronie przez ojca Orestesa. Rządził niecały rok. Odoaker oszczędził go i wysłał na emeryturę do willi w Kampanii.",
+                           "fakty": ["Miał ok. 16 lat", "Nosił imiona założyciela Rzymu i pierwszego cesarza", "„Augustulus” znaczy „mały August”", "Dostał roczną pensję"],
+                           "ciekawostka": "Historia Rzymu zaczyna się od Romulusa i – symbolicznie – kończy na Romulusie."},
+}
+
+# ------------------------------------------------------------------------------------------------ pytania rady wojennej
+# (epoka, pytanie, [odpowiedzi], indeks dobrej)
+PYTANIA = [
+    # Królestwo
+    ("krolestwo", "Nad jaką rzeką leży Rzym?", ["Tyber", "Pad", "Nil", "Ren"], 0),
+    ("krolestwo", "Jaki zwierzę według legendy wykarmiło Romulusa i Remusa?", ["Wilczyca", "Niedźwiedzica", "Koza", "Lwica"], 0),
+    ("krolestwo", "Według tradycji w którym roku założono Rzym?", ["753 p.n.e.", "476 n.e.", "1000 p.n.e.", "509 p.n.e."], 0),
+    ("krolestwo", "Na ilu wzgórzach powstał Rzym?", ["Na siedmiu", "Na trzech", "Na dwunastu", "Na jednym"], 0),
+    ("krolestwo", "Jak nazywał się ostatni król Rzymu, wypędzony w 509 p.n.e.?", ["Tarkwiniusz Pyszny", "Romulus", "Numa Pompiliusz", "Juliusz Cezar"], 0),
+    ("krolestwo", "Który lud z północy Italii wpłynął na Rzym (budownictwo, pismo, igrzyska)?", ["Etruskowie", "Wikingowie", "Hunowie", "Egipcjanie"], 0),
+    ("krolestwo", "Na którym wzgórzu według legendy Romulus założył miasto?", ["Palatyn", "Olimp", "Akropol", "Wawel"], 0),
+    ("krolestwo", "Kim był Remus?", ["Bratem bliźniakiem Romulusa", "Wodzem Galów", "Królem Etrusków", "Bogiem morza"], 0),
+    ("krolestwo", "Kto według legendy był ojcem Romulusa i Remusa?", ["Mars, bóg wojny", "Neptun", "Merkury", "Hades"], 0),
+    ("krolestwo", "Które plemię według legendy połączyło się z Rzymianami po sporze o porwane kobiety?", ["Sabinowie", "Celtowie", "Germanie", "Grecy"], 0),
+    ("krolestwo", "Jak nazywał się główny plac Rzymu, zbudowany na osuszonym bagnie?", ["Forum Romanum", "Agora", "Koloseum", "Kapitol"], 0),
+    ("krolestwo", "Kim były westalki?", ["Kapłankami strzegącymi świętego ognia", "Wojowniczkami", "Królowymi", "Kupcowymi"], 0),
+    # Republika
+    ("republika", "Ilu konsulów wybierano co roku w republice?", ["Dwóch", "Jednego", "Pięciu", "Stu"], 0),
+    ("republika", "Na jak długo wybierano konsula?", ["Na rok", "Dożywotnio", "Na 10 lat", "Na miesiąc"], 0),
+    ("republika", "Co oznacza skrót SPQR?", ["Senat i Lud Rzymski", "Szybko Przez Quiz Rzymski", "Święty Pokój Rzymu", "Sto Pułków Rzymu"], 0),
+    ("republika", "Kim byli patrycjusze?", ["Najstarszymi, bogatymi rodami", "Niewolnikami", "Kupcami z Grecji", "Kapłanami Egiptu"], 0),
+    ("republika", "Kto bronił plebejuszy przed nadużyciami urzędników?", ["Trybun ludowy", "Cenzor", "Westalka", "Pretorianin"], 0),
+    ("republika", "Z jakim miastem Rzym walczył w wojnach punickich?", ["Z Kartaginą", "Z Atenami", "Ze Spartą", "Z Troją"], 0),
+    ("republika", "Kto przeszedł przez Alpy ze słoniami?", ["Hannibal", "Cezar", "Aleksander Wielki", "Attyla"], 0),
+    ("republika", "Kto pokonał Hannibala pod Zamą w 202 p.n.e.?", ["Scypion Afrykański", "Juliusz Cezar", "Pompejusz", "Mariusz"], 0),
+    ("republika", "Jak nazywała się bitwa (216 p.n.e.), w której Hannibal okrążył armię rzymską?", ["Kanny", "Zama", "Alezja", "Akcjum"], 0),
+    ("republika", "Który kraj podbił Juliusz Cezar w latach 58–50 p.n.e.?", ["Galię", "Egipt", "Persję", "Germanię"], 0),
+    ("republika", "Jaką rzekę przekroczył Cezar w 49 p.n.e., zaczynając wojnę domową?", ["Rubikon", "Dunaj", "Ren", "Tamizę"], 0),
+    ("republika", "Co to znaczy „Veni, vidi, vici”?", ["Przybyłem, zobaczyłem, zwyciężyłem", "Witaj, wodzu, wróć", "Wino, woda, wiktoria", "Wróg widzi wszystko"], 0),
+    ("republika", "Kiedy zginął Juliusz Cezar?", ["W idy marcowe 44 p.n.e.", "W 753 p.n.e.", "W 476 n.e.", "W 1 roku n.e."], 0),
+    ("republika", "Kim był Spartakus?", ["Gladiatorem, przywódcą buntu niewolników", "Królem Sparty", "Konsulem", "Wodzem Kartaginy"], 0),
+    ("republika", "Kto w czasie zagrożenia otrzymywał władzę na maksymalnie 6 miesięcy?", ["Dyktator", "Cesarz", "Trybun", "Edyl"], 0),
+    ("republika", "Jak nazywał się rzymski miecz legionisty?", ["Gladius", "Katana", "Szabla", "Falks"], 0),
+    ("republika", "Jak nazywała się prostokątna tarcza legionisty?", ["Scutum", "Pilum", "Toga", "Galea"], 0),
+    # Cesarstwo
+    ("cesarstwo", "Kto był pierwszym cesarzem rzymskim?", ["Oktawian August", "Juliusz Cezar", "Neron", "Trajan"], 0),
+    ("cesarstwo", "Co oznacza „Pax Romana”?", ["Pokój rzymski", "Rzymską pocztę", "Wojnę z Persją", "Rzymski chleb"], 0),
+    ("cesarstwo", "Jak nazywa się największy amfiteatr Rzymu, otwarty w 80 n.e.?", ["Koloseum", "Panteon", "Partenon", "Circus Maximus"], 0),
+    ("cesarstwo", "Kto walczył na arenie dla rozrywki widzów?", ["Gladiatorzy", "Senatorowie", "Westalki", "Konsulowie"], 0),
+    ("cesarstwo", "Które miasto zniszczył wybuch Wezuwiusza w 79 n.e.?", ["Pompeje", "Kartaginę", "Ateny", "Rawennę"], 0),
+    ("cesarstwo", "Za którego cesarza imperium było największe (117 n.e.)?", ["Trajana", "Nerona", "Konstantyna", "Augusta"], 0),
+    ("cesarstwo", "Jaki kraj podbił Trajan w latach 101–106 n.e.?", ["Dację", "Egipt", "Galię", "Brytanię"], 0),
+    ("cesarstwo", "Do czego służył akwedukt?", ["Do doprowadzania wody", "Do obrony miasta", "Do wyścigów rydwanów", "Do przechowywania zboża"], 0),
+    ("cesarstwo", "Jak nazywała się rzymska świątynia wszystkich bogów z ogromną kopułą?", ["Panteon", "Koloseum", "Kuria", "Bazylika"], 0),
+    ("cesarstwo", "Jak nazywał się szlak handlowy, który prowadził z Rzymu nad Bałtyk, przez ziemie dzisiejszej Polski?", ["Szlak bursztynowy", "Jedwabny szlak", "Via Appia", "Szlak solny"], 0),
+    ("cesarstwo", "W którym lesie Germanie Arminiusza rozbili trzy legiony Warusa (9 n.e.)?", ["W Lesie Teutoburskim", "W Puszczy Białowieskiej", "W Lesie Sherwood", "W Lesie Arden"], 0),
+    ("cesarstwo", "Co oznaczało hasło „chleba i igrzysk”?", ["Władza zdobywała poparcie ludu darmowym zbożem i rozrywką", "Bitwę o zboże", "Święto żniw", "Nazwę piekarni"], 0),
+    ("cesarstwo", "Jaki język był urzędowym językiem zachodniej części cesarstwa?", ["Łacina", "Greka", "Hebrajski", "Celtycki"], 0),
+    ("cesarstwo", "Który cesarz według przekazów obwiniał chrześcijan o pożar Rzymu w 64 n.e.?", ["Neron", "August", "Trajan", "Hadrian"], 0),
+    ("cesarstwo", "Kim był Marek Aureliusz?", ["Cesarzem-filozofem", "Gladiatorem", "Wodzem Hunów", "Królem Etrusków"], 0),
+    ("cesarstwo", "Jak nazywało się rzymskie ubranie wierzchnie obywatela – długi płat wełny?", ["Toga", "Kimono", "Sari", "Kontusz"], 0),
+    # Schyłek
+    ("schylek", "Kto ogłosił edykt mediolański (313 n.e.)?", ["Konstantyn i Licyniusz", "Neron", "Attyla", "August"], 0),
+    ("schylek", "Jak nazwano nową stolicę założoną przez Konstantyna nad Bosforem?", ["Konstantynopol", "Rawenna", "Mediolan", "Kartagina"], 0),
+    ("schylek", "W którym roku cesarstwo podzieliło się na stałe na zachodnie i wschodnie?", ["395 n.e.", "753 p.n.e.", "1410", "44 p.n.e."], 0),
+    ("schylek", "Który lud ze stepów Azji zapoczątkował Wielką wędrówkę ludów?", ["Hunowie", "Rzymianie", "Etruskowie", "Grecy"], 0),
+    ("schylek", "Który wódz Wizygotów złupił Rzym w 410 n.e.?", ["Alaryk", "Attyla", "Odoaker", "Brennus"], 0),
+    ("schylek", "Gdzie w 451 n.e. Aecjusz zatrzymał Attylę?", ["Na Polach Katalaunijskich", "Pod Grunwaldem", "Pod Zamą", "Pod Kannami"], 0),
+    ("schylek", "Który lud złupił Rzym w 455 n.e.? (od niego pochodzi słowo „wandalizm”)", ["Wandalowie", "Hunowie", "Frankowie", "Sasi"], 0),
+    ("schylek", "Kto w 476 n.e. zdetronizował ostatniego cesarza zachodniego?", ["Odoaker", "Konstantyn", "Attyla", "Alaryk"], 0),
+    ("schylek", "Jak nazywał się ostatni cesarz zachodniorzymski?", ["Romulus Augustulus", "Romulus", "Juliusz Cezar", "Teodozjusz"], 0),
+    ("schylek", "Do kiedy przetrwało cesarstwo wschodnie (bizantyjskie)?", ["Do 1453 r.", "Do 476 r.", "Do 500 r. p.n.e.", "Istnieje do dziś"], 0),
+    ("schylek", "Co to jest inflacja?", ["Wzrost cen, gdy pieniądz traci wartość", "Spadek cen", "Nowy podatek", "Rodzaj monety"], 0),
+    ("schylek", "Dlaczego cesarze dodawali do monet coraz mniej srebra?", ["Żeby wybić więcej monet i opłacić wojsko", "Bo srebro było trujące", "Żeby monety były lżejsze dla kupców", "Bo tak kazał senat"], 0),
+    ("schylek", "Kto przeprowadził reformy i wprowadził tetrarchię pod koniec III w.?", ["Dioklecjan", "Kaligula", "Romulus", "Hannibal"], 0),
+    ("schylek", "Który język wyrósł z łaciny?", ["Włoski (a także hiszpański, francuski, rumuński)", "Niemiecki", "Polski", "Węgierski"], 0),
+    ("schylek", "Jakie miasto było stolicą cesarstwa zachodniego w V w. (od 402 r.)?", ["Rawenna", "Ateny", "Kartagina", "Londinium"], 0),
+]
+
+# ------------------------------------------------------------------------------------------------ encyklopedia
+# (id, hasło, kategoria, tekst, od którego rozdziału)
+ENCYKLOPEDIA = [
+    ("tyber", "Tyber", "miejsca", "Rzeka, nad którą leży Rzym. Dawała wodę, ryby i drogę do morza (port Ostia). Wylewy Tybru często zalewały miasto.", 1),
+    ("palatyn", "Palatyn", "miejsca", "Jedno z siedmiu wzgórz. Tu według legendy Romulus założył Rzym, a później cesarze budowali pałace – stąd słowo „pałac”.", 1),
+    ("siedem_wzgorz", "Siedem wzgórz", "miejsca", "Palatyn, Kapitol, Awentyn, Celius, Eskwilin, Wiminał i Kwirynał. Między nimi leżały bagniste doliny.", 1),
+    ("legenda", "Legenda a historia", "pojęcia", "Opowieść o wilczycy to legenda – Rzymianie stworzyli ją później. Archeolodzy potwierdzają jednak osadę na Palatynie w VIII w. p.n.e.", 1),
+    ("etruskowie", "Etruskowie", "ludy", "Lud z Etrurii (dzisiejsza Toskania). Nauczyli Rzymian budować łuki, wróżyć z lotu ptaków i urządzać igrzyska. Ostatni królowie Rzymu byli Etruskami.", 1),
+    ("krolowie", "Siedmiu królów", "pojęcia", "Tradycja wymienia 7 królów: Romulus, Numa Pompiliusz, Tullus Hostiliusz, Ankus Marcjusz, Tarkwiniusz Stary, Serwiusz Tuliusz i Tarkwiniusz Pyszny.", 1),
+    ("westalki", "Westalki", "pojęcia", "Kapłanki bogini Westy. Przez 30 lat strzegły świętego ognia, który nie mógł zgasnąć – od niego zależało bezpieczeństwo Rzymu.", 1),
+    ("republika", "Republika", "pojęcia", "Od łac. „res publica” – rzecz wspólna. Po wypędzeniu królów (509 p.n.e.) rządzili wybierani urzędnicy, senat i zgromadzenia obywateli.", 2),
+    ("konsul", "Konsul", "pojęcia", "Najwyższy urzędnik republiki. Było ich dwóch, wybieranych na rok – żeby żaden nie stał się królem.", 2),
+    ("senat", "Senat", "pojęcia", "Rada byłych urzędników. Doradzał konsulom, kierował polityką zagraniczną i finansami. Nazwa od „senex” – starzec.", 2),
+    ("patrycjusze", "Patrycjusze i plebejusze", "pojęcia", "Patrycjusze – stare, bogate rody. Plebejusze – reszta obywateli. Przez ponad 200 lat plebejusze walczyli o równe prawa.", 2),
+    ("trybun", "Trybun ludowy", "pojęcia", "Obrońca plebejuszy. Mógł powiedzieć „veto” (zabraniam) i zatrzymać decyzję urzędnika.", 2),
+    ("dyktator", "Dyktator", "pojęcia", "W czasie wielkiego zagrożenia senat wyznaczał dyktatora z pełnią władzy – ale najwyżej na 6 miesięcy.", 2),
+    ("galowie", "Galowie", "ludy", "Celtowie z Galii (dzisiejsza Francja) i północnej Italii. Waleczni, z długimi mieczami. W 390 p.n.e. złupili Rzym.", 2),
+    ("ges", "Gęsi kapitolińskie", "pojęcia", "Legenda mówi, że święte gęsi Junony gęganiem obudziły obrońców Kapitolu, gdy Galowie wspinali się nocą po skałach.", 2),
+    ("legion", "Legion", "wojsko", "Główna jednostka armii: ok. 4–6 tysięcy piechurów, podzielonych na kohorty, manipuły i centurie (ok. 80 ludzi pod centurionem).", 3),
+    ("kartagina", "Kartagina", "ludy", "Fenickie miasto w Afryce (dziś Tunezja), potęga handlowa i morska. Trzy wojny punickie (264–146 p.n.e.) zakończyły się jej zniszczeniem.", 3),
+    ("kanny", "Kanny", "wojsko", "W 216 p.n.e. Hannibal ustawił słabszy środek i silne skrzydła, okrążył Rzymian i zadał im straszną klęskę. Do dziś uczą się tej bitwy oficerowie.", 3),
+    ("fabiusz", "Fabiusz Zwlekający", "ludzie", "Kwintus Fabiusz unikał bitew z Hannibalem i nękał go małymi potyczkami. Wyśmiewany, okazał się mądry – zwłoka osłabiała wroga.", 3),
+    ("corvus", "Corvus", "wynalazki", "Ruchomy pomost z żelaznym dziobem, który wbijał się w pokład wroga. Pozwalał legionistom walczyć na morzu jak na lądzie.", 3),
+    ("niewolnictwo", "Niewolnictwo", "pojęcia", "Jeńcy wojenni stawali się niewolnikami. Pracowali w domach, kopalniach i na latyfundiach. Niektórzy zdobywali wolność (wyzwoleńcy).", 3),
+    ("latyfundium", "Latyfundium", "pojęcia", "Wielki majątek ziemski uprawiany przez niewolników. Drobni rolnicy nie wytrzymywali konkurencji i przenosili się do Rzymu.", 4),
+    ("grakchowie", "Bracia Grakchowie", "ludzie", "Tyberiusz i Gajusz Grakchus chcieli dać ziemię biednym (133 i 123 p.n.e.). Obaj zginęli w zamieszkach – republika zaczęła się chwiać.", 4),
+    ("rubikon", "Rubikon", "miejsca", "Rzeczka – granica Italii. Wódz nie mógł jej przekroczyć z wojskiem. Cezar to zrobił w 49 p.n.e. Dziś „przekroczyć Rubikon” to podjąć nieodwracalną decyzję.", 4),
+    ("alezja", "Alezja", "wojsko", "Galijski gród na wzgórzu, oblężony przez Cezara w 52 p.n.e. Cezar zbudował dwa pierścienie wałów i odparł ogromną odsiecz.", 4),
+    ("triumwirat", "Triumwirat", "pojęcia", "Porozumienie trzech mężów. Pierwszy: Cezar, Pompejusz i Krassus (60 p.n.e.). Drugi: Oktawian, Antoniusz i Lepidus.", 4),
+    ("cesarstwo", "Pryncypat", "pojęcia", "Ustrój stworzony przez Augusta: pozornie republika z senatem, naprawdę – władza jednego człowieka, „pierwszego obywatela” (princepsa).", 5),
+    ("pax", "Pax Romana", "pojęcia", "Ok. 200 lat względnego pokoju od Augusta. Kwitł handel, budowano drogi i miasta od Brytanii po Syrię.", 5),
+    ("teutoburg", "Las Teutoburski", "wojsko", "W 9 n.e. Germanie Arminiusza wciągnęli 3 legiony Warusa w zasadzkę w lasach i bagnach. Rzym zrezygnował z podboju Germanii – granicą został Ren.", 5),
+    ("bursztyn", "Szlak bursztynowy", "miejsca", "Szlak z Akwilei nad Bałtyk. Rzymscy kupcy kupowali bursztyn. Ptolemeusz (II w.) wymienił osadę Calisia – wiele osób utożsamia ją z Kaliszem.", 5),
+    ("akwedukt", "Akwedukt", "wynalazki", "Kanał na łukach doprowadzający wodę z gór. Woda płynęła siłą grawitacji, dzięki niewielkiemu spadkowi. Rzym miał 11 akweduktów.", 5),
+    ("forum", "Forum", "miejsca", "Główny plac miasta: targ, sądy, świątynie, kuria senatu. Każde rzymskie miasto miało swoje forum.", 5),
+    ("koloseum", "Koloseum", "miejsca", "Amfiteatr Flawiuszów, otwarty w 80 n.e. przez Tytusa. Mieścił ok. 50 tysięcy widzów. Nad widownią rozpinano płócienny dach – velarium.", 6),
+    ("gladiatorzy", "Gladiatorzy", "pojęcia", "Zawodowi wojownicy areny – często niewolnicy lub jeńcy. Walczyli w różnych strojach: myrmillo, retiarius (z siecią i trójzębem), tracki.", 6),
+    ("pompeje", "Pompeje", "miejsca", "Miasto zasypane popiołem Wezuwiusza w 79 n.e. Dzięki temu przetrwały domy, malowidła, a nawet chleb w piecach.", 6),
+    ("dacja", "Dacja", "miejsca", "Kraina nad Dunajem (dziś Rumunia). Trajan podbił ją w 106 n.e. i zdobył złoto Daków. Król Decebal wolał umrzeć niż się poddać.", 6),
+    ("panteon", "Panteon", "miejsca", "Świątynia wszystkich bogów, przebudowana za Hadriana (ok. 125 n.e.). Kopuła ma 43 m średnicy i okrągły otwór – oculus.", 6),
+    ("termy", "Termy", "miejsca", "Publiczne łaźnie: zimna (frigidarium), letnia (tepidarium) i gorąca (caldarium) kąpiel, siłownia, ogrody i biblioteki.", 6),
+    ("kryzys", "Kryzys III wieku", "pojęcia", "W latach 235–284 rządziło ponad 20 cesarzy, najazdy, zarazy i inflacja niszczyły kraj. Dioklecjan i Konstantyn próbowali to naprawić.", 7),
+    ("inflacja", "Inflacja", "pojęcia", "Gdy cesarze dodawali do denara coraz mniej srebra, moneta traciła wartość, a ceny rosły. Dioklecjan próbował ustalić ceny maksymalne (301 n.e.) – bez skutku.", 7),
+    ("tetrarchia", "Tetrarchia", "pojęcia", "Rządy czterech: dwóch augustów i dwóch cezarów (od 293 r.). Łatwiej było bronić długich granic.", 7),
+    ("chrzescijanie", "Chrześcijaństwo w Rzymie", "pojęcia", "Najpierw prześladowane (Neron, Decjusz, Dioklecjan), od 313 r. tolerowane, a od 380 r. religia państwowa.", 7),
+    ("konstantynopol", "Konstantynopol", "miejsca", "Dawne Bizancjum nad Bosforem, poświęcone przez Konstantyna w 330 r. Stolica cesarstwa wschodniego do 1453 r. Dziś Stambuł.", 7),
+    ("wedrowka", "Wielka wędrówka ludów", "pojęcia", "Od ok. 375 r. Hunowie zepchnęli Gotów, a za nimi ruszyli Wandalowie, Swebowie, Burgundowie, Frankowie... Plemiona osiedlały się w cesarstwie.", 8),
+    ("podzial", "Podział cesarstwa (395)", "pojęcia", "Po śmierci Teodozjusza cesarstwo podzielili jego synowie: Arkadiusz dostał Wschód, a Honoriusz – Zachód.", 8),
+    ("upadek", "Dlaczego Rzym upadł?", "pojęcia", "Historycy podają wiele przyczyn naraz: najazdy, kryzys gospodarczy i inflacja, wojny domowe, ogromne granice, zależność od najemników, słabnące państwo. Nie było jednej przyczyny!", 8),
+    ("bizancjum", "Cesarstwo bizantyjskie", "pojęcia", "Wschodnia część imperium przetrwała ponad 1000 lat dłużej – do zdobycia Konstantynopola przez Turków w 1453 r.", 8),
+    ("dziedzictwo", "Dziedzictwo Rzymu", "pojęcia", "Alfabet, kalendarz, prawo, łacina w nauce i medycynie, drogi, łuki, kopuły, słowa jak „senat”, „republika”, „kandydat”, „akwarium”. Rzym żyje w nas!", 8),
+    ("kalisz", "Rzym a ziemie polskie", "miejsca", "Rzymskie monety, naczynia i ozdoby znajdujemy w wielu miejscach Polski – przywozili je kupcy szlakiem bursztynowym. Ziemie polskie nie należały do imperium.", 8),
+]
+
+# ------------------------------------------------------------------------------------------------ wydarzenia (dylematy)
+# opcje: tekst, efekt (zasoby, chwala, ludnosc_proc, inflacja, karta), historia (czy tak było naprawdę)
+WYDARZENIA = {
+    "sabinki": {"tytul": "Brak kobiet w mieście", "rok": "ok. 750 p.n.e. (legenda)", "rozdzial": 1,
+                "opis": "Nowe miasto ma wielu mężczyzn, ale mało rodzin. Sąsiedzi – Sabinowie – nie chcą wydać córek za ubogich osadników.",
+                "opcje": [
+                    {"tekst": "Zaprosić sąsiadów na igrzyska i... porwać ich córki (jak w legendzie)",
+                     "efekt": {"chwala": 3, "wrog": 2}, "historia": True},
+                    {"tekst": "Wysłać posłów z darami i prosić o małżeństwa", "efekt": {"denary": -4, "chwala": 2}, "historia": False},
+                    {"tekst": "Przyjmować przybyszów z całej Italii – azyl na Kapitolu", "efekt": {"zboze": -3, "ludnosc": 4}, "historia": True},
+                ],
+                "komentarz": "Legenda mówi, że Romulus urządził igrzyska i jego ludzie porwali Sabinki. Wybuchła wojna, którą zakończyły same Sabinki, stając między walczącymi. Tradycja mówi też o azylu dla przybyszów. To legenda – ale pokazuje, że Rzym od początku przyjmował obcych."},
+    "tarkwiniusz": {"tytul": "Pycha króla", "rok": "509 p.n.e.", "rozdzial": 2,
+                    "opis": "Król Tarkwiniusz Pyszny rządzi okrutnie, a jego syn skrzywdził szlachetną Lukrecję. Lud wrze.",
+                    "opcje": [
+                        {"tekst": "Wypędzić króla i wybierać co roku dwóch konsulów", "efekt": {"chwala": 5, "denary": -2}, "historia": True},
+                        {"tekst": "Wybrać nowego, lepszego króla", "efekt": {"denary": 3}, "historia": False},
+                    ],
+                    "komentarz": "W 509 p.n.e. Rzymianie wypędzili Tarkwiniusza i stworzyli republikę. Słowo „król” (rex) przez wieki brzmiało w Rzymie jak obelga."},
+    "secesja": {"tytul": "Secesja plebejuszy", "rok": "494 p.n.e.", "rozdzial": 2,
+                "opis": "Plebejusze, zadłużeni i bez praw, wyszli z miasta na Świętą Górę. Nie ma kto pracować ani walczyć!",
+                "opcje": [
+                    {"tekst": "Ustąpić – plebejusze dostaną swoich trybunów ludowych", "efekt": {"chwala": 3, "denary": -3}, "historia": True},
+                    {"tekst": "Zmusić ich do powrotu siłą", "efekt": {"ludnosc": -4, "kamien": 2}, "historia": False},
+                ],
+                "komentarz": "Patrycjusze ustąpili: powstał urząd trybuna ludowego. Plebejusze jeszcze kilka razy stosowali secesję – to jak historyczny strajk."},
+    "fabiusz": {"tytul": "Wieść spod Kann", "rok": "216 p.n.e.", "rozdzial": 3,
+                "opis": "Hannibal rozbił armię rzymską pod Kannami. Senat się kłóci: walczyć od razu czy zwlekać?",
+                "opcje": [
+                    {"tekst": "Strategia Fabiusza: unikać wielkich bitew, nękać wroga, odcinać zaopatrzenie", "efekt": {"chwala": 3, "zboze": 3}, "historia": True},
+                    {"tekst": "Zebrać nową armię i natychmiast uderzyć", "efekt": {"karta": "hastati", "zboze": -4, "denary": -2}, "historia": False},
+                ],
+                "komentarz": "Po Kannach Rzym wrócił do taktyki Fabiusza Zwlekającego i nie dał Hannibalowi drugiej wielkiej bitwy w Italii. Wojnę wygrał Scypion w Afryce."},
+    "grakchowie": {"tytul": "Ziemia dla biednych?", "rok": "133 p.n.e.", "rozdzial": 3,
+                   "opis": "Bogacze skupują ziemię i tworzą latyfundia z niewolnikami. Zrujnowani chłopi tłoczą się w Rzymie. Trybun Tyberiusz Grakchus chce dać im ziemię.",
+                   "opcje": [
+                       {"tekst": "Poprzeć reformę rolną – ziemia dla biednych", "efekt": {"zboze": 4, "denary": -4, "chwala": 2}, "historia": False},
+                       {"tekst": "Bronić majątków senatorów", "efekt": {"denary": 4, "chwala": -2}, "historia": True},
+                   ],
+                   "komentarz": "Senatorowie zabili Tyberiusza Grakchusa w 133 p.n.e., a później jego brata Gajusza. Spór bogatych i biednych osłabił republikę."},
+    "rubikon": {"tytul": "Nad Rubikonem", "rok": "49 p.n.e.", "rozdzial": 4,
+                "opis": "Senat każe Cezarowi rozwiązać armię. Jeśli przekroczy z wojskiem Rubikon, wybuchnie wojna domowa.",
+                "opcje": [
+                    {"tekst": "„Alea iacta est” – przekroczyć Rubikon", "efekt": {"chwala": 4, "denary": 4}, "historia": True},
+                    {"tekst": "Posłuchać senatu i wrócić do Rzymu bez armii", "efekt": {"chwala": 2, "denary": -2}, "historia": False},
+                ],
+                "komentarz": "Cezar przekroczył Rubikon w styczniu 49 p.n.e. Pokonał Pompejusza (Farsalos, 48 p.n.e.) i został dyktatorem. Republika chyliła się ku upadkowi."},
+    "wercyngetoryks": {"tytul": "Los pokonanego wodza", "rok": "52 p.n.e.", "rozdzial": 4,
+                       "opis": "Galijskie plemiona się buntują. Część wodzów proponuje układy.",
+                       "opcje": [
+                           {"tekst": "Zawrzeć sojusze z plemionami, które się poddadzą", "efekt": {"zboze": 3, "denary": 2}, "historia": True},
+                           {"tekst": "Karać surowo wszystkie plemiona", "efekt": {"denary": 5, "chwala": -2, "wrog": 2}, "historia": True},
+                       ],
+                       "komentarz": "Cezar stosował jedno i drugie: łaskę wobec sojuszników i okrucieństwo wobec opornych. Wojna galijska kosztowała życie setek tysięcy ludzi."},
+    "marmur": {"tytul": "Miasto z marmuru", "rok": "ok. 20 p.n.e.", "rozdzial": 5,
+               "opis": "August chce odbudować Rzym: świątynie, fora, teatry. To kosztuje, ale daje pracę i chwałę.",
+               "opcje": [
+                   {"tekst": "Budować z rozmachem – za pieniądze z łupów Egiptu", "efekt": {"denary": -6, "kamien": 6, "chwala": 5}, "historia": True},
+                   {"tekst": "Oszczędzać na wojsko", "efekt": {"denary": 4, "karta": "legionisci"}, "historia": False},
+               ],
+               "komentarz": "August chwalił się, że „zastał Rzym ceglany, a zostawił marmurowy”. Pieniądze pochodziły m.in. ze skarbca Egiptu."},
+    "warus": {"tytul": "Klęska Warusa", "rok": "9 n.e.", "rozdzial": 5,
+              "opis": "Germanie Arminiusza zniszczyli trzy legiony w Lesie Teutoburskim. Co dalej z Germanią?",
+              "opcje": [
+                  {"tekst": "Uczynić Ren stałą granicą i umocnić ją", "efekt": {"kamien": -3, "chwala": 2, "obrona": 1}, "historia": True},
+                  {"tekst": "Wysłać nowe legiony i podbić Germanię", "efekt": {"denary": -6, "zboze": -4, "chwala": 1}, "historia": False},
+              ],
+              "komentarz": "Germanik przeprowadził jeszcze wyprawy odwetowe (14–16 n.e.), ale Rzym zrezygnował z podboju. Granicą imperium stały się Ren i Dunaj."},
+    "igrzyska": {"tytul": "100 dni igrzysk", "rok": "80 n.e.", "rozdzial": 6,
+                 "opis": "Cesarz Tytus otwiera Koloseum. Lud czeka na wielkie igrzyska.",
+                 "opcje": [
+                     {"tekst": "Urządzić 100 dni igrzysk i rozdać zboże – „chleba i igrzysk”", "efekt": {"zboze": -6, "denary": -4, "chwala": 6}, "historia": True},
+                     {"tekst": "Krótkie igrzyska, a pieniądze na akwedukty", "efekt": {"kamien": 4, "chwala": 2}, "historia": False},
+                 ],
+                 "komentarz": "Tytus urządził w 80 n.e. igrzyska trwające 100 dni. Cesarze kupowali poparcie ludu darmowym zbożem i rozrywką."},
+    "zaraza": {"tytul": "Zaraza Antoninów", "rok": "165 n.e.", "rozdzial": 6,
+               "opis": "Żołnierze wracający ze Wschodu przynieśli groźną chorobę. Umierają tysiące.",
+               "opcje": [
+                   {"tekst": "Zamknąć termy i ograniczyć zgromadzenia", "efekt": {"chwala": -2, "ludnosc": -2}, "historia": False},
+                   {"tekst": "Działać jak dawniej – nic nie zmieniać", "efekt": {"ludnosc": -6}, "historia": True},
+               ],
+               "komentarz": "Zaraza Antoninów (prawdopodobnie ospa) zabiła miliony ludzi. Starożytni nie znali bakterii ani wirusów – ale już Rzymianie zauważali, że choroba szerzy się w tłumie."},
+    "moneta": {"tytul": "Pusty skarbiec", "rok": "III w. n.e.", "rozdzial": 7,
+               "opis": "Żołnierze żądają żołdu, a w skarbcu brak srebra. Doradca proponuje: dodajmy do denarów więcej miedzi, będzie więcej monet!",
+               "opcje": [
+                   {"tekst": "Psuć monetę – wybić więcej denarów z tej samej ilości srebra", "efekt": {"denary": 12, "inflacja": 1}, "historia": True},
+                   {"tekst": "Podnieść podatki i ciąć wydatki", "efekt": {"denary": 4, "chwala": -3}, "historia": False},
+               ],
+               "komentarz": "W III w. denar zawierał już tylko kilka procent srebra. Ceny rosły – to inflacja. Dopiero złoty solidus Konstantyna dał stabilny pieniądz. LEKCJA: więcej pieniędzy nie znaczy więcej bogactwa!"},
+    "edykt": {"tytul": "Wolność wyznania?", "rok": "313 n.e.", "rozdzial": 7,
+              "opis": "Chrześcijanie byli prześladowani, ale jest ich coraz więcej – także w wojsku i urzędach.",
+              "opcje": [
+                  {"tekst": "Ogłosić tolerancję dla wszystkich religii (edykt mediolański)", "efekt": {"chwala": 5}, "historia": True},
+                  {"tekst": "Kontynuować prześladowania", "efekt": {"chwala": -3, "ludnosc": -3}, "historia": False},
+              ],
+              "komentarz": "W 313 r. Konstantyn i Licyniusz ogłosili w Mediolanie wolność wyznania. Chrześcijaństwo stało się z czasem religią cesarstwa."},
+    "goci": {"tytul": "Goci nad Dunajem", "rok": "376 n.e.", "rozdzial": 8,
+             "opis": "Uciekający przed Hunami Goci proszą o pozwolenie na osiedlenie się w cesarstwie.",
+             "opcje": [
+                 {"tekst": "Przyjąć ich i dobrze traktować – będą żołnierzami", "efekt": {"zboze": -5, "karta": "federaci_goccy", "chwala": 2}, "historia": False},
+                 {"tekst": "Przyjąć, ale głodzić i wyzyskiwać", "efekt": {"denary": 4, "wrog": 3}, "historia": True},
+             ],
+             "komentarz": "Rzymscy urzędnicy źle traktowali Gotów – sprzedawali im żywność po lichwiarskich cenach. Goci zbuntowali się i w 378 r. pod Adrianopolem zabili cesarza Walensa."},
+    "podzial": {"tytul": "Testament Teodozjusza", "rok": "395 n.e.", "rozdzial": 8,
+                "opis": "Cesarz Teodozjusz umiera. Ma dwóch synów. Jak rządzić ogromnym państwem?",
+                "opcje": [
+                    {"tekst": "Podzielić cesarstwo między synów: Wschód i Zachód", "efekt": {"chwala": 1, "denary": 2}, "historia": True},
+                    {"tekst": "Przekazać całość starszemu synowi", "efekt": {"chwala": 2, "denary": -3}, "historia": False},
+                ],
+                "komentarz": "W 395 r. Arkadiusz objął Wschód, a Honoriusz Zachód. Bogatszy Wschód przetrwał do 1453 r., a Zachód upadł w 476 r."},
+}
+
+# Zdarzenia losowe (z lekcjami ekonomii) – jak w Kronikach
+LOSOWE = [
+    {"id": "wylew", "tytul": "Wylew Tybru", "opis": "Rzeka zalała pola. Żyzny muł użyźni ziemię na przyszłość.", "efekt": {"zboze": -4, "chwala": 0},
+     "lekcja": "Powodzie niszczyły, ale nanosiły żyzny muł – dlatego ludzie osiedlali się nad rzekami."},
+    {"id": "urodzaj", "tytul": "Urodzaj", "opis": "Ceres była łaskawa – zbiory obfite!", "efekt": {"zboze": 6},
+     "lekcja": "Gdy towaru jest dużo, jego cena spada. Nadwyżki zboża warto przechować na gorsze lata."},
+    {"id": "kupcy", "tytul": "Kupcy z Grecji", "opis": "Do portu przypłynęli kupcy z amforami wina i ceramiką.", "efekt": {"denary": 5},
+     "lekcja": "Handel opłaca się obu stronom: każda sprzedaje to, czego ma w nadmiarze."},
+    {"id": "pozar", "tytul": "Pożar dzielnicy", "opis": "Ogień z kuchni rozprzestrzenił się po drewnianych domach.", "efekt": {"drewno": -5},
+     "lekcja": "August stworzył straż pożarną (vigiles) – 7 tysięcy ludzi z wiadrami i toporami."},
+    {"id": "susza", "tytul": "Susza", "opis": "Od tygodni nie spadła kropla deszczu.", "efekt": {"zboze": -5},
+     "lekcja": "Rzym sprowadzał zboże z Sycylii, Afryki i Egiptu – handel chronił przed głodem."},
+    {"id": "zloto", "tytul": "Łupy wojenne", "opis": "Legiony wróciły z łupami.", "efekt": {"denary": 6, "kamien": 2},
+     "lekcja": "Wojny przynosiły łupy, ale też kosztowały – gdy podboje się skończyły, skarbiec zaczął pustoszeć."},
+    {"id": "trzesienie", "tytul": "Trzęsienie ziemi", "opis": "Ziemia zadrżała, popękały mury.", "efekt": {"kamien": -4},
+     "lekcja": "Italia leży na styku płyt tektonicznych – stąd trzęsienia ziemi i wulkany (Wezuwiusz, Etna)."},
+    {"id": "las", "tytul": "Dobry rok w lasach", "opis": "Drwale znaleźli las wielkich dębów.", "efekt": {"drewno": 5},
+     "lekcja": "Rzymianie wycięli wiele lasów Italii na statki, budowy i opał – zasoby nie są nieskończone."},
+]
+
+ZNAJDZKI_OPIS = {
+    "moneta": ("Denar Augusta", "Srebrna moneta z głową cesarza. Za denara można było kupić kilka bochenków chleba."),
+    "lampka": ("Lampka oliwna", "Gliniana lampka paliła się dzięki oliwie z oliwek."),
+    "amfora": ("Amfora", "Dzban z dwoma uchwytami na wino, oliwę i sos rybny garum."),
+    "strigil": ("Strigilis", "Skrobaczka do zdrapywania oliwy i potu w termach – Rzymianie nie znali mydła w dzisiejszej postaci."),
+    "tabliczka": ("Tabliczka woskowa", "Uczniowie pisali rylcem (stilus) na wosku. Tępym końcem wygładzali błędy."),
+    "fibula": ("Fibula", "Ozdobna zapinka do płaszcza – jak dzisiejsza agrafka."),
+    "bulla": ("Bulla", "Amulet noszony na szyi przez rzymskie dzieci aż do dorosłości."),
+    "bursztyn": ("Bursztyn znad Bałtyku", "Przywieziony szlakiem bursztynowym przez ziemie dzisiejszej Polski!"),
+}
+
+RODY = [
+    {"id": "juliusze", "nazwa": "Juliusze", "kolor": "c0392b", "haslo": "Ród Cezara, potomkowie Wenus"},
+    {"id": "korneliusze", "nazwa": "Korneliusze", "kolor": "2e6fc4", "haslo": "Ród Scypionów"},
+    {"id": "klaudiusze", "nazwa": "Klaudiusze", "kolor": "2f9a4c", "haslo": "Ród budowniczych dróg"},
+    {"id": "fabiusze", "nazwa": "Fabiusze", "kolor": "e0a722", "haslo": "Ród Fabiusza Zwlekającego"},
+]
+
+TRUDNOSCI = [
+    {"nazwa": "Łatwy (10–11 lat)", "wrog": 0.75, "zasoby": 1.4, "ukryta": 0, "podpowiedzi": 1, "zagony": 1.5},
+    {"nazwa": "Normalny", "wrog": 1.0, "zasoby": 1.0, "ukryta": 1, "podpowiedzi": 0, "zagony": 1.0},
+    {"nazwa": "Trudny (13–14 lat)", "wrog": 1.25, "zasoby": 0.8, "ukryta": 1, "podpowiedzi": 0, "zagony": 0.75},
+]
+
+# ================================================================================================ mapy
+class Mapa:
+    def __init__(self, ziarno, tlo="."):
+        self.r = random.Random(ziarno)
+        self.p = [[tlo] * N for _ in range(N)]
+
+    def ust(self, x, y, c):
+        if 0 <= x < N and 0 <= y < N:
+            self.p[y][x] = c
+
+    def get(self, x, y):
+        return self.p[y][x] if 0 <= x < N and 0 <= y < N else None
+
+    def plama(self, cx, cy, r, c, gest=1.0, tylko=None):
+        for y in range(N):
+            for x in range(N):
+                d = math.hypot(x - cx, y - cy)
+                if d <= r + self.r.uniform(-0.6, 0.6) and self.r.random() < gest:
+                    if tylko is None or self.p[y][x] in tylko:
+                        self.p[y][x] = c
+
+    def linia(self, punkty, c, szer=1, tylko=None):
+        """Łamana (rzeka, droga) – kolejne punkty łączone krokami po polach."""
+        for (x0, y0), (x1, y1) in zip(punkty, punkty[1:]):
+            kroki = max(abs(x1 - x0), abs(y1 - y0)) * 3 + 1
+            for i in range(kroki + 1):
+                t = i / kroki
+                x = round(x0 + (x1 - x0) * t)
+                y = round(y0 + (y1 - y0) * t)
+                for dx in range(szer):
+                    if tylko is None or self.get(x + dx, y) in tylko:
+                        self.ust(x + dx, y, c)
+
+    def morze(self, warunek):
+        for y in range(N):
+            for x in range(N):
+                if warunek(x, y):
+                    self.p[y][x] = "m"
+        # plaża na styku
+        for y in range(N):
+            for x in range(N):
+                if self.p[y][x] not in "m~" and any(self.get(x + dx, y + dy) == "m" for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1))):
+                    self.p[y][x] = "p"
+
+    def rozrzuc(self, c, ile, tylko=".", obszar=(0, 0, N, N)):
+        for _ in range(ile):
+            x = self.r.randrange(obszar[0], obszar[2])
+            y = self.r.randrange(obszar[1], obszar[3])
+            if self.p[y][x] in tylko:
+                self.p[y][x] = c
+
+    def czysc(self, x, y, r=1, c="."):
+        for yy in range(y - r, y + r + 1):
+            for xx in range(x - r, x + r + 1):
+                if self.get(xx, yy) not in (None, "~", "m"):
+                    self.ust(xx, yy, c)
+
+    def wynik(self):
+        return ["".join(w) for w in self.p]
+
+
+def mapa_palatyn():
+    m = Mapa(753)
+    m.plama(3, 3, 4, "l"); m.plama(21, 20, 4, "l"); m.plama(20, 2, 3, "l"); m.plama(2, 20, 3, "l")
+    # Tyber z północy, zakole na zachód od wzgórz
+    m.linia([(9, 0), (8, 4), (6, 8), (7, 12), (6, 16), (8, 20), (7, 23)], "~", 2)
+    # siedem wzgórz
+    for (x, y, r) in [(12, 12, 1.4), (11, 9, 1.0), (14, 15, 1.2), (16, 10, 1.3), (17, 7, 1.0), (15, 5, 1.0), (19, 12, 1.1)]:
+        m.plama(x, y, r, "w", tylko=".l")
+    m.plama(12, 10.5, 0.9, "b", tylko=".")      # bagno między Palatynem a Kapitolem (przyszłe Forum)
+    m.ust(13, 10, "b"); m.ust(12, 11, "w")
+    m.rozrzuc("l", 25, ".")
+    m.plama(22, 22, 2, "g", tylko=".l")
+    m.czysc(13, 13, 1); m.ust(12, 12, "w")
+    return m.wynik()
+
+
+def mapa_kapitol():
+    m = Mapa(390)
+    m.plama(4, 4, 4, "l"); m.plama(20, 3, 4, "l"); m.plama(3, 19, 4, "l")
+    m.linia([(8, 0), (7, 5), (5, 9), (6, 14), (5, 18), (7, 23)], "~", 2)
+    for (x, y, r) in [(11, 11, 1.8), (14, 14, 1.3), (16, 9, 1.3), (17, 6, 1.0), (19, 12, 1.0), (13, 17, 1.0)]:
+        m.plama(x, y, r, "w", tylko=".l")
+    m.linia([(23, 12), (19, 12), (13, 12)], "d", 1, tylko=".l")
+    m.linia([(12, 23), (12, 18), (12, 13)], "d", 1, tylko=".lw")
+    m.rozrzuc("l", 25, "."); m.rozrzuc("o", 10, ".")
+    m.plama(22, 21, 2.5, "g", tylko=".l")
+    m.czysc(12, 14, 1)
+    return m.wynik()
+
+
+def mapa_kartagina():
+    m = Mapa(202)
+    # Wybrzeże: morze na zachodzie i północy (Zatoka Tunezyjska), ląd afrykański na wschód/południe
+    m.morze(lambda x, y: x + y * 0.6 < 9 or y < 2)
+    m.plama(18, 18, 4, "g", tylko=".")
+    m.plama(14, 20, 3, "w", tylko=".")
+    m.rozrzuc("o", 30, "."); m.rozrzuc("l", 10, ".")
+    m.linia([(23, 7), (17, 9), (12, 9), (9, 8)], "~", 1)
+    m.linia([(8, 12), (14, 13), (23, 14)], "d", 1, tylko=".o")
+    m.czysc(11, 12, 1)
+    return m.wynik()
+
+
+def mapa_galia():
+    m = Mapa(52)
+    m.plama(4, 4, 6, "l"); m.plama(19, 4, 5, "l"); m.plama(4, 19, 5, "l"); m.plama(20, 20, 4, "l")
+    m.rozrzuc("l", 60, ".")
+    m.plama(16, 9, 2.0, "w", tylko=".l")        # wzgórze Alezji
+    m.linia([(0, 13), (6, 13), (12, 15), (18, 14), (23, 16)], "~", 1)
+    m.plama(21, 21, 2, "b", tylko=".l")
+    m.czysc(8, 18, 1)
+    return m.wynik()
+
+
+def mapa_rzym_augusta():
+    m = Mapa(27)
+    m.linia([(8, 0), (7, 5), (5, 9), (6, 14), (5, 18), (4, 23)], "~", 2)
+    for (x, y, r) in [(11, 11, 1.4), (14, 14, 1.2), (16, 9, 1.2), (17, 6, 0.9), (19, 12, 1.0), (13, 17, 1.0)]:
+        m.plama(x, y, r, "w", tylko=".")
+    m.linia([(23, 18), (16, 16), (12, 13)], "d", 1, tylko=".w")       # Via Appia
+    m.linia([(12, 0), (12, 6), (12, 12)], "d", 1, tylko=".w")         # Via Flaminia
+    m.plama(21, 3, 3, "l"); m.plama(2, 20, 3, "l"); m.rozrzuc("o", 18, "."); m.rozrzuc("l", 12, ".")
+    m.plama(22, 22, 2, "g", tylko=".l")
+    m.plama(20, 2, 1.5, "g", tylko=".l")
+    m.czysc(12, 13, 1)
+    return m.wynik()
+
+
+def mapa_dacja():
+    m = Mapa(106)
+    m.linia([(0, 19), (6, 18), (12, 19), (18, 18), (23, 19)], "~", 2)   # Dunaj
+    m.plama(16, 5, 5, "g", tylko=".")                                    # Karpaty
+    m.plama(8, 4, 4, "l"); m.plama(20, 12, 3, "l")
+    m.plama(12, 8, 2.5, "w", tylko=".l")
+    m.rozrzuc("l", 40, ".", (0, 0, N, 16))
+    m.linia([(6, 23), (6, 21)], "d")
+    for (x, y) in [(10, 22), (11, 22), (3, 22), (17, 22), (18, 21), (21, 23)]:
+        m.ust(x, y, "w")
+    m.czysc(7, 22, 1)
+    return m.wynik()
+
+
+def mapa_most_mulwijski():
+    m = Mapa(312)
+    m.linia([(16, 0), (14, 4), (11, 8), (12, 12), (9, 16), (10, 23)], "~", 2)
+    for (x, y, r) in [(15, 15, 1.4), (18, 18, 1.2), (19, 13, 1.1)]:
+        m.plama(x, y, r, "w", tylko=".")
+    m.linia([(2, 3), (8, 6), (11, 8), (14, 12), (17, 16)], "d", 1, tylko=".w~")   # Via Flaminia przez most
+    m.plama(3, 18, 3, "l"); m.plama(21, 3, 3, "l"); m.rozrzuc("o", 20, "."); m.rozrzuc("l", 14, ".")
+    m.plama(22, 22, 2, "g", tylko=".l")
+    m.czysc(17, 17, 1)
+    return m.wynik()
+
+
+def mapa_katalaunia():
+    m = Mapa(451)
+    m.linia([(0, 6), (7, 8), (14, 7), (23, 9)], "~", 1)  # Marna
+    m.plama(12, 15, 1.6, "w", tylko=".")                 # sporne wzgórze
+    m.plama(4, 3, 3, "l"); m.plama(20, 20, 3, "l"); m.plama(3, 20, 3, "l")
+    m.rozrzuc("l", 25, ".")
+    m.linia([(0, 13), (8, 13), (16, 14), (23, 13)], "d", 1, tylko=".l")
+    m.czysc(6, 17, 1)
+    return m.wynik()
+
+
+def obszar_cel(*a):
+    return list(a)
+
+
+# ------------------------------------------------------------------------------------------------ rozdziały
+ROZDZIALY = [
+    {
+        "id": "palatyn", "tytul": "Wilczyca i pług", "lata": "753 p.n.e.", "miejsce": "Palatyn nad Tybrem",
+        "epoka": "krolestwo", "mapa": mapa_palatyn(), "tury": 28,
+        "start": [[13, 13], [17, 18], [19, 6], [4, 13]],
+        "zasoby": {"zboze": 10, "drewno": 14, "kamien": 2, "denary": 4},
+        "talia": ["pasterze", "pasterze", "pasterze", "procarze", "procarze", "jezdzcy"],
+        "podpisy": [[7, 2, "Tyber"], [12, 13, "Palatyn"], [11, 8, "Kapitol"], [16, 10, "Eskwilin"], [17, 6, "Kwirynał"], [14, 16, "Awentyn"], [21, 21, "Góry Sabińskie"]],
+        "zabytki": [[11, 13, "wilczyca", "Grota Luperkal", "Według legendy tu wilczyca karmiła bliźnięta."]],
+        "obozy": [[20, 3, "galijczyk", "Obóz Sabinów"]],
+        "zagony": {"od": 10, "co": 7, "sila": 3, "model": "galijczyk", "nazwa": "Zagon Sabinów"},
+        "znajdzki": [[4, 6, "bulla"], [20, 16, "lampka"]],
+        "cele": [
+            {"typ": "buduj", "co": "chata", "ile": 4},
+            {"typ": "buduj", "co": "pole", "ile": 2},
+            {"typ": "buduj", "co": "mury", "ile": 1, "opis": "Wytycz bruzdę i zbuduj mury Palatynu"},
+            {"typ": "tech", "co": "kloaka"},
+            {"typ": "bitwa"},
+        ],
+        "wydarzenia": ["sabinki"],
+        "bitwa": {"nazwa": "Wojna z Sabinami", "rok": "ok. 750 p.n.e. (legenda)", "teren": "pole", "morale": 16,
+                  "wrog": ["sabinowie", "sabinowie", "sabinowie", "sabinscy_jezdzcy", "sabinscy_procarze", "sabinscy_procarze"],
+                  "frakcja": "sabinowie", "dowodca": "romulus", "premia": {"piechota": 1}, "taktyki": ["porwanie", "sabinki"],
+                  "opis": "Król Sabinów Tytus Tacjusz prowadzi wojsko pod Kapitol. Według legendy zdradziła go Tarpeja i Sabinowie weszli na wzgórze.",
+                  "po": "Według legendy walkę przerwały Sabinki, stając między ojcami i mężami. Oba ludy połączyły się w jedno państwo, a Romulus rządził razem z Tytusem Tacjuszem."},
+        "wstep": [
+            "Witaj! Jestem Damian Ścisł, kronikarz. Przeszedłem przez wieki Polski Piastów – teraz przenosimy się dużo dalej w przeszłość.",
+            "Jest rok 753 przed naszą erą. Nad rzeką Tyber, wśród siedmiu wzgórz, pasterze wznoszą chaty.",
+            "Legenda mówi, że bliźnięta Romulusa i Remusa wykarmiła wilczyca. Romulus wytyczył pługiem bruzdę wokół Palatynu – tak narodził się Rzym.",
+            "Zbuduj chaty i pola, wznieś mury, a z pomocą Etrusków osusz bagno pod przyszłe Forum. Potem zmierz się z Sabinami.",
+        ],
+        "koniec": "Rzym przetrwał pierwsze lata. Według tradycji po Romulusie rządziło jeszcze sześciu królów – ostatni, Tarkwiniusz Pyszny, został wypędzony w 509 p.n.e.",
+        "mapa_imperium": {"rok": "753 p.n.e.", "od": "-700", "do": "-700", "miasta": ["Rzym", "Alba Longa", "Weje", "Kartagina", "Ateny", "Troja"],
+                          "trasa": [["Troja", "Rzym", "morzem", "Legenda mówi, że przodek Rzymian, Eneasz, przypłynął do Italii z płonącej Troi."]],
+                          "podpisy": ["W VIII w. p.n.e. Italię zamieszkiwali Etruskowie, Latynowie, Sabinowie i Grecy z kolonii na południu.",
+                                      "Rzym to na razie mała osada pasterzy nad Tybrem."]},
+    },
+    {
+        "id": "kapitol", "tytul": "Gęsi Kapitolu", "lata": "509–390 p.n.e.", "miejsce": "Rzym – Kapitol i Forum",
+        "epoka": "republika", "mapa": mapa_kapitol(), "tury": 30,
+        "start": [[12, 14], [16, 18], [18, 8], [4, 12]],
+        "zasoby": {"zboze": 12, "drewno": 12, "kamien": 6, "denary": 6},
+        "talia": ["hoplici", "hoplici", "pasterze", "procarze", "procarze", "jezdzcy", "welici"],
+        "podpisy": [[6, 2, "Tyber"], [11, 11, "Kapitol"], [14, 14, "Palatyn"], [20, 12, "Via Salaria"], [21, 2, "Etruria (Weje)"]],
+        "zabytki": [[11, 11, "kapitol", "Świątynia Jowisza Kapitolińskiego", "Poświęcona według tradycji w 509 p.n.e., najważniejsza świątynia Rzymu."]],
+        "obozy": [[20, 3, "galijczyk", "Obóz Galów Brennusa"]],
+        "zagony": {"od": 8, "co": 5, "sila": 4, "model": "galijczyk", "nazwa": "Zagon Galów"},
+        "znajdzki": [[3, 8, "tabliczka"], [19, 19, "fibula"]],
+        "cele": [
+            {"typ": "tech", "co": "prawo12"},
+            {"typ": "buduj", "co": "targ", "ile": 1},
+            {"typ": "buduj", "co": "swiatynia", "ile": 1},
+            {"typ": "buduj", "co": "mury", "ile": 2},
+            {"typ": "buduj", "co": "koszary", "ile": 1},
+            {"typ": "bitwa"},
+        ],
+        "wydarzenia": ["tarkwiniusz", "secesja"],
+        "bitwa": {"nazwa": "Obrona Kapitolu", "rok": "390 p.n.e.", "teren": "wzgorze", "morale": 22,
+                  "wrog": ["galowie_wojownicy", "galowie_wojownicy", "galowie_wojownicy", "galowie_jazda", "galowie_procarze", "galowie_wodz"],
+                  "frakcja": "galowie", "dowodca": "cyncynat", "premia": {"strzelcy": 1}, "taktyki": ["geesi", "kamillus"],
+                  "opis": "Galowie Brennusa rozbili Rzymian nad Allią i weszli do miasta. Na Kapitolu broni się ostatni oddział.",
+                  "po": "Galowie odeszli po otrzymaniu okupu w złocie. Brennus rzucił miecz na szalę wołając „Vae victis!” – biada zwyciężonym. Rzym odbudował się i otoczył się Murem Serwiańskim."},
+        "wstep": [
+            "Mija ponad 200 lat. W 509 p.n.e. Rzymianie wypędzili króla i stworzyli republikę – rządzą dwaj konsulowie i senat.",
+            "Patrycjusze i plebejusze spierają się o prawa. W 451–450 p.n.e. spisano Prawo XII tablic.",
+            "Ale z północy nadciąga burza: Galowie pod wodzą Brennusa. W 390 p.n.e. pokonają Rzymian nad rzeką Allią.",
+            "Spisz prawa, zbuduj świątynię i mury, przygotuj Kapitol do obrony!",
+        ],
+        "koniec": "Po najeździe Galów Rzym podporządkował sobie całą Italię. Dalej czekała go walka z potęgą morską – Kartaginą.",
+        "mapa_imperium": {"rok": "390 p.n.e.", "od": "-700", "do": "-400", "miasta": ["Rzym", "Weje", "Massalia", "Kartagina", "Syrakuzy", "Ateny"],
+                          "trasa": [["Massalia", "Rzym", "ladem", "Celtowie (Galowie) z północy przechodzą przez Alpy i ruszają na Rzym."]],
+                          "podpisy": ["Republika Rzymska to jeszcze małe państwo w środkowej Italii.",
+                                      "Kartagina panuje na zachodnim Morzu Śródziemnym, a Grecy – na wschodzie."]},
+    },
+    {
+        "id": "zama", "tytul": "Hannibal u bram", "lata": "264–202 p.n.e.", "miejsce": "Afryka – okolice Kartaginy",
+        "epoka": "republika", "mapa": mapa_kartagina(), "tury": 30,
+        "start": [[11, 12], [16, 6], [21, 12], [4, 17]],
+        "zasoby": {"zboze": 14, "drewno": 14, "kamien": 6, "denary": 8},
+        "talia": ["hoplici", "hoplici", "welici", "welici", "jezdzcy", "ekwici", "procarze"],
+        "podpisy": [[3, 3, "Morze Śródziemne"], [18, 18, "Góry Atlas"], [15, 9, "rzeka Bagradas"], [20, 3, "Kartagina"]],
+        "zabytki": [[20, 4, "ruiny", "Mury Kartaginy", "Fenickie miasto założone według tradycji w 814 p.n.e. przez królową Dydonę."]],
+        "obozy": [[20, 3, "kartaginczyk", "Obóz Hannibala"]],
+        "zagony": {"od": 9, "co": 6, "sila": 5, "model": "kartaginczyk", "nazwa": "Jazda numidyjska"},
+        "znajdzki": [[16, 21, "amfora"], [22, 11, "moneta"]],
+        "cele": [
+            {"typ": "buduj", "co": "port", "ile": 1},
+            {"typ": "tech", "co": "corvus"},
+            {"typ": "tech", "co": "manipul"},
+            {"typ": "buduj", "co": "koszary", "ile": 2},
+            {"typ": "zasob", "co": "zboze", "ile": 25, "opis": "Zgromadź zapasy zboża dla legionów (25)"},
+            {"typ": "bitwa"},
+        ],
+        "wydarzenia": ["fabiusz", "grakchowie"],
+        "bitwa": {"nazwa": "Bitwa pod Zamą", "rok": "202 p.n.e.", "teren": "pole", "morale": 26,
+                  "wrog": ["slonie", "slonie", "kartagina_piechota", "kartagina_piechota", "kartagina_numidowie", "kartagina_baleary", "weterani_hannibala"],
+                  "frakcja": "kartagina", "dowodca": "scypion", "premia": {"piechota": 1}, "taktyki": ["korytarze", "numidowie", "triplex"],
+                  "opis": "Scypion przeniósł wojnę do Afryki. Hannibal wrócił z Italii. Na równinie pod Zamą stają naprzeciw siebie dwaj najwięksi wodzowie epoki – a przed szykiem Kartaginy 80 słoni.",
+                  "po": "Scypion ustawił manipuły w kolumny, a słonie przebiegły przez korytarze. Jazda Masynissy zaatakowała od tyłu. Kartagina oddała flotę i Hiszpanię. Rzym stał się panem zachodniego Morza Śródziemnego."},
+        "wstep": [
+            "Rok 264 p.n.e. Rzym i Kartagina spierają się o Sycylię. Zaczynają się wojny punickie.",
+            "Rzymianie nie umieli walczyć na morzu – wymyślili więc corvus, pomost, który zamieniał bitwę morską w lądową.",
+            "W 218 p.n.e. Hannibal przeszedł Alpy ze słoniami, a pod Kannami (216 p.n.e.) zadał Rzymowi straszną klęskę.",
+            "Teraz Scypion płynie do Afryki. Zbuduj port, przygotuj legiony i zboże – a potem zmierz się z Hannibalem pod Zamą!",
+        ],
+        "koniec": "Kartagina przegrała. W 146 p.n.e., po III wojnie punickiej, Rzymianie zrównali ją z ziemią. W tym samym roku zniszczyli też grecki Korynt.",
+        "mapa_imperium": {"rok": "218–202 p.n.e.", "od": "-400", "do": "-200", "miasta": ["Rzym", "Nowa Kartagina", "Saguntum", "Massalia", "Kanny", "Kartagina", "Zama", "Syrakuzy"],
+                          "trasa": [["Nowa Kartagina", "Massalia", "ladem", "Hannibal wyrusza z Hiszpanii ze słoniami..."],
+                                    ["Massalia", "Kanny", "ladem", "...przechodzi przez Alpy i pod Kannami rozbija Rzymian (216 p.n.e.)."],
+                                    ["Rzym", "Zama", "morzem", "Scypion przeprawia się do Afryki – Hannibal musi wrócić bronić Kartaginy."]],
+                          "podpisy": ["Po wojnach punickich Rzym panuje w Italii, na Sycylii, Sardynii i w Hiszpanii."]},
+    },
+    {
+        "id": "alezja", "tytul": "Kości zostały rzucone", "lata": "58–49 p.n.e.", "miejsce": "Galia – Alezja",
+        "epoka": "republika", "mapa": mapa_galia(), "tury": 30,
+        "start": [[8, 18], [14, 20], [3, 10], [20, 12]],
+        "zasoby": {"zboze": 14, "drewno": 16, "kamien": 6, "denary": 10},
+        "talia": ["legionisci", "legionisci", "hastati", "welici", "lucznicy", "ekwici", "principes"],
+        "techy_start": ["manipul", "reforma_mariusza"],
+        "podpisy": [[16, 8, "Alezja"], [2, 12, "Sekwana"], [4, 4, "Lasy Galii"], [20, 21, "Bagna"]],
+        "zabytki": [[16, 9, "ruiny", "Gród Alezja", "Oppidum Mandubiów na wzgórzu Mont-Auxois. Tu Wercyngetoryks złożył broń."]],
+        "obozy": [[17, 9, "galijczyk", "Alezja – Wercyngetoryks"], [21, 3, "galijczyk", "Odsiecz Galów"]],
+        "zagony": {"od": 7, "co": 5, "sila": 6, "model": "galijczyk", "nazwa": "Wypad Galów"},
+        "znajdzki": [[2, 2, "fibula"], [22, 22, "moneta"]],
+        "cele": [
+            {"typ": "buduj", "co": "mury", "ile": 3, "opis": "Zbuduj podwójny pierścień wałów (3 mury)"},
+            {"typ": "buduj", "co": "koszary", "ile": 2},
+            {"typ": "buduj", "co": "tartak", "ile": 2},
+            {"typ": "tech", "co": "kalendarz_julianski"},
+            {"typ": "bitwa"},
+        ],
+        "wydarzenia": ["wercyngetoryks", "rubikon"],
+        "bitwa": {"nazwa": "Oblężenie Alezji", "rok": "52 p.n.e.", "teren": "wzgorze", "morale": 28,
+                  "wrog": ["galowie_wojownicy", "galowie_wojownicy", "galowie_wodz", "galowie_wodz", "galowie_jazda", "galowie_jazda", "galowie_procarze"],
+                  "frakcja": "galowie", "dowodca": "cezar", "premia": {"piechota": 1, "jazda": 1}, "taktyki": ["podwojny_wal", "germanska_jazda", "testudo"],
+                  "opis": "Wercyngetoryks zamknął się w Alezji. Cezar otoczył gród wałami, ale z zewnątrz nadciąga ogromna odsiecz Galów. Rzymianie walczą na dwa fronty!",
+                  "po": "Odsiecz została odparta, a Wercyngetoryks poddał się Cezarowi. Galia stała się rzymską prowincją, a z czasem kraina ta przyjęła łacinę – stąd język francuski."},
+        "wstep": [
+            "Republika się chwieje: bogacze i biedni walczą, wodzowie mają własne armie. Gajusz Juliusz Cezar zostaje namiestnikiem Galii.",
+            "Od 58 p.n.e. Cezar podbija plemiona galijskie. W 52 p.n.e. zbuntowały się pod wodzą Wercyngetoryksa.",
+            "Zbuduj wały, koszary i obozy drwali, wprowadź nowy kalendarz – i zdobądź Alezję!",
+        ],
+        "koniec": "W 49 p.n.e. Cezar przekroczył Rubikon i wygrał wojnę domową. Rządził jako dyktator, aż w idy marcowe 44 p.n.e. senatorowie z Brutusem i Kasjuszem zasztyletowali go w kurii Pompejusza.",
+        "mapa_imperium": {"rok": "58–49 p.n.e.", "od": "-200", "do": "-100", "miasta": ["Rzym", "Massalia", "Lutecja", "Alezja", "Rubikon", "Farsalos", "Aleksandria"],
+                          "trasa": [["Rzym", "Massalia", "ladem", "Cezar obejmuje prowincję i rusza do Galii..."],
+                                    ["Massalia", "Alezja", "ladem", "...w 52 p.n.e. oblega Alezję."],
+                                    ["Alezja", "Rubikon", "ladem", "W 49 p.n.e. wraca z armią i przekracza Rubikon: „Kości zostały rzucone!”"]],
+                          "podpisy": ["Republika panuje już nad większością wybrzeży Morza Śródziemnego."]},
+    },
+    {
+        "id": "pax", "tytul": "Pax Romana", "lata": "27 p.n.e. – 14 n.e.", "miejsce": "Rzym Augusta",
+        "epoka": "cesarstwo", "mapa": mapa_rzym_augusta(), "tury": 30,
+        "start": [[12, 13], [16, 17], [17, 4], [3, 10]],
+        "zasoby": {"zboze": 16, "drewno": 14, "kamien": 12, "denary": 14},
+        "talia": ["legionisci", "legionisci", "legionisci", "lucznicy", "ekwici", "pretorianie", "welici"],
+        "techy_start": ["manipul", "reforma_mariusza", "drogi", "luk"],
+        "podpisy": [[6, 3, "Tyber"], [20, 18, "Via Appia"], [13, 2, "Via Flaminia"], [11, 11, "Kapitol"], [14, 14, "Palatyn"]],
+        "zabytki": [[11, 11, "kapitol", "Kapitol", "Świątynia Jowisza Najlepszego i Największego."],
+                    [14, 15, "panteon", "Panteon Agryppy", "Pierwszy Panteon zbudował Agryppa, przyjaciel Augusta (27–25 p.n.e.)."]],
+        "obozy": [[22, 2, "german", "Germanie Arminiusza"]],
+        "zagony": {"od": 12, "co": 6, "sila": 5, "model": "german", "nazwa": "Zagon germański"},
+        "znajdzki": [[3, 20, "strigil"], [20, 8, "bursztyn"]],
+        "cele": [
+            {"typ": "tech", "co": "beton"},
+            {"typ": "buduj", "co": "swiatynia", "ile": 2},
+            {"typ": "buduj", "co": "akwedukt", "ile": 1},
+            {"typ": "buduj", "co": "domus", "ile": 4},
+            {"typ": "chwala", "ile": 60, "opis": "Zdobądź 60 chwały – „miasto z marmuru”"},
+            {"typ": "bitwa"},
+        ],
+        "wydarzenia": ["marmur", "warus"],
+        "bitwa": {"nazwa": "Obrona Renu", "rok": "9–16 n.e.", "teren": "las", "morale": 28,
+                  "wrog": ["germanie", "germanie", "germanie", "germanie_las", "germanie_las", "germanie_jazda"],
+                  "frakcja": "germanie", "dowodca": "august", "premia": {"strzelcy": 1}, "taktyki": ["rzeka_ren", "testudo"],
+                  "opis": "W 9 n.e. Arminiusz zniszczył trzy legiony Warusa w Lesie Teutoburskim. Germanie ruszają na Ren. Musisz utrzymać granicę!",
+                  "po": "Germanik, wnuk przybrany Augusta, pomścił klęskę i odzyskał dwa z trzech utraconych orłów legionowych. Ale granicą imperium pozostał Ren."},
+        "wstep": [
+            "Po śmierci Cezara wybuchła kolejna wojna domowa. Oktawian pokonał Antoniusza i Kleopatrę pod Akcjum (31 p.n.e.).",
+            "W 27 p.n.e. senat nadał mu tytuł Augusta – „czcigodnego”. Zaczęło się cesarstwo, choć August nazywał siebie tylko „pierwszym obywatelem”.",
+            "Nadchodzi Pax Romana – rzymski pokój. Zamień ceglany Rzym w marmurowy: świątynie, akwedukty, domy z atrium.",
+        ],
+        "koniec": "August zmarł w 14 n.e. Jego następcami byli Tyberiusz, Kaligula, Klaudiusz i Neron. Pax Romana trwał – handel kwitł od Brytanii po Egipt.",
+        "mapa_imperium": {"rok": "31 p.n.e. – 14 n.e.", "od": "-100", "do": "-1", "miasta": ["Rzym", "Akcjum", "Aleksandria", "Las Teutoburski", "Jerozolima", "Kalisia"],
+                          "trasa": [["Rzym", "Akcjum", "morzem", "Oktawian pokonuje flotę Antoniusza i Kleopatry pod Akcjum (31 p.n.e.)..."],
+                                    ["Akcjum", "Aleksandria", "morzem", "...a w 30 p.n.e. zajmuje Egipt – spichlerz imperium."]],
+                          "podpisy": ["Za Augusta Morze Śródziemne staje się „Mare Nostrum” – naszym morzem.",
+                                      "Szlakiem bursztynowym kupcy docierają aż nad Bałtyk, przez ziemie dzisiejszej Polski."]},
+    },
+    {
+        "id": "dacja", "tytul": "Rozkwit imperium", "lata": "80–117 n.e.", "miejsce": "Dacja nad Dunajem",
+        "epoka": "cesarstwo", "mapa": mapa_dacja(), "tury": 30,
+        "start": [[7, 21], [14, 21], [20, 21], [2, 21]],
+        "zasoby": {"zboze": 16, "drewno": 16, "kamien": 10, "denary": 16},
+        "talia": ["legionisci", "legionisci", "legionisci", "lucznicy", "ala", "pretorianie", "balista"],
+        "techy_start": ["manipul", "reforma_mariusza", "drogi", "luk", "beton"],
+        "podpisy": [[3, 18, "Dunaj"], [16, 4, "Karpaty"], [12, 8, "Sarmizegetusa"]],
+        "zabytki": [[11, 18, "akwedukt", "Most Apollodora", "Most Trajana na Dunaju (105 n.e.) miał ponad kilometr długości – był najdłuższym mostem przez ponad 1000 lat."]],
+        "obozy": [[12, 7, "galijczyk", "Sarmizegetusa – stolica Decebala"], [20, 11, "hun", "Sarmaci"]],
+        "zagony": {"od": 7, "co": 5, "sila": 6, "model": "galijczyk", "nazwa": "Wypad Daków"},
+        "znajdzki": [[3, 3, "moneta"], [21, 16, "lampka"]],
+        "cele": [
+            {"typ": "tech", "co": "testudo"},
+            {"typ": "buduj", "co": "amfiteatr", "ile": 1},
+            {"typ": "buduj", "co": "koszary", "ile": 2},
+            {"typ": "buduj", "co": "kamieniolom", "ile": 2},
+            {"typ": "tech", "co": "hypokaustum"},
+            {"typ": "bitwa"},
+        ],
+        "wydarzenia": ["igrzyska", "zaraza"],
+        "bitwa": {"nazwa": "Zdobycie Sarmizegetusy", "rok": "106 n.e.", "teren": "gory", "morale": 30,
+                  "wrog": ["dakowie", "dakowie", "dakowie", "dakowie_lucznicy", "dakowie_lucznicy", "sarmaci", "sarmaci"],
+                  "frakcja": "dakowie", "dowodca": "trajan", "premia": {"piechota": 1, "strzelcy": 1}, "taktyki": ["testudo", "most_trajana"],
+                  "opis": "Król Decebal schronił się w górskiej twierdzy Sarmizegetusa. Legiony Trajana przeszły przez Dunaj po moście Apollodora.",
+                  "po": "Sarmizegetusa padła, Decebal odebrał sobie życie. Złoto Daków opłaciło w Rzymie Forum Trajana i jego kolumnę. W 117 n.e. imperium było największe w dziejach."},
+        "wstep": [
+            "Rok 80 n.e. Cesarz Tytus otwiera Koloseum – igrzyska trwają 100 dni. Rok wcześniej Wezuwiusz zasypał Pompeje.",
+            "Imperium kwitnie. W 98 n.e. cesarzem zostaje Trajan – pierwszy cesarz urodzony poza Italią, w Hiszpanii.",
+            "Za Dunajem króluje Decebal, władca bogatej w złoto Dacji. Trajan wyrusza na wojnę (101–106 n.e.).",
+        ],
+        "koniec": "W 117 n.e. imperium sięgało od Brytanii po Mezopotamię – mieszkało w nim ok. 60–70 milionów ludzi. Następca Trajana, Hadrian, wolał bronić granic niż je poszerzać.",
+        "mapa_imperium": {"rok": "117 n.e.", "od": "100", "do": "200", "miasta": ["Rzym", "Sarmizegetusa", "Carnuntum", "Londinium", "Ktezyfon", "Aleksandria", "Kalisia"],
+                          "trasa": [["Rzym", "Carnuntum", "ladem", "Legiony Trajana maszerują nad Dunaj..."],
+                                    ["Carnuntum", "Sarmizegetusa", "ladem", "...i przez most Apollodora wkraczają do Dacji."],
+                                    ["Rzym", "Ktezyfon", "ladem", "W 116 n.e. Trajan zdobywa nawet Ktezyfon, stolicę Partów."]],
+                          "podpisy": ["W 117 n.e. imperium osiąga największy zasięg w historii: ok. 5 milionów km².",
+                                      "Ziemie polskie leżą poza imperium, ale docierają tu rzymskie monety i towary."]},
+    },
+    {
+        "id": "konstantyn", "tytul": "Pod tym znakiem zwyciężysz", "lata": "284–330 n.e.", "miejsce": "Most Mulwijski i Rzym",
+        "epoka": "schylek", "mapa": mapa_most_mulwijski(), "tury": 30,
+        "start": [[17, 17], [13, 20], [18, 3], [3, 14]],
+        "zasoby": {"zboze": 14, "drewno": 14, "kamien": 12, "denary": 10},
+        "talia": ["legionisci", "legionisci", "lucznicy", "ala", "balista", "limitanei", "katafrakci"],
+        "techy_start": ["manipul", "reforma_mariusza", "drogi", "luk", "beton", "hypokaustum"],
+        "inflacja": 1,
+        "podpisy": [[13, 4, "Tyber"], [12, 9, "Most Mulwijski"], [3, 2, "Via Flaminia"]],
+        "zabytki": [[16, 14, "luk_triumfalny", "Łuk Konstantyna", "Postawiony w 315 n.e. dla uczczenia zwycięstwa nad Maksencjuszem."],
+                    [19, 13, "koloseum", "Koloseum", "Wciąż odbywały się tu igrzyska."]],
+        "obozy": [[5, 4, "pretorianin", "Obóz Maksencjusza"]],
+        "zagony": {"od": 8, "co": 5, "sila": 6, "model": "pretorianin", "nazwa": "Oddział Maksencjusza"},
+        "znajdzki": [[21, 3, "moneta"], [2, 21, "tabliczka"]],
+        "cele": [
+            {"typ": "tech", "co": "tetrarchia"},
+            {"typ": "tech", "co": "solidus"},
+            {"typ": "tech", "co": "chrzescijanstwo"},
+            {"typ": "buduj", "co": "bazylika", "ile": 1},
+            {"typ": "buduj", "co": "port", "ile": 1, "opis": "Zbuduj port – nowa stolica nad Bosforem"},
+            {"typ": "bitwa"},
+        ],
+        "wydarzenia": ["moneta", "edykt"],
+        "bitwa": {"nazwa": "Bitwa przy Moście Mulwijskim", "rok": "28 października 312 n.e.", "teren": "rzeka", "morale": 30,
+                  "wrog": ["maksencjusz_pretorianie", "maksencjusz_pretorianie", "maksencjusz_katafrakci", "maksencjusz_katafrakci", "maksencjusz_lucznicy", "maksencjusz_lucznicy"],
+                  "frakcja": "maksencjusz", "dowodca": "konstantyn", "premia": {"jazda": 1}, "taktyki": ["chi_rho", "most_mulwijski"],
+                  "opis": "Dwaj cesarze walczą o władzę na Zachodzie. Maksencjusz wyprowadził wojsko z Rzymu przez Tyber. Konstantyn kazał żołnierzom umieścić na tarczach znak Chrystusa.",
+                  "po": "Wojska Maksencjusza zepchnięto do Tybru, a on sam utonął. Konstantyn wkroczył do Rzymu. W 324 r. pokonał Licyniusza i rządził całym cesarstwem, a w 330 r. poświęcił Konstantynopol."},
+        "wstep": [
+            "Mija kryzys III wieku: w 50 lat ponad 20 cesarzy, najazdy, zarazy, a denar prawie bez srebra – ceny szaleją.",
+            "Dioklecjan (284–305) dzielił władzę między czterech władców – to tetrarchia. Prześladował też chrześcijan.",
+            "Teraz o władzę walczy Konstantyn. Uzdrów pieniądz, zapewnij wolność wyznania – i zwycięż przy Moście Mulwijskim!",
+        ],
+        "koniec": "W 330 r. Konstantyn przeniósł stolicę do Konstantynopola. Wschód był bogatszy i łatwiejszy do obrony. W 395 r. cesarstwo podzieliło się na stałe.",
+        "mapa_imperium": {"rok": "312–330 n.e.", "od": "200", "do": "300", "miasta": ["Rzym", "Trewir", "Mediolan", "Most Mulwijski", "Bizancjum", "Eburacum"],
+                          "trasa": [["Eburacum", "Trewir", "ladem", "W 306 r. wojsko obwołuje Konstantyna cesarzem w Brytanii (Eburacum, dziś York)."],
+                                    ["Trewir", "Most Mulwijski", "ladem", "W 312 r. maszeruje przez Alpy na Rzym."],
+                                    ["Rzym", "Bizancjum", "morzem", "W 330 r. greckie Bizancjum staje się Konstantynopolem – nową stolicą."]],
+                          "podpisy": ["Tetrarchia: cesarstwo podzielone na cztery części dla łatwiejszej obrony."]},
+    },
+    {
+        "id": "upadek", "tytul": "Zmierzch Zachodu", "lata": "376–476 n.e.", "miejsce": "Galia i Italia",
+        "epoka": "schylek", "mapa": mapa_katalaunia(), "tury": 32,
+        "start": [[6, 17], [16, 18], [4, 10], [19, 11]],
+        "zasoby": {"zboze": 14, "drewno": 12, "kamien": 10, "denary": 8},
+        "talia": ["legionisci", "limitanei", "limitanei", "lucznicy", "ala", "katafrakci", "balista"],
+        "techy_start": ["manipul", "reforma_mariusza", "drogi", "luk", "beton", "hypokaustum", "chrzescijanstwo"],
+        "inflacja": 2,
+        "podpisy": [[3, 6, "Marna"], [12, 15, "Wzgórze"], [12, 1, "Pola Katalaunijskie"]],
+        "zabytki": [[11, 19, "ruiny", "Ruiny willi", "Bogate wille pustoszały – ludzie uciekali przed najazdami do warownych miast."]],
+        "obozy": [[20, 3, "hun", "Obóz Attyli"], [3, 2, "got", "Wandalowie"]],
+        "zagony": {"od": 5, "co": 4, "sila": 7, "model": "hun", "nazwa": "Zagon Hunów"},
+        "znajdzki": [[22, 21, "bursztyn"], [1, 21, "lampka"]],
+        "cele": [
+            {"typ": "tech", "co": "foederati"},
+            {"typ": "tech", "co": "limes"},
+            {"typ": "buduj", "co": "mury", "ile": 3},
+            {"typ": "buduj", "co": "koszary", "ile": 2},
+            {"typ": "zasob", "co": "zboze", "ile": 20, "opis": "Zgromadź zboże dla sojuszników (20)"},
+            {"typ": "bitwa"},
+        ],
+        "wydarzenia": ["goci", "podzial"],
+        "bitwa": {"nazwa": "Bitwa na Polach Katalaunijskich", "rok": "451 n.e.", "teren": "pole", "morale": 32,
+                  "wrog": ["hunowie", "hunowie", "hunowie", "hunowie_strzaly", "hunowie_strzaly", "ostrogoci", "gepidzi"],
+                  "frakcja": "hunowie", "dowodca": "aecjusz", "premia": {"piechota": 1}, "taktyki": ["wizygoci", "wzgorze", "testudo"],
+                  "opis": "Attyla z Hunami, Ostrogotami i Gepidami najechał Galię. Naprzeciw staje „ostatni Rzymianin” Aecjusz – z Wizygotami króla Teodoryka, Frankami i Alanami.",
+                  "po": "Attyla wycofał się, a jego mit niezwyciężonego upadł. Ale Zachód był już zbyt słaby: w 455 r. Rzym złupili Wandalowie, a w 476 r. Odoaker zdetronizował ostatniego cesarza – Romulusa Augustulusa."},
+        "wstep": [
+            "Około 375 r. ze stepów przybyli Hunowie. Uciekający przed nimi Goci przekroczyli Dunaj – zaczęła się Wielka wędrówka ludów.",
+            "W 395 r. cesarstwo podzieliło się na Wschód i Zachód. W 410 r. Wizygoci Alaryka złupili Rzym – pierwszy raz od 800 lat!",
+            "Zachód słabnie: brak pieniędzy, żołnierzy i chętnych do obrony. Zawrzyj sojusze z federatami, umocnij limes i zatrzymaj Attylę!",
+        ],
+        "koniec": "W 476 r. germański wódz Odoaker zdetronizował 16-letniego Romulusa Augustulusa i odesłał insygnia cesarskie do Konstantynopola. Cesarstwo zachodnie przestało istnieć. Tak kończy się starożytność.",
+        "mapa_imperium": {"rok": "376–476 n.e.", "od": "400", "do": "500", "miasta": ["Rzym", "Konstantynopol", "Rawenna", "Pola Katalaunijskie", "Kartagina", "Akwileja", "Kalisia"],
+                          "trasa": [["Konstantynopol", "Rzym", "ladem", "Wizygoci Alaryka idą z Bałkanów i w 410 r. łupią Rzym."],
+                                    ["Akwileja", "Pola Katalaunijskie", "ladem", "W 451 r. Hunowie Attyli najeżdżają Galię."],
+                                    ["Kartagina", "Rzym", "morzem", "W 455 r. Wandalowie przypływają z Afryki i łupią Rzym."]],
+                          "podpisy": ["Na ziemiach dawnego Zachodu powstają królestwa germańskie: Franków, Wizygotów, Ostrogotów, Wandalów...",
+                                      "Cesarstwo wschodnie (bizantyjskie) przetrwa jeszcze prawie 1000 lat – do 1453 r."]},
+    },
+]
+
+FINAL = ("Germański wódz Odoaker zdejmuje z tronu Romulusa Augustulusa i odsyła insygnia cesarskie do Konstantynopola. "
+         "Historia Rzymu zaczęła się od Romulusa – i symbolicznie kończy się na Romulusie. Na Wschodzie cesarstwo "
+         "bizantyjskie trwa jeszcze prawie tysiąc lat, do 1453 roku.")
+
+DOWODCY = {"romulus": "Romulus", "cyncynat": "Kamillus i Cyncynat", "scypion": "Scypion Afrykański", "cezar": "Juliusz Cezar",
+           "august": "Germanik (za Augusta)", "trajan": "Trajan", "konstantyn": "Konstantyn", "aecjusz": "Flawiusz Aecjusz"}
+
+# Rady kronikarza (podpowiedzi Damiana)
+RADY = [
+    "Pola nad rzeką dają więcej zboża – rzeka nanosi żyzny muł.",
+    "Kamieniołom stawiaj na wzgórzu. Bez kamienia nie zbudujesz świątyń ani murów.",
+    "Każdy kolejny budynek tego samego typu jest o 25% droższy – rozważ, co naprawdę potrzebne.",
+    "Ludzie muszą gdzieś mieszkać! Gdy brakuje mieszkańców, budynki pracują wolniej.",
+    "Mury chronią budynki w promieniu 2 pól przed zagonami wroga.",
+    "Kliknij zagon wroga na swoim terenie, aby go przechwycić.",
+    "W bitwie pamiętaj: piechota bije jazdę, jazda bije strzelców, a strzelcy – piechotę.",
+    "Dobra odpowiedź na pytanie rady wojennej dodaje +1 do wszystkich kart.",
+    "Każdy oddział ponad 6 kart zjada 1 zboże na turę. Głodne wojsko dezerteruje!",
+    "Chwała to wynik twojej kroniki. Dają ją świątynie, termy, amfiteatry, odkrycia i zwycięstwa.",
+    "Na mapie są ukryte pamiątki – szukaj błyszczących znaczników!",
+]
+
+
+def zbuduj():
+    pytania = [{"e": e, "p": p, "o": o, "d": d} for (e, p, o, d) in PYTANIA]
+    ency = [{"id": i, "haslo": h, "kat": k, "tekst": t, "od": r} for (i, h, k, t, r) in ENCYKLOPEDIA]
+    D = {
+        "tytul": "Roman Empire — od narodzin przez rozkwit aż po upadek",
+        "teren": TEREN, "epoki": EPOKI, "zasoby": ZASOBY, "budynki": BUDYNKI, "technologie": TECHNOLOGIE,
+        "typy_kart": TYPY_KART, "karty": KARTY, "frakcje": FRAKCJE, "taktyki": TAKTYKI, "postacie": POSTACIE,
+        "pytania": pytania, "encyklopedia": ency, "wydarzenia": WYDARZENIA, "losowe": LOSOWE,
+        "znajdzki": {k: {"nazwa": v[0], "opis": v[1]} for k, v in ZNAJDZKI_OPIS.items()},
+        "rody": RODY, "trudnosci": TRUDNOSCI, "rozdzialy": ROZDZIALY, "dowodcy": DOWODCY, "final": FINAL, "rady": RADY, "n": N,
+    }
+    return D
+
+
+def sprawdz(D):
+    bledy = []
+    for r in D["rozdzialy"]:
+        m = r["mapa"]
+        if len(m) != N or any(len(w) != N for w in m):
+            bledy.append("%s: zły rozmiar mapy" % r["id"])
+        for w in m:
+            for c in w:
+                if c not in TEREN:
+                    bledy.append("%s: nieznany teren %r" % (r["id"], c))
+        for (x, y) in r["start"]:
+            if m[y][x] in "~mgb":
+                bledy.append("%s: start (%d,%d) na terenie %r" % (r["id"], x, y, m[y][x]))
+        for k in r["talia"] + r["bitwa"]["wrog"]:
+            if k not in KARTY:
+                bledy.append("%s: brak karty %s" % (r["id"], k))
+        for t in r["bitwa"]["taktyki"]:
+            if t not in TAKTYKI:
+                bledy.append("%s: brak taktyki %s" % (r["id"], t))
+        for c in r["cele"]:
+            if c["typ"] == "buduj" and c["co"] not in BUDYNKI:
+                bledy.append("%s: cel – brak budynku %s" % (r["id"], c["co"]))
+            if c["typ"] == "buduj" and r["epoka"] not in BUDYNKI[c["co"]]["epoki"]:
+                bledy.append("%s: budynek %s niedostępny w epoce %s" % (r["id"], c["co"], r["epoka"]))
+            if c["typ"] == "tech" and c["co"] not in TECHNOLOGIE:
+                bledy.append("%s: cel – brak technologii %s" % (r["id"], c["co"]))
+        for w in r["wydarzenia"]:
+            if w not in WYDARZENIA:
+                bledy.append("%s: brak wydarzenia %s" % (r["id"], w))
+        for z in r["znajdzki"]:
+            if z[2] not in ZNAJDZKI_OPIS:
+                bledy.append("%s: brak znajdźki %s" % (r["id"], z[2]))
+            if m[z[1]][z[0]] in "~m":
+                bledy.append("%s: znajdźka w wodzie %s" % (r["id"], z))
+        if r["bitwa"]["dowodca"] not in DOWODCY:
+            bledy.append("%s: brak dowódcy" % r["id"])
+        for t in r.get("techy_start", []):
+            if t not in TECHNOLOGIE:
+                bledy.append("%s: techy_start %s" % (r["id"], t))
+        # każdy budynek z celów da się postawić blisko każdej pozycji startowej
+        for c in r["cele"]:
+            if c["typ"] != "buduj":
+                continue
+            b = BUDYNKI[c["co"]]
+            for si, (sx, sy) in enumerate(r["start"]):
+                ok = False
+                for y in range(max(0, sy - 5), min(N, sy + 6)):
+                    for x in range(max(0, sx - 5), min(N, sx + 6)):
+                        if m[y][x] in b["teren"] and (x, y) != (sx, sy):
+                            if "obok" not in b or any(0 <= x + dx < N and 0 <= y + dy < N and m[y + dy][x + dx] in b["obok"]
+                                                      for dx in (-1, 0, 1) for dy in (-1, 0, 1)):
+                                ok = True
+                if not ok:
+                    bledy.append("%s: budynek %s niemożliwy blisko startu %d (%d,%d)" % (r["id"], c["co"], si, sx, sy))
+    for k, v in KARTY.items():
+        if v.get("wymaga") and v["wymaga"] not in TECHNOLOGIE:
+            bledy.append("karta %s: brak technologii %s" % (k, v["wymaga"]))
+    for k, v in BUDYNKI.items():
+        if v.get("wymaga") and v["wymaga"] not in TECHNOLOGIE:
+            bledy.append("budynek %s: brak technologii %s" % (k, v["wymaga"]))
+    for t in TECHNOLOGIE.values():
+        if len(t["o"]) != 4:
+            bledy.append("tech %s: 4 odpowiedzi" % t["nazwa"])
+    return bledy
+
+
+def main():
+    D = zbuduj()
+    bledy = sprawdz(D)
+    for b in bledy:
+        print("BŁĄD:", b)
+    os.makedirs(os.path.dirname(CEL), exist_ok=True)
+    with open(CEL, "w", encoding="utf-8") as f:
+        json.dump(D, f, ensure_ascii=False, indent=None, separators=(",", ":"))
+    print("Zapisano dane.json: %d rozdziałów, %d budynków, %d technologii, %d kart, %d pytań, %d haseł, %d wydarzeń" % (
+        len(ROZDZIALY), len(BUDYNKI), len(TECHNOLOGIE), len(KARTY), len(PYTANIA), len(ENCYKLOPEDIA), len(WYDARZENIA)))
+    if "--mapy" in os.sys.argv:
+        for r in ROZDZIALY:
+            print("\n" + r["id"])
+            for w in r["mapa"]:
+                print("  " + w)
+    return 1 if bledy else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
