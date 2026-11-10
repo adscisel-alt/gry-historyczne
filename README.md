@@ -22,8 +22,12 @@ https://adscisel-alt.github.io/gry-historyczne/
 - `dmowski3d/` — „Roman Dmowski. Droga do Wersalu 3D”: strategia 3D o latach 1914–1919 (4 kampanie: Warszawa,
   Lozanna, Błękitna Armia we Francji, konferencja w Paryżu), Blender + Godot 4.3, eksport do
   `DmowskiDrogaDoWersalu3D.exe` przez `.github/workflows/dmowski3d-exe.yml`
-- Obie gry 3D z Godota (`zamosc3d`, `dmowski3d`) mają też wersje przeglądarkowe: `pages.yml` buduje je
-  przy publikacji strony (`/zamosc3d/graj/`, `/dmowski3d/graj/`)
+- `rzym3d/` — „Roman Empire — od narodzin przez rozkwit aż po upadek” (Kroniki Damiana Ścisła cz. III): turowa
+  strategia 3D o Rzymie 753 p.n.e.–476 n.e. (8 rozdziałów od Romulusa do Odoakra), animowane mapy imperium,
+  bitwy kartami, gra wieloosobowa przy jednym komputerze i online; Blender + Godot 4.3, `RomanEmpire3D.exe`
+  przez `.github/workflows/rzym3d-exe.yml`
+- Gry 3D z Godota (`zamosc3d`, `dmowski3d`, `rzym3d`) mają też wersje przeglądarkowe: `pages.yml` buduje je
+  przy publikacji strony (`/zamosc3d/graj/`, `/dmowski3d/graj/`, `/rzym3d/graj/`)
 
 Wszystkie strony są samowystarczalne (działają offline, bez zależności sieciowych).
 Deploy: `.github/workflows/pages.yml` publikuje główną gałąź przy każdym pushu.
