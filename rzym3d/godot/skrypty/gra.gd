@@ -175,11 +175,18 @@ func _otoczenie() -> void:
 	srodowisko.set_glow_level(1, 0.6)
 	srodowisko.set_glow_level(2, 1.0)
 	srodowisko.set_glow_level(3, 0.6)
-	# lekka mgła powietrzna
+	# mgła odległościowa (głębokościowa) w chłodnym odcieniu – dalsze plany bledną jak na makiecie
 	srodowisko.fog_enabled = true
-	srodowisko.fog_density = 0.0011
-	srodowisko.fog_sun_scatter = 0.25
-	srodowisko.fog_aerial_perspective = 0.12
+	srodowisko.fog_mode = Environment.FOG_MODE_DEPTH
+	srodowisko.fog_light_color = MGLA_KOLOR
+	srodowisko.fog_light_energy = 1.0
+	srodowisko.fog_density = 0.7
+	srodowisko.fog_depth_curve = 1.4
+	srodowisko.fog_depth_begin = 28.0
+	srodowisko.fog_depth_end = 110.0
+	srodowisko.fog_sun_scatter = 0.08
+	srodowisko.fog_aerial_perspective = 0.0
+	srodowisko.fog_sky_affect = 0.35
 	var we := WorldEnvironment.new()
 	we.name = "WorldEnvironment"
 	we.environment = srodowisko
@@ -202,7 +209,17 @@ func _otoczenie() -> void:
 	kamera = Camera3D.new()
 	kamera.fov = 34
 	kamera.far = 900
+	# głębia ostrości (tilt-shift): ostry środek, rozmyte bliższe i dalsze plany (Forward+)
+	atrybuty_kamery = CameraAttributesPractical.new()
+	atrybuty_kamery.dof_blur_far_enabled = true
+	atrybuty_kamery.dof_blur_near_enabled = true
+	atrybuty_kamery.dof_blur_amount = 0.14
+	kamera.attributes = atrybuty_kamery
 	add_child(kamera)
+	# w przeglądarce (GL Compatibility) Godot nie ma DOF – zastępuje go shader tilt-shift na ekranie
+	if RenderingServer.get_rendering_device() == null:
+		_tilt_shift_ekranowy()
+	ustaw_glebie(odl)
 	swiat = Node3D.new()
 	add_child(swiat)
 	for n in ["teren", "dekor", "budynki", "zagony"]:
@@ -229,6 +246,81 @@ func _otoczenie() -> void:
 	swiat.add_child(kursor)
 
 
+const MGLA_KOLOR := Color(0.62, 0.71, 0.84)
+var atrybuty_kamery: CameraAttributesPractical
+var tilt_shift: ColorRect
+
+
+func _tilt_shift_ekranowy() -> void:
+	## Tilt-shift dla renderera GL Compatibility: rozmycie górnego i dolnego pasa ekranu (12 próbek po spirali).
+	var warstwa := CanvasLayer.new()
+	warstwa.layer = 0
+	add_child(warstwa)
+	tilt_shift = ColorRect.new()
+	tilt_shift.set_anchors_preset(Control.PRESET_FULL_RECT)
+	tilt_shift.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var sh := Shader.new()
+	sh.code = """shader_type canvas_item;
+uniform sampler2D ekran : hint_screen_texture, filter_linear;
+uniform float srodek = 0.5;      // wysokość ostrego pasa (0 – góra, 1 – dół)
+uniform float szerokosc = 0.3;   // szerokość ostrego pasa
+uniform float sila = 2.0;        // promień rozmycia na krawędziach (w pikselach × 4)
+void fragment() {
+	float d = abs(SCREEN_UV.y - srodek) - szerokosc * 0.5;
+	float r = smoothstep(0.0, 0.42, d) * sila;
+	vec4 c = texture(ekran, SCREEN_UV);
+	if (r > 0.05) {
+		vec4 suma = vec4(0.0);
+		for (int i = 0; i < 12; i++) {
+			float a = float(i) * 2.39996;
+			float rr = sqrt(float(i) + 0.5) / 3.4641;
+			suma += texture(ekran, SCREEN_UV + vec2(cos(a), sin(a)) * rr * SCREEN_PIXEL_SIZE * r * 4.0);
+		}
+		c = suma / 12.0;
+	}
+	COLOR = c;
+}
+"""
+	var m := ShaderMaterial.new()
+	m.shader = sh
+	tilt_shift.material = m
+	tilt_shift.visible = false
+	warstwa.add_child(tilt_shift)
+
+
+func ustaw_glebie(ogniskowa: float, srodek_ekranu := 0.5, bitwa_profil := false) -> void:
+	## Głębia sceny zależna od odległości kamery od punktu, na który patrzy:
+	## mgła zaczyna się tuż za nim, a ostrość obejmuje pas wokół niego (efekt makiety).
+	## Profil bitwy ma szerszy pas ostrości (całe szyki) i dalszą mgłę.
+	var mgla_od := 0.75
+	var mgla_do := 2.6
+	var ostr_dal := 1.08
+	var przejscie_dal := 0.6
+	var ostr_blisko := 0.86
+	var przejscie_blisko := 0.22
+	if bitwa_profil:
+		mgla_od = 2.0
+		mgla_do = 7.0
+		ostr_dal = 1.7
+		przejscie_dal = 1.5
+		ostr_blisko = 0.45
+		przejscie_blisko = 0.2
+	srodowisko.fog_depth_begin = ogniskowa * mgla_od
+	srodowisko.fog_depth_end = ogniskowa * mgla_do
+	# GL Compatibility (przeglądarka) liczy mgłę mocniej – słabsza gęstość
+	srodowisko.fog_density = 0.45 if RenderingServer.get_rendering_device() == null else 0.7
+	if atrybuty_kamery:
+		atrybuty_kamery.dof_blur_far_distance = ogniskowa * ostr_dal
+		atrybuty_kamery.dof_blur_far_transition = ogniskowa * przejscie_dal
+		atrybuty_kamery.dof_blur_near_distance = ogniskowa * ostr_blisko
+		atrybuty_kamery.dof_blur_near_transition = ogniskowa * przejscie_blisko
+	if tilt_shift:
+		tilt_shift.visible = scena in ["gra", "bitwa", "przekazanie", "koniec_mp"]
+		var m := tilt_shift.material as ShaderMaterial
+		m.set_shader_parameter("srodek", srodek_ekranu)
+		m.set_shader_parameter("szerokosc", 0.55 if bitwa_profil else 0.3)
+
+
 func _ustaw_klimat(epoka: String) -> void:
 	## Klimat epoki: kolory nieba, barwa i wysokość słońca, siła światła otoczenia.
 	## [góra nieba, horyzont, kolor słońca, energia słońca, kąt słońca, energia otoczenia]
@@ -248,7 +340,8 @@ func _ustaw_klimat(epoka: String) -> void:
 	slonce.light_energy = n[3]
 	slonce.rotation_degrees = Vector3(n[4], -40, 0)
 	srodowisko.ambient_light_energy = n[5]
-	srodowisko.fog_light_color = n[1]
+	# chłodna mgła, lekko zabarwiona horyzontem epoki
+	srodowisko.fog_light_color = MGLA_KOLOR.lerp(n[1], 0.18) if epoka != "schylek" else Color(0.6, 0.6, 0.76)
 	# GL Compatibility (przeglądarka) liczy światło w zakresie LDR i nie ma SSAO – scena wychodzi
 	# jaśniejsza, więc obniżamy ekspozycję i światło otoczenia, żeby wyglądała jak w Forward+.
 	if RenderingServer.get_rendering_device() == null:
@@ -1895,6 +1988,7 @@ func _steruj_kamera(dt: float) -> void:
 	var off := Vector3(sin(yaw), 0, cos(yaw)) * cos(pitch) * odl + Vector3.UP * sin(pitch) * odl
 	kamera.position = kamera.position.lerp(cel_kam + off, minf(1.0, dt * 8))
 	kamera.look_at(kamera.position - off, Vector3.UP)
+	ustaw_glebie(odl)
 
 
 func _animuj(dt: float) -> void:

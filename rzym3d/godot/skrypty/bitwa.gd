@@ -437,6 +437,7 @@ func _process(dt: float) -> void:
 	if is_instance_valid(g.kamera):
 		g.kamera.global_position = g.POLE_BITWY + Vector3(sin(t * 0.15) * 1.5, 5.5, 15)
 		g.kamera.look_at(g.POLE_BITWY + Vector3(0, 2.3, 0))
+		g.ustaw_glebie(15.0, 0.62, true)
 
 
 # ----------------------------------------------------------------- interfejs bitwy

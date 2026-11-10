@@ -23,13 +23,16 @@ Gra działa **w przeglądarce** (eksport HTML5) i jako **`RomanEmpire3D.exe`** n
 
 Scena ma `WorldEnvironment` z niebem proceduralnym (`ProceduralSky`), które jest źródłem światła otoczenia i odbić,
 tonemapping **ACES**, **SSAO** (cień w miejscach styku obiektów z ziemią), lekki **glow** (miękki blask) i delikatną mgłę
-powietrzną. Słońce stoi nisko (22–34° zależnie od epoki), ma ciepłą barwę i rzuca **miękkie cienie** (PCSS i rozmycie,
+w chłodnym odcieniu. Mgła jest **odległościowa** (zaczyna się tuż za punktem, na który patrzy kamera, i rośnie z odległością),
+a **głębia ostrości w stylu tilt-shift** zostawia ostry pas w środku kadru i miękko rozmywa bliższe i dalsze plany –
+plansza wygląda jak prawdziwa makieta. W bitwie pas ostrości obejmuje oba szyki, a rozmywa się tylko tło. Słońce stoi nisko (22–34° zależnie od epoki), ma ciepłą barwę i rzuca **miękkie cienie** (PCSS i rozmycie,
 4 kaskady). Każda epoka ma własny klimat – od jasnego południa Królestwa po złoty zmierzch późnego cesarstwa.
 
-- **Komputer (EXE):** renderer **Forward+** – pełne SSAO, glow i cienie PCSS. Bez Vulkana/D3D12 gra sama przełącza się
+- **Komputer (EXE):** renderer **Forward+** – pełne SSAO, glow, cienie PCSS i prawdziwy DOF kamery. Bez Vulkana/D3D12 gra sama przełącza się
   na OpenGL.
 - **Przeglądarka:** renderer **GL Compatibility** (WebGL 2), w którym Godot nie ma SSAO. Styk z ziemią przyciemniają
-  tam miękkie cienie kontaktowe pod budynkami, postaciami i oddziałami, a ekspozycja jest dobrana tak, żeby scena
+  tam miękkie cienie kontaktowe pod budynkami, postaciami i oddziałami, DOF zastępuje shader tilt-shift na ekranie
+  (rozmycie górnego i dolnego pasa), a ekspozycja i gęstość mgły jest dobrana tak, żeby scena
   wyglądała podobnie jak w Forward+.
 
 ## Rozdziały
