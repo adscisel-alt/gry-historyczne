@@ -94,6 +94,29 @@ osobne węzły z modeli Blendera o nazwach `anim_obrot_*`, `anim_kolys_*`, `anim
 
 ![Ożywiona dzielnica](zrzuty/19_budynki_a.png)
 
+## Modele i teren (Blender)
+
+- **Wzgórza jako rzeźba terenu**: Palatyn, Awentyn, Eskwilin i pozostałe wzgórza to heightmapa – łagodne trawiaste stoki
+  opadające w obrębie pola (`wys_punkt()` w `gra.gd`). Część krawędzi (zawsze nad wodą, poza tym losowo) przechodzi
+  w strome urwisko z modularnych kafli skalnych `klif_0..3` (kanciaste ławice tufu i trawertynu z trawą na koronie);
+  shader terenu maluje strome zbocza warstwami skały, a łagodne stoki – prześwitującą ziemią.
+- **Fazowane krawędzie i wypalony AO**: budynki, zabytki i obozy mają bevel (krawędzie łapią światło), a kolor
+  z ambient occlusion jest wypalony do tekstury (Cycles, Smart UV). Drzewa, krzewy, skały i trzciny mają AO
+  wypalony w kolorach wierzchołków.
+- **Warianty z Geometry Nodes**: po 4 wersje pinii, cyprysów, oliwek, dębów, krzewów, skał, trzcin i klifów
+  (inne ziarno budowy + deformacja szumem 4D i nierówna skala w węźle Geometry Nodes). Godot losuje wariant,
+  obrót, skalę i pochylenie każdego egzemplarza.
+- **Roślinność Lacjum**: w Italii rosną pinie o parasolowatych koronach, cyprysy i oliwki (bez drzew liściastych),
+  nad Tybrem kępy trzciny z kolbami w płytkiej wodzie; w Afryce oliwki i pinie; dęby tylko w Galii, Dacji i na północy.
+- **Chata z Palatynu**: ściana z plecionki oblepionej gliną i strzecha z warstw słomy (obie z normal mapami),
+  żerdzie dachu krzyżujące się nad kalenicą, powrósła, a wokół wydeptana ziemia, płot, amfory, ławka, drewno
+  i palenisko.
+- **Bohaterowie** (Damian i dowódca rozdziału) są większe, mają ciepłą poświatę sylwetki, kolorowy krąg pod
+  stopami i wyraźną animację spoczynku: przenoszenie ciężaru, rozglądanie się, co kilka sekund gest (Romulus
+  i wodzowie unoszą broń, Damian podnosi kronikę), Damian pisze piórem.
+
+![Palatyn – wzgórza, trzciny, bohaterowie](zrzuty/04_rozdzial_1_palatyn.png)
+
 ## Teren
 
 Plansza nie jest już szachownicą kolorowych pól. Wierzch terenu rysuje shader (`_material_terenu()` w `gra.gd`):

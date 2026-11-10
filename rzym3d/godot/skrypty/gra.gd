@@ -11,7 +11,7 @@ const ZAPIS := "user://rzym_zapis.json"
 const ZAPIS_KAMPANII := "user://rzym_kampania.json"
 const WERSJA := 1
 const BAZA_TALII := 6
-const SKALA_POSTACI := 0.62
+const SKALA_POSTACI := 0.75
 const POLE_BITWY := Vector3(0, 0, -400)
 
 var D := {}                         # dane.json
@@ -1498,10 +1498,84 @@ func pozycja(x: float, y: float) -> Vector3:
 
 
 func wysokosc(x: int, y: int) -> float:
+	## Wysokość terenu w środku pola (na wzgórzach – szczyt rzeźby terenu).
 	var c := teren(x, y)
 	if c == "":
 		return 0.0
+	if c in WZGORZA:
+		return wys_punkt((x + 0.5) * T, (y + 0.5) * T)
 	return float(D.teren[c].h)
+
+
+# ----------------------------------------------------------------- rzeźba wzgórz
+# Wzgórza (w) i góry (g) to łagodne stoki opadające w obrębie pola do sąsiadów; na części krawędzi
+# (zawsze nad wodą, a poza tym losowo) stok przechodzi w strome urwisko z modułami skalnymi „klif”.
+const WZGORZA := {"w": 0.9, "g": 0.9}
+var _wzg_cache := {}
+var _klif_pola := {}
+
+
+func baza_pola(x: int, y: int) -> float:
+	var c := teren(x, y)
+	if c == "" or c in WZGORZA:
+		return 0.0
+	return float(D.teren[c].h)
+
+
+func _przygotuj_wzgorza() -> void:
+	_wzg_cache = {}
+	_klif_pola = {}
+	for y in N:
+		for x in N:
+			var c := teren(x, y)
+			if c == "" or c in WZGORZA:
+				continue
+			var przy := false
+			for k in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+				if teren(x + k.x, y + k.y) == "w":
+					przy = true
+			if not przy:
+				continue
+			var los := absi(hash(Vector3i(x, y, int(S.get("rozdzial", 0))))) % 100
+			if _woda(c) or los < 22:
+				_klif_pola[Vector2i(x, y)] = true
+
+
+func wys_punkt(px: float, pz: float) -> float:
+	## Wysokość lądu w dowolnym punkcie (współrzędne świata).
+	var tx := int(floor(px / T))
+	var tz := int(floor(pz / T))
+	var c := teren(tx, tz)
+	if c == "":
+		return 0.0
+	if not c in WZGORZA:
+		return float(D.teren[c].h)
+	var klucz := Vector2i(int(round(px * 16.0)), int(round(pz * 16.0)))
+	if _wzg_cache.has(klucz):
+		return _wzg_cache[klucz]
+	var dl := 9.0      # do najbliższego pola nie-wzgórza z łagodnym stokiem
+	var dk := 9.0      # do najbliższego pola pod urwiskiem
+	for dz in range(-2, 3):
+		for dx in range(-2, 3):
+			var nx := tx + dx
+			var nz := tz + dz
+			var cn := teren(nx, nz)
+			if cn in WZGORZA:
+				continue
+			var x0 := nx * T
+			var z0 := nz * T
+			var ox := maxf(maxf(x0 - px, px - (x0 + T)), 0.0)
+			var oz := maxf(maxf(z0 - pz, pz - (z0 + T)), 0.0)
+			var d := sqrt(ox * ox + oz * oz)
+			if _klif_pola.has(Vector2i(nx, nz)):
+				dk = minf(dk, d)
+			else:
+				dl = minf(dl, d)
+	var h: float = WZGORZA[c] * minf(smoothstep(0.0, 1.05, dl), smoothstep(0.0, 0.24, dk))
+	# drobne falowanie wierzchowiny
+	h += 0.05 * sin(px * 1.3 + pz * 0.7) * sin(pz * 1.1) * smoothstep(0.3, 1.0, minf(dl, dk))
+	_wzg_cache[klucz] = h
+	return h
 
 
 func _wyczysc(w: Node) -> void:
@@ -1623,10 +1697,11 @@ func _zbuduj_teren() -> void:
 	var r := RandomNumberGenerator.new()
 	r.seed = 7
 	var ile_morza := 0
+	_przygotuj_wzgorza()
 	for y in N:
 		for x in N:
 			var c := teren(x, y)
-			var h := wysokosc(x, y)
+			var h := baza_pola(x, y)
 			var kol := _kolor_terenu(c)
 			var x0 := x * T
 			var z0 := y * T
@@ -1641,7 +1716,7 @@ func _zbuduj_teren() -> void:
 			for kier in [Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0), Vector2i(0, -1)]:
 				var nx: int = x + kier.x
 				var ny: int = y + kier.y
-				var hn := wysokosc(nx, ny) if teren(nx, ny) != "" else -1.6
+				var hn := baza_pola(nx, ny) if teren(nx, ny) != "" else -1.6
 				if _woda(c) and teren(nx, ny) != "":
 					continue
 				if hn >= h and not _woda(c):
@@ -1729,7 +1804,7 @@ func _kolor_rogu(cx: int, cy: int, h: float) -> Color:
 	var n := 0
 	for t in [Vector2i(cx - 1, cy - 1), Vector2i(cx, cy - 1), Vector2i(cx - 1, cy), Vector2i(cx, cy)]:
 		var c := teren(t.x, t.y)
-		if c == "" or _woda(c) or absf(wysokosc(t.x, t.y) - h) > 0.01:
+		if c == "" or _woda(c) or absf(baza_pola(t.x, t.y) - h) > 0.01:
 			continue
 		var k := _kolor_terenu(c)
 		suma += Color(k.r, k.g, k.b, WAGA_TRAWY.get(c, 0.0))
@@ -1738,14 +1813,31 @@ func _kolor_rogu(cx: int, cy: int, h: float) -> Color:
 
 
 func _wierzch_pola(st: SurfaceTool, x: int, y: int, h: float) -> void:
+	## Wierzch pola; wzgórza dzielone na siatkę 5 × 5 z wysokością z rzeźby terenu (wys_punkt).
 	var x0 := x * T
 	var z0 := y * T
-	var pts := [Vector3(x0, h, z0), Vector3(x0 + T, h, z0), Vector3(x0 + T, h, z0 + T), Vector3(x0, h, z0 + T)]
-	var kol := [_kolor_rogu(x, y, h), _kolor_rogu(x + 1, y, h), _kolor_rogu(x + 1, y + 1, h), _kolor_rogu(x, y + 1, h)]
-	for i in [0, 1, 2, 0, 2, 3]:
-		st.set_color(kol[i])
-		st.set_normal(Vector3.UP)
-		st.add_vertex(pts[i])
+	var k00 := _kolor_rogu(x, y, h)
+	var k10 := _kolor_rogu(x + 1, y, h)
+	var k11 := _kolor_rogu(x + 1, y + 1, h)
+	var k01 := _kolor_rogu(x, y + 1, h)
+	var wzg: bool = teren(x, y) in WZGORZA
+	var n := 5 if wzg else 1
+	for j in n:
+		for i in n:
+			var uv := [Vector2(i, j), Vector2(i + 1, j), Vector2(i + 1, j + 1), Vector2(i, j + 1)]
+			var pts := []
+			var kol := []
+			for q in uv:
+				var u: float = q.x / n
+				var v: float = q.y / n
+				var px := x0 + u * T
+				var pz := z0 + v * T
+				pts.append(Vector3(px, wys_punkt(px, pz) if wzg else h, pz))
+				kol.append(k00.lerp(k10, u).lerp(k01.lerp(k11, u), v))
+			for idx in [0, 1, 2, 0, 2, 3]:
+				st.set_color(kol[idx])
+				st.set_normal(Vector3.UP)
+				st.add_vertex(pts[idx])
 
 
 func _szum_tekstura(ziarno: int, czest: float, rozmiar := 256) -> NoiseTexture2D:
@@ -1777,9 +1869,11 @@ uniform float ile_ziemi = 0.62;     // próg plam ziemi (mniej = więcej ziemi)
 uniform float ile_sciezek = 1.0;
 
 varying vec3 swiat;
+varying vec3 normalna;
 
 void vertex() {
 	swiat = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+	normalna = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
 }
 
 void fragment() {
@@ -1802,7 +1896,14 @@ void fragment() {
 	// typ terenu z wierzchołków (drogi, plaże, wzgórza…) – granica poszarpana szumem
 	vec3 typ = pow(COLOR.rgb, vec3(2.2)) * (0.9 + 0.18 * d2);
 	float waga = smoothstep(0.32, 0.68, COLOR.a + (n2 - 0.5) * 0.5 + (d - 0.5) * 0.2);
-	ALBEDO = mix(typ, kolor, waga);
+	vec3 wynik = mix(typ, kolor, waga);
+	// strome stoki i urwiska: warstwy tufu i trawertynu; na łagodnych stokach przebija ziemia
+	float stromo = 1.0 - smoothstep(0.5, 0.82, normalna.y);
+	float warstwy = sin(swiat.y * 18.0 + d * 3.0) * 0.5 + 0.5;
+	vec3 skala = mix(vec3(0.36, 0.31, 0.26), vec3(0.62, 0.55, 0.44), warstwy * 0.7 + d2 * 0.3);
+	float stok = (1.0 - smoothstep(0.82, 0.97, normalna.y)) * (1.0 - stromo);
+	wynik = mix(wynik, mix(wynik, ziemia, 0.35), stok * 0.6);
+	ALBEDO = mix(wynik, skala, stromo);
 	ROUGHNESS = 0.95;
 }
 """
@@ -1836,14 +1937,13 @@ func odswiez_siatke_budowy() -> void:
 			var c := teren(x, y)
 			if c == "" or _woda(c):
 				continue
-			var h := wysokosc(x, y) + 0.035
 			var x0 := x * T
 			var z0 := y * T
 			if moze_budowac(S.aktywny, wybrany, x, y)[0]:
-				_quad(st, Vector3(x0 + g, h, z0 + g), Vector3(x0 + T - g, h, z0 + g), Vector3(x0 + T - g, h, z0 + T - g), Vector3(x0 + g, h, z0 + T - g), dobre, Vector3.UP)
+				_prostokat_na_terenie(st, x0 + g, z0 + g, x0 + T - g, z0 + T - g, dobre, 0.04)
 			# obrys pola (cienkie paski przy krawędziach)
-			_quad(st, Vector3(x0, h, z0), Vector3(x0 + T, h, z0), Vector3(x0 + T, h, z0 + g), Vector3(x0, h, z0 + g), linia, Vector3.UP)
-			_quad(st, Vector3(x0, h, z0 + g), Vector3(x0 + g, h, z0 + g), Vector3(x0 + g, h, z0 + T), Vector3(x0, h, z0 + T), linia, Vector3.UP)
+			_prostokat_na_terenie(st, x0, z0, x0 + T, z0 + g, linia, 0.045)
+			_prostokat_na_terenie(st, x0, z0 + g, x0 + g, z0 + T, linia, 0.045)
 	siatka_budowy.mesh = st.commit()
 	var m := StandardMaterial3D.new()
 	m.vertex_color_use_as_albedo = true
@@ -2004,6 +2104,45 @@ func _quad(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, d: Vector3, kol:
 const DRZEWA := ["dab", "pinia", "cyprys", "oliwka", "krzak"]
 
 
+var _warianty_cache := {}
+
+
+func _wariant(model: String, r: RandomNumberGenerator) -> String:
+	## Losowy wariant modelu (<model>_0..3.glb z Geometry Nodes w Blenderze), jeśli istnieje.
+	if not _warianty_cache.has(model):
+		var w := []
+		for i in 6:
+			if ResourceLoader.exists("res://modele/%s_%d.glb" % [model, i]):
+				w.append("%s_%d" % [model, i])
+		_warianty_cache[model] = w
+	var lista: Array = _warianty_cache[model]
+	if lista.is_empty():
+		return model
+	return lista[r.randi_range(0, lista.size() - 1)]
+
+
+func _przytnij_cache_wariantow() -> void:
+	pass
+
+
+func _dodaj(slownik: Dictionary, model: String, tr: Transform3D) -> void:
+	if not slownik.has(model):
+		slownik[model] = []
+	slownik[model].append(tr)
+
+
+func _na_ziemi(p: Vector3) -> Vector3:
+	## Postawienie obiektu na powierzchni terenu (także na stoku wzgórza).
+	return Vector3(p.x, wys_punkt(p.x, p.z), p.z)
+
+
+func _model_bazowy(model: String) -> String:
+	var i := model.rfind("_")
+	if i > 0 and model.substr(i + 1).is_valid_int() and model.left(i) in DRZEWA:
+		return model.left(i)
+	return model
+
+
 func _rozsiej(model: String, transformy: Array) -> void:
 	## Wiele kopii modelu jako MultiMesh (las, góry) – szybkie także w przeglądarce.
 	if transformy.is_empty():
@@ -2015,7 +2154,7 @@ func _rozsiej(model: String, transformy: Array) -> void:
 	# drzewa: każdy egzemplarz dostaje własny odcień (cieplejszy/chłodniejszy, jaśniejszy/ciemniejszy);
 	# kolor instancji mnoży się z gradientem z vertex colors modelu
 	var odcienie := []
-	if model in DRZEWA:
+	if _model_bazowy(model) in DRZEWA:
 		var r := RandomNumberGenerator.new()
 		r.seed = model.hash() + int(S.get("rozdzial", 0))
 		for i in transformy.size():
@@ -2052,10 +2191,13 @@ func _zbierz_siatki(n: Node, tr: Transform3D, wynik: Array) -> void:
 func _dekoracje() -> void:
 	var r := RandomNumberGenerator.new()
 	r.seed = 1234 + int(S.rozdzial)
-	var drzewa := {"dab": [], "pinia": [], "cyprys": [], "oliwka": [], "krzak": [], "skala_0": [], "skala_1": [], "gora": [], "trzcina": []}
-	# skład lasu: Italia i Afryka – pinie, cyprysy, dęby, oliwki; Galia, Dacja, północ – głównie dęby
-	var rodzaje := ["pinia", "cyprys", "dab", "pinia", "dab", "cyprys", "oliwka"]
-	if R.id in ["alezja", "upadek", "dacja"]:
+	var drzewa := {"gora": []}
+	# skład lasu: Lacjum – pinie o parasolowatych koronach, cyprysy i oliwki (bez drzew liściastych);
+	# Afryka – oliwki i pinie; Galia, Dacja, północ – dęby
+	var rodzaje := ["pinia", "pinia", "cyprys", "oliwka", "cyprys", "pinia", "krzak"]
+	if R.id == "zama":
+		rodzaje = ["oliwka", "oliwka", "pinia", "krzak"]
+	elif R.id in ["alezja", "upadek", "dacja"]:
 		rodzaje = ["dab", "dab", "dab", "pinia", "dab", "krzak"]
 	for y in N:
 		for x in N:
@@ -2070,26 +2212,44 @@ func _dekoracje() -> void:
 						var s := r.randf_range(0.75, 1.15)
 						var sk := Vector3(s * r.randf_range(0.9, 1.1), s * r.randf_range(0.9, 1.12), s * r.randf_range(0.9, 1.1))
 						var pochyl := Basis(Vector3(1, 0, 0), r.randf_range(-0.05, 0.05)) * Basis(Vector3(0, 0, 1), r.randf_range(-0.05, 0.05))
-						drzewa[rodzaje[r.randi_range(0, rodzaje.size() - 1)]].append(Transform3D(pochyl * Basis(Vector3.UP, r.randf() * TAU).scaled(sk), baza + off))
+						_dodaj(drzewa, _wariant(rodzaje[r.randi_range(0, rodzaje.size() - 1)], r), Transform3D(pochyl * Basis(Vector3.UP, r.randf() * TAU).scaled(sk), _na_ziemi(baza + off)))
 				"o":
 					for k in 2:
 						var off := Vector3(r.randf_range(-0.55, 0.55), 0, r.randf_range(-0.55, 0.55))
-						drzewa.oliwka.append(Transform3D(Basis(Vector3.UP, r.randf() * TAU) * 0.85, baza + off))
+						_dodaj(drzewa, _wariant("oliwka", r), Transform3D(Basis(Vector3.UP, r.randf() * TAU) * r.randf_range(0.75, 0.95), _na_ziemi(baza + off)))
 				"g":
-					drzewa.gora.append(Transform3D(Basis(Vector3.UP, r.randf() * TAU) * r.randf_range(0.9, 1.2), baza))
+					_dodaj(drzewa, "gora", Transform3D(Basis(Vector3.UP, r.randf() * TAU) * r.randf_range(0.9, 1.2), baza))
 				"w":
 					if r.randf() < 0.3:
-						drzewa["skala_%d" % r.randi_range(0, 1)].append(Transform3D(Basis(Vector3.UP, r.randf() * TAU) * 0.6, baza + Vector3(r.randf_range(-0.5, 0.5), 0, r.randf_range(-0.5, 0.5))))
-					if r.randf() < 0.2:
-						drzewa.cyprys.append(Transform3D(Basis.IDENTITY * 0.8, baza + Vector3(0.6, 0, 0.5)))
+						_dodaj(drzewa, _wariant("skala_%d" % r.randi_range(0, 1), r), Transform3D(Basis(Vector3.UP, r.randf() * TAU) * r.randf_range(0.45, 0.7), _na_ziemi(baza + Vector3(r.randf_range(-0.5, 0.5), 0, r.randf_range(-0.5, 0.5)))))
+					if r.randf() < 0.35:
+						_dodaj(drzewa, _wariant("cyprys" if R.id != "zama" else "oliwka", r), Transform3D(Basis(Vector3.UP, r.randf() * TAU) * r.randf_range(0.7, 0.95), _na_ziemi(baza + Vector3(r.randf_range(0.3, 0.7), 0, r.randf_range(0.2, 0.6)))))
 				"b":
-					for k in 2:
-						drzewa.trzcina.append(Transform3D(Basis(Vector3.UP, r.randf() * TAU) * 0.8, baza + Vector3(r.randf_range(-0.5, 0.5), 0, r.randf_range(-0.5, 0.5))))
+					for k in 3:
+						_dodaj(drzewa, _wariant("trzcina", r), Transform3D(Basis(Vector3.UP, r.randf() * TAU) * r.randf_range(0.7, 1.0), baza + Vector3(r.randf_range(-0.6, 0.6), 0, r.randf_range(-0.6, 0.6))))
 				".":
-					if r.randf() < 0.05:
-						drzewa.krzak.append(Transform3D(Basis(Vector3.UP, r.randf() * TAU) * 0.7, baza + Vector3(r.randf_range(-0.6, 0.6), 0, r.randf_range(-0.6, 0.6))))
+					if r.randf() < 0.06:
+						_dodaj(drzewa, _wariant("krzak", r), Transform3D(Basis(Vector3.UP, r.randf() * TAU) * r.randf_range(0.55, 0.85), baza + Vector3(r.randf_range(-0.6, 0.6), 0, r.randf_range(-0.6, 0.6))))
+			# trzciny w płytkiej wodzie przy brzegu rzeki
+			if not _woda(c) and c != "g":
+				for k in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+					if teren(x + k.x, y + k.y) == "~" and r.randf() < 0.75:
+						for q in r.randi_range(1, 2):
+							var wzdl := Vector3(k.y, 0, k.x) * r.randf_range(-0.75, 0.75)
+							var poz := Vector3((x + 0.5) * T, POZIOM_WODY - 0.08, (y + 0.5) * T) + Vector3(k.x, 0, k.y) * (T * 0.5 + 0.18) + wzdl
+							_dodaj(drzewa, _wariant("trzcina", r), Transform3D(Basis(Vector3.UP, r.randf() * TAU) * r.randf_range(0.6, 0.95), poz))
+			# urwiska skalne na krawędziach wzgórz
+			if c == "w":
+				for k in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+					if _klif_pola.has(Vector2i(x + k.x, y + k.y)):
+						var srodek := Vector3((x + 0.5) * T, 0, (y + 0.5) * T) + Vector3(k.x, 0, k.y) * (T * 0.5 - 0.12)
+						srodek.y = baza_pola(x + k.x, y + k.y) - 0.04
+						var wys: float = (wysokosc(x, y) - srodek.y + 0.06) / 1.15
+						var bas := Basis(Vector3.UP, atan2(float(k.x), float(k.y))).scaled(Vector3(r.randf_range(0.95, 1.1), wys, r.randf_range(0.8, 1.0)))
+						_dodaj(drzewa, _wariant("klif", r), Transform3D(bas, srodek))
 	for m in drzewa:
 		_rozsiej(m, drzewa[m])
+	_przytnij_cache_wariantow()
 	# podpisy geograficzne
 	for p in R.podpisy:
 		var l := etykieta(p[2], 72, Color(1, 0.95, 0.8))
@@ -2120,31 +2280,21 @@ func _dekoracje() -> void:
 		var l := etykieta(o[3], 56, Color(1, 0.55, 0.45))
 		l.position = n.position + Vector3(0, 3.4, 0)
 		dekor_wezel.add_child(l)
-	# kronikarz Damian i dowódca przy siedzibie pierwszego gracza
+	# kronikarz Damian i dowódca przy siedzibie pierwszego gracza – bohaterowie: większa skala,
+	# ciepła poświata sylwetki, kolorowy krąg na ziemi i wyraźna animacja spoczynku
 	var s0: Array = R.start[0]
 	var dam := instancja("damian")
-	dam.position = pozycja(s0[0], s0[1]) + Vector3(-1.3, 0, 1.4)
-	dam.scale = Vector3.ONE * SKALA_POSTACI
+	dam.position = _na_ziemi(pozycja(s0[0], s0[1]) + Vector3(-1.45, 0, 1.45))
 	dam.rotation.y = 0.5
-	_cien_kontaktowy(dam, 0.6, 0.5)
 	dam.set_meta("postac", "damian")
-	dekor_wezel.add_child(dam)
-	_postacie.append(dam)
-	var dl := etykieta("Damian (kronikarz)", 40, Color(0.85, 0.7, 1.0))
-	dl.position = dam.position + Vector3(0, 1.6, 0)
-	dekor_wezel.add_child(dl)
+	_bohater(dam, "Damian (kronikarz)", Color(0.78, 0.55, 1.0))
 	var dow: String = R.bitwa.dowodca
-	if dow == "cyncynat" or dow in ["romulus", "scypion", "cezar", "august", "trajan", "konstantyn"]:
+	if dow in ["cyncynat", "romulus", "scypion", "cezar", "august", "trajan", "konstantyn"]:
 		var h := instancja(dow)
-		h.position = pozycja(s0[0], s0[1]) + Vector3(1.4, 0, 1.3)
-		h.scale = Vector3.ONE * SKALA_POSTACI
+		h.position = _na_ziemi(pozycja(s0[0], s0[1]) + Vector3(1.5, 0, 1.4))
 		h.rotation.y = -0.4
-		_cien_kontaktowy(h, 0.6, 0.5)
-		dekor_wezel.add_child(h)
-		_postacie.append(h)
-		var hl := etykieta(D.postacie[dow].imie, 40, Color(1, 0.9, 0.6))
-		hl.position = h.position + Vector3(0, 1.6, 0)
-		dekor_wezel.add_child(hl)
+		h.set_meta("postac", dow)
+		_bohater(h, D.postacie[dow].imie, Color(1.0, 0.82, 0.4))
 	# statki na morzu
 	var morze := []
 	for y in N:
@@ -2259,6 +2409,28 @@ func odswiez_swiat() -> void:
 	odswiez_siatke_budowy()
 
 
+func _prostokat_na_terenie(st: SurfaceTool, xa: float, za: float, xb: float, zb: float, kol: Color, unies: float) -> void:
+	## Prostokąt (osie X/Z) położony na terenie – na wzgórzach dzielony tak, by szedł po stoku.
+	var wzg := false
+	for p in [Vector2(xa, za), Vector2(xb, zb), Vector2((xa + xb) / 2, (za + zb) / 2)]:
+		if teren(int(floor(p.x / T)), int(floor(p.y / T))) in WZGORZA:
+			wzg = true
+	var nx := 1
+	var nz := 1
+	if wzg:
+		nx = maxi(1, int(ceil((xb - xa) / 0.4)))
+		nz = maxi(1, int(ceil((zb - za) / 0.4)))
+	for j in nz:
+		for i in nx:
+			var x0 := lerpf(xa, xb, float(i) / nx)
+			var x1 := lerpf(xa, xb, float(i + 1) / nx)
+			var z0 := lerpf(za, zb, float(j) / nz)
+			var z1 := lerpf(za, zb, float(j + 1) / nz)
+			var h := func(px: float, pz: float) -> float:
+				return maxf(wys_punkt(px, pz), 0.0) + unies
+			_quad(st, Vector3(x0, h.call(x0, z0), z0), Vector3(x1, h.call(x1, z0), z0), Vector3(x1, h.call(x1, z1), z1), Vector3(x0, h.call(x0, z1), z1), kol, Vector3.UP)
+
+
 func _rysuj_granice() -> void:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
@@ -2289,7 +2461,7 @@ func _rysuj_granice() -> void:
 					a = Vector3(x0, h, z0 + T - g); b = Vector3(x0 + T, h, z0 + T)
 				else:
 					a = Vector3(x0, h, z0); b = Vector3(x0 + T, h, z0 + g)
-				_quad(st, Vector3(a.x, h, a.z), Vector3(b.x, h, a.z), Vector3(b.x, h, b.z), Vector3(a.x, h, b.z), kol, Vector3.UP)
+				_prostokat_na_terenie(st, a.x, a.z, b.x, b.z, kol, 0.06)
 	if not jest:
 		granice_wezel.mesh = null
 		return
@@ -2639,6 +2811,8 @@ func animuj_postac(n: Node, stan: String, faza: float, postep_ataku := 0.0) -> v
 	# balista: naciągnięta w spoczynku; w ataku strzał, przeładowanie (suwak, kołowrót, cięciwy)
 	if d.has("balista_ramie_l"):
 		_animuj_baliste(n, d, stan, postep_ataku)
+	if n.get_meta("bohater", false) and stan == "stoi":
+		_idle_bohatera(n, d)
 	# Damian pisze w kronice (pióro w lewej dłoni)
 	if n.get_meta("postac", "") == "damian" and not ruch and d.has("reka_l"):
 		_obroc(d, "reka_l", Basis(X, -0.35 + sin(t * 7.0) * 0.05) * Basis(Z, sin(t * 3.1) * 0.08))
@@ -2881,6 +3055,80 @@ func lot_belta(rodzic: Node3D, skad: Vector3, dokad: Vector3, czas := 0.4) -> vo
 
 func lot_strzaly(rodzic: Node3D, skad: Vector3, dokad: Vector3, czas := 0.45, wbij := false) -> Node3D:
 	return _pocisk(rodzic, skad, dokad, czas, "strzala", 1.4, wbij)
+
+
+const SKALA_BOHATERA := 1.05
+var _mat_poswiaty: ShaderMaterial
+
+
+func _bohater(n: Node3D, imie: String, kolor: Color) -> void:
+	n.scale = Vector3.ONE * SKALA_BOHATERA
+	n.set_meta("bohater", true)
+	n.set_meta("baza_tr", n.transform)
+	_cien_kontaktowy(n, 0.75, 0.55)
+	# krąg w kolorze bohatera pod stopami
+	var krag := MeshInstance3D.new()
+	var tm := TorusMesh.new()
+	tm.inner_radius = 0.5
+	tm.outer_radius = 0.6
+	tm.rings = 24
+	tm.ring_segments = 4
+	krag.mesh = tm
+	krag.scale = Vector3(1, 0.05, 1)
+	krag.position = n.position + Vector3(0, 0.03, 0)
+	var km := StandardMaterial3D.new()
+	km.albedo_color = Color(kolor, 0.85)
+	km.emission_enabled = true
+	km.emission = kolor
+	km.emission_energy_multiplier = 0.6
+	km.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	km.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	krag.material_override = km
+	krag.set_meta("puls", true)
+	dekor_wezel.add_child(krag)
+	n.set_meta("krag", krag)
+	# poświata sylwetki (rim light) jako nakładka na wszystkie części
+	var m := ShaderMaterial.new()
+	var sh := Shader.new()
+	sh.code = """shader_type spatial;
+render_mode blend_add, unshaded, depth_draw_never, cull_back;
+uniform vec4 kolor : source_color;
+void fragment() {
+	float rim = pow(1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0), 2.5);
+	ALBEDO = kolor.rgb * rim * 0.9;
+}
+"""
+	m.shader = sh
+	m.set_shader_parameter("kolor", kolor)
+	for c in n.find_children("*", "MeshInstance3D", true, false):
+		(c as MeshInstance3D).material_overlay = m
+	dekor_wezel.add_child(n)
+	_postacie.append(n)
+	var l := etykieta(imie, 52, kolor.lightened(0.35))
+	l.position = n.position + Vector3(0, 2.25, 0)
+	dekor_wezel.add_child(l)
+
+
+func _idle_bohatera(n: Node3D, d: Dictionary) -> void:
+	## Wyraźny spoczynek bohatera: przenoszenie ciężaru, oddech, co kilka sekund gest prawą ręką
+	## (Romulus i wodzowie unoszą broń, Damian podnosi kronikę do oczu), rozglądanie się.
+	var f0: float = n.get_meta("faza0", 0.0)
+	var bt: Transform3D = n.get_meta("baza_tr")
+	var waga := sin(t * 0.8 + f0)
+	n.transform = bt * Transform3D(Basis(Vector3.BACK, waga * 0.03) * Basis(Vector3.UP, sin(t * 0.3 + f0) * 0.12),
+		Vector3(waga * 0.03, absf(sin(t * 1.6 + f0)) * 0.012, 0))
+	var cykl := fmod(t + f0 * 4.0, 7.5)
+	var gest := sin(clampf((cykl - 5.0) / 2.2, 0.0, 1.0) * PI)
+	var damian: bool = n.get_meta("postac", "") == "damian"
+	_obroc(d, "reka_p", Basis(Vector3.RIGHT, -gest * (0.9 if damian else 1.5)) * Basis(Vector3.BACK, gest * (0.15 if damian else 0.35)))
+	_obroc(d, "noga_l", Basis(Vector3.RIGHT, waga * 0.06))
+	_obroc(d, "noga_p", Basis(Vector3.RIGHT, -waga * 0.06))
+	var rozglad := sin(t * 0.45 + f0) * 0.5
+	_obroc(d, "glowa", Basis(Vector3.UP, rozglad * (1.0 - gest)) * Basis(Vector3.RIGHT, (0.25 if damian else -0.12) * gest + sin(t * 1.6 + f0) * 0.03))
+	var krag = n.get_meta("krag", null)
+	if krag and is_instance_valid(krag):
+		var s := 1.0 + 0.06 * sin(t * 2.2 + f0)
+		(krag as Node3D).scale = Vector3(s, 0.05, s)
 
 
 func _krok(n: Node, faza: float, amp: float) -> void:
