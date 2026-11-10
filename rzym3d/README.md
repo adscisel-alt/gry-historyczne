@@ -35,6 +35,37 @@ plansza wygląda jak prawdziwa makieta. W bitwie pas ostrości obejmuje oba szyk
   (rozmycie górnego i dolnego pasa), a ekspozycja i gęstość mgły jest dobrana tak, żeby scena
   wyglądała podobnie jak w Forward+.
 
+## Budynki – detale i animacje
+
+Każdy budynek ma dodatkowe detale i „żyje” (`ZYCIE` w `blender/generuj_modele.py`, animacje w `_animuj_budynki()`):
+
+| Budynek | Detale i ruch |
+|---|---|
+| chata | dym ze strzechy, palenisko z migoczącym ogniem, płot z wikliny, rzemieślnik z młotkiem |
+| domus | dym z komina kuchni, woda w impluvium, donice z oleandrem |
+| insula | dym z komina, pranie łopoczące na balkonie, markizy sklepików |
+| pole | kłosy falujące rzędami na wietrze, strach na wróble |
+| winnica | winiarz zbierający winogrona do kosza |
+| obóz drwali | tracz piłujący belkę, dym z ogniska |
+| kamieniołom | obracające się koło dźwigu, kamieniarz z kilofem i ciosacz z młotem |
+| targ | kołyszące się markizy straganów, fontanna z wodą i kroplami, kupiec |
+| świątynia | ogień na ołtarzu (ze światłem) i dym kadzidła |
+| koszary | łopoczący sztandar, legionista ćwiczący mieczem przy palu, pochodnia |
+| mury | flaga na baszcie, pochodnie przy blankach |
+| port | kołysząca się łódź, obracający się żuraw z ładunkiem, falująca woda, flaga |
+| akwedukt | woda płynąca kanałem na szczycie |
+| termy | dym z pieca (praefurnium), para nad basenem, woda w basenie |
+| amfiteatr | flagi velarium na szczycie |
+| kuria | dwie flagi SPQR przed wejściem |
+| bazylika | migoczące lampy przy wejściu |
+| budowa | murarz z młotem, pomocnik, kołyszący się ładunek na linie |
+
+Nowo ukończony budynek wyrasta z ziemi (z kurzem), a rusztowanie „wskakuje” na plac budowy. Ruchome części to
+osobne węzły z modeli Blendera o nazwach `anim_obrot_*`, `anim_kolys_*`, `anim_pila_*`, `anim_mlot_*`, `anim_ogien_*`,
+`anim_woda_*`, `anim_lodz`; puste punkty `dym_*` wyznaczają miejsca dymu i fontann.
+
+![Ożywiona dzielnica](zrzuty/19_budynki_a.png)
+
 ## Teren
 
 Plansza nie jest już szachownicą kolorowych pól. Wierzch terenu rysuje shader (`_material_terenu()` w `gra.gd`):

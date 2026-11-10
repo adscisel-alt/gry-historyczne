@@ -1561,9 +1561,12 @@ func zbuduj_swiat() -> void:
 	_znajdzki_wezly = {}
 	_postacie = []
 	_statki = []
+	_animowane = []
+	_animuj_nowe = false
 	_zbuduj_teren()
 	_dekoracje()
 	odswiez_swiat()
+	_animuj_nowe = true
 
 
 const POZIOM_WODY := -0.18     # lustro wody (ląd ma 0, plaża -0.05, stopa skarpy brzegu -0.3)
@@ -1871,6 +1874,7 @@ func _dno_i_woda(st: SurfaceTool, sw: SurfaceTool, x: int, y: int, morze: bool) 
 				var kd := Color(0.56, 0.5, 0.36).lerp(Color(0.16, 0.24, 0.26), g)
 				kd.a = 0.0
 				st.set_color(kd)
+				st.set_normal(Vector3.UP)
 				st.add_vertex(p)
 			_quad_wody(sw, xa, za, xb, zb, _gl(h00), _gl(h10), _gl(h11), _gl(h01))
 
@@ -1909,19 +1913,20 @@ uniform sampler2D szum : filter_linear_mipmap, repeat_enable;
 uniform vec2 przeplyw = vec2(0.018, 0.03);
 uniform float sila_fal = 0.4;
 uniform float pas_piany = 0.16;
-uniform float jasnosc = 1.0;        // Forward+ oświetla wodę mocniej niż GL Compatibility
+uniform float jasnosc = 1.0;
+uniform float glebia_wymuszona = -1.0;   // >= 0: stała głębokość (woda w budynkach)        // Forward+ oświetla wodę mocniej niż GL Compatibility
 
 varying vec3 swiat;
 
 void vertex() {
 	swiat = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	// delikatne kołysanie lustra wody (mniejsze przy brzegu)
-	float g = COLOR.r;
+	float g = glebia_wymuszona >= 0.0 ? glebia_wymuszona : COLOR.r;
 	VERTEX.y += (sin(swiat.x * 0.9 + TIME * 1.4) + cos(swiat.z * 0.8 + TIME * 1.1)) * 0.012 * g;
 }
 
 void fragment() {
-	float g = COLOR.r;                 // 0 – brzeg, 1 – głęboko
+	float g = glebia_wymuszona >= 0.0 ? glebia_wymuszona : COLOR.r;   // 0 – brzeg, 1 – głęboko
 	vec2 uv = swiat.xz;
 	// dwie normal mapy przewijane w różnych kierunkach i skalach = fale
 	vec3 na = texture(fale_a, uv * 0.085 + TIME * przeplyw).rgb;
@@ -2172,9 +2177,17 @@ func odswiez_swiat() -> void:
 		var n := Node3D.new()
 		n.position = pozycja(int(b.x), int(b.y))
 		var model := instancja(b.typ if b.gotowy else "rusztowanie")
-		if b.typ == "akwedukt" and (teren(int(b.x) - 1, int(b.y)) == "" or true):
-			model.rotation.y = 0.0
 		n.add_child(model)
+		_ozyw_model(model)
+		if _animuj_nowe and tryb == "" and scena == "gra":
+			# nowy budynek wyrasta z ziemi, rusztowanie „wskakuje” na plac budowy
+			var tw := model.create_tween()
+			if b.gotowy:
+				model.scale = Vector3(1, 0.02, 1)
+				tw.tween_property(model, "scale", Vector3.ONE, 0.8).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+			else:
+				model.scale = Vector3.ONE * 0.3
+				tw.tween_property(model, "scale", Vector3.ONE, 0.6).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
 		# podstawa w kolorze rodu
 		var krag := MeshInstance3D.new()
 		var cm := CylinderMesh.new()
@@ -2355,7 +2368,153 @@ func _steruj_kamera(dt: float) -> void:
 	ustaw_glebie(odl)
 
 
+# ----------------------------------------------------------------- ożywione budynki
+# Części modeli z Blendera nazwane „anim_<rodzaj>_…” są animowane, a puste punkty „dym_…” dymią:
+#   anim_obrot_x (koło dźwigu), anim_obrot_z (żuraw), anim_kolys (flagi, markizy, kłosy, pranie),
+#   anim_pila (piłowanie), anim_mlot (młot, kilof, miecz), anim_ogien (ogień + światło),
+#   anim_woda (woda na shaderze), anim_lodz (kołysanie łodzi).
+var _animowane := []
+var _animuj_nowe := true
+var _mat_wody_budynku: ShaderMaterial
+var _mat_dymu: StandardMaterial3D
+
+
+func _ozyw_model(model: Node) -> void:
+	if tryb == "test":
+		return
+	var r := RandomNumberGenerator.new()
+	for c in model.find_children("*", "", true, false):
+		var nm := String(c.name)
+		if nm.begins_with("dym_") and c is Node3D:
+			_dodaj_dym(c as Node3D, nm)
+		if not nm.begins_with("anim_") or not (c is Node3D):
+			continue
+		var n := c as Node3D
+		var rodzaj := nm.split("_")[1]
+		var amp := 0.1
+		if "flaga" in nm:
+			amp = 0.35
+		elif "sztandar" in nm or "pranie" in nm:
+			amp = 0.2
+		elif "markiza" in nm:
+			amp = 0.05
+		elif "klosy" in nm:
+			amp = 0.09
+		elif "strach" in nm or "ladunek" in nm:
+			amp = 0.06
+		elif "tracz" in nm or "kupiec" in nm or "pomocnik" in nm:
+			amp = 0.15
+		_animowane.append({"n": n, "rodzaj": rodzaj, "nazwa": nm, "baza": n.transform, "f": r.randf() * TAU, "amp": amp})
+		if rodzaj == "woda" and n is MeshInstance3D:
+			if _mat_wody_budynku == null:
+				_mat_wody_budynku = _material_wody().duplicate()
+				_mat_wody_budynku.set_shader_parameter("glebia_wymuszona", 0.35)
+				_mat_wody_budynku.set_shader_parameter("pas_piany", 0.0)
+			(n as MeshInstance3D).material_override = _mat_wody_budynku
+		elif rodzaj == "ogien" and _ile_swiatel() < MAKS_SWIATEL:
+			var sw := OmniLight3D.new()
+			sw.light_color = Color(1.0, 0.62, 0.28)
+			sw.light_energy = 0.9
+			sw.omni_range = 1.4
+			sw.shadow_enabled = false
+			sw.position = Vector3(0, 0.15, 0)
+			n.add_child(sw)
+			_animowane.append({"n": sw, "rodzaj": "swiatlo", "nazwa": "", "baza": sw.transform, "f": r.randf() * TAU, "amp": 0.9})
+
+
+const MAKS_SWIATEL := 12      # światła od ognia (w WebGL każde kosztuje osobny przebieg)
+
+
+func _ile_swiatel() -> int:
+	var n := 0
+	for a in _animowane:
+		if a.rodzaj == "swiatlo" and is_instance_valid(a.n):
+			n += 1
+	return n
+
+
+func _dodaj_dym(punkt: Node3D, nazwa: String) -> void:
+	var cz := CPUParticles3D.new()
+	var woda := "fontanna" in nazwa
+	var para := "para" in nazwa
+	cz.amount = 14 if woda else 9
+	cz.lifetime = 0.9 if woda else 3.4
+	cz.preprocess = 3.0
+	cz.local_coords = false
+	cz.direction = Vector3.UP
+	cz.spread = 14 if woda else 10
+	cz.initial_velocity_min = 0.9 if woda else 0.22
+	cz.initial_velocity_max = 1.2 if woda else 0.4
+	cz.gravity = Vector3(0, -3.0, 0) if woda else Vector3(0.1, 0.04, 0.05)    # lekki wiatr
+	var sm := SphereMesh.new()
+	sm.radius = 0.02 if woda else 0.11
+	sm.height = sm.radius * 2
+	sm.radial_segments = 6
+	sm.rings = 4
+	cz.mesh = sm
+	var krzywa := Curve.new()
+	krzywa.add_point(Vector2(0, 0.45 if not woda else 1.0))
+	krzywa.add_point(Vector2(1, 1.7 if not woda else 0.6))
+	cz.scale_amount_curve = krzywa
+	var g := Gradient.new()
+	if woda:
+		g.set_color(0, Color(0.75, 0.88, 1.0, 0.85))
+		g.set_color(1, Color(0.75, 0.88, 1.0, 0.0))
+	else:
+		var k := Color(0.95, 0.95, 0.95) if para else Color(0.72, 0.72, 0.74)
+		g.set_color(0, Color(k, 0.0))
+		g.add_point(0.15, Color(k, 0.55 if not para else 0.35))
+		g.set_color(g.get_point_count() - 1, Color(k.lightened(0.15), 0.0))
+	cz.color_ramp = g
+	if _mat_dymu == null:
+		_mat_dymu = StandardMaterial3D.new()
+		_mat_dymu.vertex_color_use_as_albedo = true
+		_mat_dymu.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		_mat_dymu.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	cz.material_override = _mat_dymu
+	cz.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	punkt.add_child(cz)
+
+
+func _animuj_budynki() -> void:
+	var i := 0
+	while i < _animowane.size():
+		var a: Dictionary = _animowane[i]
+		if not is_instance_valid(a.n):
+			_animowane.remove_at(i)
+			continue
+		var n: Node3D = a.n
+		var b: Transform3D = a.baza
+		var f: float = a.f
+		match a.rodzaj:
+			"obrot":
+				if a.nazwa.begins_with("anim_obrot_z"):
+					n.transform = Transform3D(b.basis * Basis(Vector3.UP, sin(t * 0.35 + f) * 0.9), b.origin)
+				else:
+					n.transform = Transform3D(b.basis * Basis(Vector3.RIGHT, t * 1.3), b.origin)
+			"kolys":
+				if "flaga" in a.nazwa:
+					n.transform = Transform3D(b.basis * Basis(Vector3.UP, sin(t * 2.6 + f) * a.amp + sin(t * 6.3 + f) * 0.08), b.origin)
+				else:
+					var w := Basis(Vector3.RIGHT, sin(t * 1.6 + f) * a.amp) * Basis(Vector3.BACK, sin(t * 1.1 + f * 1.7) * a.amp * 0.6)
+					n.transform = Transform3D(b.basis * w, b.origin)
+			"pila":
+				n.transform = Transform3D(b.basis, b.origin + b.basis.y.normalized() * sin(t * 7.0 + f) * 0.06)
+			"mlot":
+				var uderzenie := pow(absf(sin(t * 2.3 + f)), 3.0)
+				n.transform = Transform3D(b.basis * Basis(Vector3.RIGHT, uderzenie * 1.1), b.origin)
+			"ogien":
+				var s := 1.0 + 0.16 * sin(t * 13.0 + f) + 0.1 * sin(t * 7.3 + f * 2.0)
+				n.transform = Transform3D(b.basis.scaled(Vector3(1.0 / s, s, 1.0 / s)), b.origin)
+			"swiatlo":
+				(n as OmniLight3D).light_energy = a.amp * (0.85 + 0.15 * sin(t * 11.0 + f) + 0.08 * sin(t * 23.0 + f))
+			"lodz":
+				n.transform = Transform3D(b.basis * Basis(Vector3.BACK, sin(t * 1.3 + f) * 0.06), b.origin + Vector3(0, sin(t * 1.7 + f) * 0.025, 0))
+		i += 1
+
+
 func _animuj(dt: float) -> void:
+	_animuj_budynki()
 	for id in _zag_wezly:
 		var n: Node3D = _zag_wezly[id]
 		var cel: Vector3 = n.get_meta("cel", n.position)
@@ -2822,4 +2981,34 @@ func zrzuty(kat: String) -> void:
 		kamera.position = cel_kam + Vector3(0, 30, 20)
 		await get_tree().create_timer(2.5).timeout
 		await _zrzut(kat, ujecie[3])
+	# ożywione budynki z bliska: dwie klatki, żeby widać było ruch (budynki stawiane bezpośrednio wokół siedziby)
+	rozpocznij_rozdzial(4, [{"imie": "Damian", "rod": 0}], "kampania", 1)
+	var s0 := Vector2i(int(R.start[0][0]), int(R.start[0][1]))
+	var plan := ["tartak", "targ", "koszary", "kamieniolom", "pole", "swiatynia", "mury", "termy", "insula", "winnica", "kuria", "chata", "rusztowanie"]
+	var k := 0
+	for dy in range(-2, 3):
+		for dx in range(-2, 3):
+			if k >= plan.size() or (dx == 0 and dy == 0) or (dx == -1 and dy == 1):
+				continue
+			var x := s0.x + dx
+			var y := s0.y + dy
+			if teren(x, y) in ["", "~", "m", "g"] or budynek_na(x, y) >= 0 or zajete_dekoracja(x, y):
+				continue
+			var typ: String = plan[k]
+			S.budynki.append({"typ": "domus" if typ == "rusztowanie" else typ, "x": x, "y": y, "wl": 0, "gotowy": typ != "rusztowanie"})
+			k += 1
+	zbuduj_swiat()
+	ui.zamknij_wszystko()
+	scena = "gra"
+	ui.pokaz_ekran()
+	cel_kam = pozycja(s0.x, s0.y)
+	cel_kam.y = 0
+	odl = 17.0
+	yaw_cel = -0.4
+	yaw = -0.4
+	kamera.position = cel_kam + Vector3(0, 20, 12)
+	await get_tree().create_timer(3.0).timeout
+	await _zrzut(kat, "19_budynki_a")
+	await get_tree().create_timer(0.45).timeout
+	await _zrzut(kat, "19_budynki_b")
 	get_tree().quit()

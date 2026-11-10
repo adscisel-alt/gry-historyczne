@@ -409,8 +409,10 @@ def zapisz_glb(nazwa):
 
 
 def eksportuj(nazwa):
-    """Jeden obiekt siatki z punktem zaczepienia w (0,0,0)."""
-    polacz([o for o in bpy.context.scene.objects if o.type == "MESH"], nazwa, (0, 0, 0))
+    """Jeden obiekt siatki z punktem zaczepienia w (0,0,0). Części „anim_*” (koła, flagi, narzędzia, ogień,
+    woda…) i puste punkty „dym_*” zostają osobnymi węzłami – Godot je animuje (gra.gd, _ozyw_model)."""
+    polacz([o for o in bpy.context.scene.objects if o.type == "MESH" and not o.name.startswith("anim_")],
+           nazwa, (0, 0, 0))
     zapisz_glb(nazwa)
 
 
@@ -741,6 +743,55 @@ def m_wzgorze():
 
 
 # ================================================================= BUDYNKI (≤ 1,8 × 1,8 × 3 m)
+def dym(x, y, z, nazwa="dym"):
+    """Pusty punkt – w Godocie powstaje tu dym (cząsteczki)."""
+    o = bpy.data.objects.new(nazwa, None)
+    o.location = (x, y, z)
+    bpy.context.collection.objects.link(o)
+    return o
+
+
+def flaga(x, y, z0, h, kolor, nazwa, szer=0.3):
+    """Maszt z flagą powiewającą na wietrze (anim_kolys_flaga…)."""
+    cyl(x, y, z0, 0.015, h, DREWNO_C, v=5)
+    kula(x, y, z0 + h + 0.02, 0.025, ZLOTO, seg=5, ringi=3, metal=0.6)
+    with Grupa("anim_kolys_flaga_" + nazwa, (x, y, z0 + h)):
+        box(x + szer / 2, y, z0 + h - 0.2, szer, 0.012, 0.18, kolor)
+        box(x + szer * 0.85, y, z0 + h - 0.2, szer * 0.3, 0.014, 0.05, ZLOTO)
+
+
+def _ludzik(tunika, czynnosc, narzedzie, nazwa):
+    """Mały robotnik (ok. 0,75 m) zwrócony na -Y; ręce z narzędziem to część anim_<czynnosc>_<nazwa>."""
+    for sx in (-1, 1):
+        box(sx * 0.055, 0, 0, 0.075, 0.08, 0.3, SKORA_C)                     # nogi
+        box(sx * 0.055, -0.02, 0, 0.08, 0.11, 0.035, DREWNO_C)               # sandały
+    box(0, 0, 0.28, 0.24, 0.14, 0.3, tunika)                                  # tunika
+    box(0, 0, 0.4, 0.25, 0.15, 0.03, DREWNO_C)                                # pas
+    kula(0, 0, 0.66, 0.085, SKORA, seg=8, ringi=6)                            # głowa
+    kula(0, 0.015, 0.7, 0.083, (90, 60, 36), seg=8, ringi=5, skala=(1, 1, 0.6))  # włosy
+    with Grupa("anim_%s_%s" % (czynnosc, nazwa), (0, 0, 0.54)):
+        for sx in (-1, 1):
+            belka((sx * 0.14, 0, 0.55), (sx * 0.06, -0.17, 0.44), 0.06, 0.06, tunika)
+            kula(sx * 0.06, -0.18, 0.43, 0.035, SKORA, seg=6, ringi=4)
+        if narzedzie == "mlot":
+            belka((0, -0.19, 0.42), (0, -0.2, 0.72), 0.025, 0.025, DREWNO_C)
+            box(0, -0.2, 0.7, 0.14, 0.06, 0.06, STAL)
+        elif narzedzie == "kilof":
+            belka((0, -0.19, 0.42), (0, -0.2, 0.74), 0.025, 0.025, DREWNO_C)
+            belka((-0.12, -0.24, 0.7), (0.12, -0.16, 0.74), 0.03, 0.03, STAL)
+        elif narzedzie == "miecz":
+            box(0, -0.19, 0.42, 0.06, 0.03, 0.03, ZLOTO)
+            belka((0, -0.19, 0.44), (0, -0.21, 0.78), 0.035, 0.012, STAL)
+        elif narzedzie == "kosz":
+            cyl(0, -0.22, 0.34, 0.08, 0.1, STRZECHA_C, v=8)
+            for k in range(3):
+                kula(-0.03 + k * 0.03, -0.22, 0.45, 0.025, (96, 40, 90), seg=5, ringi=3)
+
+
+def ludzik(x, y, rz=0.0, tunika=(150, 70, 50), czynnosc="mlot", narzedzie="mlot", nazwa="robotnik", s=1.0):
+    wstaw(_ludzik, x, y, 0, s, rz, a=(tunika, czynnosc, narzedzie, nazwa))
+
+
 def baza(sx, sy, kolor, h=0.04):
     box(0, 0, 0, sx, sy, h, kolor)
 
@@ -787,7 +838,8 @@ def m_domus():
     siatka("dach", v, f, TERAKOTA)
     for k in range(-3, 4):                                                    # rzędy dachówek
         box(k * 0.22, -0.7, 0.98, 0.04, 0.32, 0.04, TERAKOTA_C, rot=(-0.95, 0, 0))
-    box(0, 0, 0.89, 0.5, 0.5, 0.04, WODA, emisja=0.0)                         # impluvium
+    with Grupa("anim_woda_impluvium", (0, 0, 0.92)):
+        box(0, 0, 0.89, 0.5, 0.5, 0.04, WODA, emisja=0.0)                     # impluvium
     box(0, 0, 0.89, 0.56, 0.56, 0.02, MARMUR)
     # front: drzwi (fauces) i dwa sklepiki (tabernae)
     box(0, -0.81, 0.04, 0.32, 0.04, 0.6, DREWNO_C)
@@ -837,12 +889,13 @@ def m_pole():
         y = -0.78 + i * 0.26
         box(0, y, 0.05, 1.72, 0.08, 0.04, ZIEMIA_J)                           # bruzda
         if i < 6:
-            for j in range(9):
-                x = -0.76 + j * 0.19
-                if i == 0 and j > 5:
-                    continue
-                stozek(x, y, 0.09, 0.07, 0.04, 0.32, (226, 190, 84) if (i + j) % 3 else (206, 168, 66), v=5)
-                kula(x, y, 0.42, 0.045, (236, 206, 110), seg=5, ringi=3, skala=(1, 1, 1.6))
+            with Grupa("anim_kolys_klosy_%d" % i, (0, y, 0.09)):
+                for j in range(9):
+                    x = -0.76 + j * 0.19
+                    if i == 0 and j > 5:
+                        continue
+                    stozek(x, y, 0.09, 0.07, 0.04, 0.32, (226, 190, 84) if (i + j) % 3 else (206, 168, 66), v=5)
+                    kula(x, y, 0.42, 0.045, (236, 206, 110), seg=5, ringi=3, skala=(1, 1, 1.6))
     for x in (0.5, 0.75):                                                     # snopki
         stozek(x, -0.78, 0.05, 0.1, 0.03, 0.4, (226, 190, 84), v=6)
         torus(x, -0.78, 0.22, 0.075, 0.015, DREWNO_J, seg=8, mseg=4)
@@ -882,8 +935,11 @@ def m_tartak():
             belka((0.45 + s * 0.1, -0.42 + t * 0.32, 0.04), (0.45 - s * 0.03, -0.42 + t * 0.32, 0.55), 0.04,
                   0.04, DREWNO_C)
     walec_lezacy(0.45, -0.42, 0.58, 0.09, 0.84, DREWNO_J, os_="y", v=8)
-    box(0.45, -0.6, 0.48, 0.02, 0.02, 0.4, STAL)                              # piła
-    box(0.45, -0.6, 0.86, 0.3, 0.03, 0.03, DREWNO_C)
+    with Grupa("anim_pila", (0.45, -0.6, 0.6)):                              # piła w ruchu
+        box(0.45, -0.6, 0.48, 0.02, 0.02, 0.4, STAL)
+        box(0.45, -0.6, 0.86, 0.3, 0.03, 0.03, DREWNO_C)
+        for sx in (-1, 1):                                                    # ręce tracza na rączce
+            belka((0.45 + sx * 0.12, -0.72, 0.62), (0.45 + sx * 0.12, -0.62, 0.86), 0.035, 0.035, SKORA)
     # szopa
     for x in (-0.8, 0.0):
         for y in (0.25, 0.85):
@@ -920,7 +976,12 @@ def m_kamieniolom():
     belka((0.6, -0.05, 1.3), (0.2, -0.3, 1.45), 0.04, 0.04, DREWNO)
     walec((0.2, -0.3, 1.45), (0.2, -0.3, 0.6), 0.008, (200, 180, 140), v=4)
     box(0.2, -0.3, 0.45, 0.2, 0.2, 0.15, MARMUR)
-    walec_lezacy(0.6, 0.06, 0.4, 0.22, 0.06, DREWNO, os_="x", v=12)
+    with Grupa("anim_obrot_x_kolo", (0.6, 0.06, 0.4)):                       # koło deptakowe dźwigu
+        walec_lezacy(0.6, 0.06, 0.4, 0.22, 0.06, DREWNO, os_="x", v=12)
+        for k in range(4):
+            a = k * math.pi / 4
+            belka((0.63, 0.06 + math.cos(a) * 0.2, 0.4 + math.sin(a) * 0.2),
+                  (0.63, 0.06 - math.cos(a) * 0.2, 0.4 - math.sin(a) * 0.2), 0.025, 0.025, DREWNO_C)
     for k in range(4):                                                        # narzędzia i odłamki
         box(-0.2 + k * 0.1, -0.75, 0.04, 0.08, 0.06, 0.05, MARMUR_C, rot=(0, 0, k))
     belka((-0.75, -0.7, 0.04), (-0.7, -0.6, 0.5), 0.025, 0.025, DREWNO_C)
@@ -933,11 +994,12 @@ def stragan(x, y, kolor, towar):
             box(x + sx, y + sy, 0.04, 0.04, 0.04, 0.95 if sy > 0 else 0.8, DREWNO_C)
     box(x, y, 0.45, 0.6, 0.42, 0.06, DREWNO)
     box(x, y + 0.02, 0.04, 0.58, 0.38, 0.41, DREWNO_J)
-    for i in range(6):                                                        # pasiasta markiza
-        box(x - 0.29 + i * 0.116 + 0.058, y - 0.02, 0.86, 0.116, 0.62, 0.025, kolor if i % 2 else BIEL,
-            rot=(-0.38, 0, 0))
-    for i in range(5):
-        box(x - 0.24 + i * 0.12, y - 0.3, 0.69, 0.1, 0.02, 0.07, kolor if i % 2 else BIEL)
+    with Grupa("anim_kolys_markiza_%d_%d" % (int(x * 10 + 10), int(y * 10 + 10)), (x, y + 0.2, 0.95)):
+        for i in range(6):                                                    # pasiasta markiza
+            box(x - 0.29 + i * 0.116 + 0.058, y - 0.02, 0.86, 0.116, 0.62, 0.025, kolor if i % 2 else BIEL,
+                rot=(-0.38, 0, 0))
+        for i in range(5):
+            box(x - 0.24 + i * 0.12, y - 0.3, 0.69, 0.1, 0.02, 0.07, kolor if i % 2 else BIEL)
     for i in range(4):
         tx = x - 0.2 + i * 0.13
         if towar == "owoce":
@@ -969,7 +1031,9 @@ def m_targ():
     for k in range(3):
         kula(0.72 + k * 0.03, -0.75, 0.18, 0.04, (230, 120, 40), seg=5, ringi=3)
     cyl(0, 0.05, 0.04, 0.16, 0.18, MARMUR_C, v=10)                            # fontanna
-    cyl(0, 0.05, 0.2, 0.13, 0.02, WODA, v=10)
+    with Grupa("anim_woda_fontanna", (0, 0.05, 0.22)):
+        cyl(0, 0.05, 0.2, 0.13, 0.02, WODA, v=10)
+    dym(0, 0.05, 0.3, "dym_fontanna")
 
 
 def swiatynia_bryla(kolor_dach=TERAKOTA, kolor=MARMUR, kolumny_kol=MARMUR, szer=1.35, gl=1.75, h_kol=1.15):
@@ -1003,7 +1067,10 @@ def swiatynia_bryla(kolor_dach=TERAKOTA, kolor=MARMUR, kolumny_kol=MARMUR, szer=
 def m_swiatynia():
     swiatynia_bryla()
     box(0.55, -0.82, 0, 0.18, 0.12, 0.18, MARMUR)                             # ołtarz
-    kula(0.55, -0.82, 0.21, 0.04, (255, 160, 60), seg=6, ringi=4, emisja=2.0)
+    with Grupa("anim_ogien_oltarz", (0.55, -0.82, 0.18)):
+        stozek(0.55, -0.82, 0.18, 0.06, 0.0, 0.16, (255, 150, 40), v=6, emisja=3.0)
+        stozek(0.57, -0.81, 0.18, 0.035, 0.0, 0.11, (255, 220, 90), v=5, emisja=4.0)
+    dym(0.55, -0.82, 0.4, "dym_kadzidlo")
 
 
 def namiot(x, y, sx, sy, h, kolor, wzdluz="y"):
@@ -1012,14 +1079,19 @@ def namiot(x, y, sx, sy, h, kolor, wzdluz="y"):
         box(x, y - sy / 2 - 0.005, 0, sx * 0.25, 0.02, h * 0.6, tuple(int(c * .55) for c in kolor))
 
 
+_wexillum_nr = [0]
+
+
 def wexillum(x, y, z0, h=1.5, kolor=CZERWIEN, napis_=True):
     cyl(x, y, z0, 0.02, h, DREWNO_C, v=6)
     box(x, y, z0 + h - 0.12, 0.34, 0.02, 0.02, DREWNO_C)
-    box(x, y, z0 + h - 0.5, 0.3, 0.02, 0.38, kolor)
-    for k in range(3):
-        box(x - 0.1 + k * 0.1, y, z0 + h - 0.56, 0.02, 0.015, 0.07, ZLOTO)
-    if napis_:
-        box(x, y - 0.012, z0 + h - 0.36, 0.2, 0.01, 0.07, ZLOTO)
+    _wexillum_nr[0] += 1
+    with Grupa("anim_kolys_sztandar_%d" % _wexillum_nr[0], (x, y, z0 + h - 0.12)):
+        box(x, y, z0 + h - 0.5, 0.3, 0.02, 0.38, kolor)
+        for k in range(3):
+            box(x - 0.1 + k * 0.1, y, z0 + h - 0.56, 0.02, 0.015, 0.07, ZLOTO)
+        if napis_:
+            box(x, y - 0.012, z0 + h - 0.36, 0.2, 0.01, 0.07, ZLOTO)
     kula(x, y, z0 + h + 0.03, 0.04, ZLOTO, seg=6, ringi=4, metal=0.6)
 
 
@@ -1075,7 +1147,8 @@ def m_mury():
 
 def m_port():
     """Port: nabrzeże z kamienia, drewniane molo nad wodą, łódka, skrzynie i amfory."""
-    box(0, -0.35, 0, 1.8, 1.1, 0.02, WODA)
+    with Grupa("anim_woda_port", (0, -0.35, 0.02)):
+        box(0, -0.35, 0, 1.8, 1.1, 0.02, WODA)
     box(0, 0.55, 0, 1.8, 0.7, 0.22, TRAWERTYN)
     for x in (-0.6, 0, 0.6):
         box(x, 0.2, 0.0, 0.58, 0.02, 0.2, TRAWERTYN_C)
@@ -1085,11 +1158,12 @@ def m_port():
     for k in range(9):
         box(0.15, 0.15 - k * 0.11, 0.2, 0.52, 0.1, 0.03, DREWNO_J if k % 2 else DREWNO)
     cyl(0.38, -0.8, 0.0, 0.05, 0.32, DREWNO_C, v=6)                           # pachołek
-    kadlub(0.95, 0.32, 0.18, DREWNO, x=-0.45, y=-0.42)                        # łódka
-    for k in range(3):
-        box(-0.45, -0.55 + k * 0.15, 0.1, 0.28, 0.03, 0.02, DREWNO_J)
-    walec((-0.45, -0.3, 0.12), (-0.45, -0.3, 0.9), 0.02, DREWNO_C, v=5)
-    box(-0.45, -0.31, 0.45, 0.4, 0.02, 0.4, KREM)
+    with Grupa("anim_lodz", (-0.45, -0.42, 0.0)):                            # łódka kołysze się na wodzie
+        kadlub(0.95, 0.32, 0.18, DREWNO, x=-0.45, y=-0.42)
+        for k in range(3):
+            box(-0.45, -0.55 + k * 0.15, 0.1, 0.28, 0.03, 0.02, DREWNO_J)
+        walec((-0.45, -0.3, 0.12), (-0.45, -0.3, 0.9), 0.02, DREWNO_C, v=5)
+        box(-0.45, -0.31, 0.45, 0.4, 0.02, 0.4, KREM)
     for (x, y, s) in [(-0.6, 0.6, 0.24), (-0.32, 0.6, 0.2), (-0.47, 0.6, 0.18)]:
         box(x, y, 0.22 + (0.24 if s == 0.18 else 0), s, s, s, DREWNO_J)
     for k in range(4):                                                        # amfory
@@ -1134,7 +1208,8 @@ def m_termy():
     box(0, -0.38, 0.79, 1.15, 0.2, 0.08, MARMUR)
     # basen (natatio)
     box(0, -0.72, 0.04, 1.5, 0.32, 0.06, MARMUR_C)
-    box(0, -0.72, 0.06, 1.38, 0.24, 0.05, (90, 170, 200))
+    with Grupa("anim_woda_basen", (0, -0.72, 0.11)):
+        box(0, -0.72, 0.06, 1.38, 0.24, 0.05, (90, 170, 200))
     for x in (-0.82, 0.82):
         cyl(x, -0.72, 0.04, 0.05, 0.2, MARMUR_C, v=8)
 
@@ -1258,8 +1333,133 @@ def m_rusztowanie():
         box(x, y, 0.04 + (0.2 if x == -0.46 else 0), 0.26, 0.24, 0.2, TRAWERTYN)
     walec((0.2, -0.4, 1.83), (0.2, -0.4, 2.4), 0.03, DREWNO_C, v=6)           # bloczek
     belka((0.2, -0.4, 2.4), (0.2, -0.75, 2.3), 0.03, 0.03, DREWNO_C)
-    walec((0.2, -0.75, 2.3), (0.2, -0.75, 0.5), 0.006, (200, 180, 140), v=4)
-    box(0.2, -0.75, 0.35, 0.2, 0.2, 0.15, TRAWERTYN)
+
+
+# ----------------------------------------------------------------- ożywienie budynków: detale i ruchome części
+def zycie_chata():
+    dym(0, 0, 1.92, "dym_strzecha")
+    with Grupa("anim_ogien_palenisko", (-0.55, -0.62, 0.05)):                 # palenisko przed chatą
+        stozek(-0.55, -0.62, 0.05, 0.07, 0.0, 0.18, (255, 140, 30), v=6, emisja=3.0)
+        stozek(-0.53, -0.61, 0.05, 0.04, 0.0, 0.12, (255, 210, 80), v=5, emisja=4.0)
+    for i in range(7):
+        a = i * 2 * math.pi / 7
+        ikosfera(-0.55 + 0.12 * math.cos(a), -0.62 + 0.12 * math.sin(a), 0.05, 0.035, KAMIEN)
+    for k in range(7):                                                        # płot z wikliny
+        cyl(0.2 + k * 0.1, 0.78, 0.04, 0.015, 0.3, DREWNO_C, v=4)
+    box(0.5, 0.78, 0.22, 0.62, 0.02, 0.08, STRZECHA_C)
+    ludzik(-0.3, -0.78, -2.06, (176, 150, 110), "mlot", "mlot", "rzemieslnik", 0.85)
+
+
+def zycie_domus():
+    box(-0.55, 0.55, 1.1, 0.12, 0.12, 0.32, TRAWERTYN_C)                       # komin kuchni
+    dym(-0.55, 0.55, 1.45, "dym_kuchnia")
+    for (x, y) in [(0.75, -0.78), (-0.75, -0.78)]:                            # donice z oleandrem
+        cyl(x, y, 0.04, 0.06, 0.1, TERAKOTA_C, v=8)
+        kula(x, y, 0.2, 0.07, (60, 120, 60), seg=6, ringi=4)
+        kula(x + 0.03, y - 0.03, 0.25, 0.025, (230, 120, 160), seg=5, ringi=3)
+
+
+def zycie_insula():
+    dym(0.35, 0.3, 2.95, "dym_komin")
+    with Grupa("anim_kolys_pranie", (0, -0.9, 1.2)):                         # pranie na balkonie
+        for k, kol in enumerate([(220, 70, 60), (240, 236, 220), (80, 110, 180), (230, 190, 70)]):
+            box(-0.45 + k * 0.28, -0.9, 1.06, 0.16, 0.012, 0.14, kol)
+    for s_ in (-1, 1):                                                        # markizy sklepików
+        box(s_ * 0.52, -0.82, 0.72, 0.3, 0.16, 0.02, (196, 160, 90), rot=(-0.4, 0, 0))
+
+
+def zycie_pole():
+    with Grupa("anim_kolys_strach", (0.7, 0.55, 0.05)):                       # strach na wróble
+        belka((0.7, 0.55, 0.05), (0.7, 0.55, 0.85), 0.03, 0.03, DREWNO_C)
+        belka((0.5, 0.55, 0.65), (0.9, 0.55, 0.65), 0.025, 0.025, DREWNO_C)
+        box(0.7, 0.55, 0.45, 0.2, 0.08, 0.26, (150, 120, 80))
+        kula(0.7, 0.55, 0.82, 0.07, STRZECHA, seg=6, ringi=4)
+        stozek(0.7, 0.55, 0.86, 0.11, 0.02, 0.09, STRZECHA_C, v=8)
+
+
+def zycie_winnica():
+    ludzik(-0.45, -0.85, math.pi, (120, 140, 90), "mlot", "kosz", "winiarz", 0.85)
+
+
+def zycie_tartak():
+    ludzik(0.45, -0.82, math.pi, (140, 90, 60), "kolys", None, "tracz", 0.9)
+    dym(-0.75, 0.15, 0.3, "dym_ognisko")
+
+
+def zycie_kamieniolom():
+    ludzik(-0.05, -0.5, math.pi - 0.3, (170, 150, 120), "mlot", "kilof", "kamieniarz", 0.9)
+    ludzik(-0.78, -0.3, math.pi / 2, (150, 80, 60), "mlot", "mlot", "ciosacz", 0.85)
+
+
+def zycie_targ():
+    ludzik(-0.1, -0.78, 0.0, (60, 100, 170), "kolys", None, "kupiec", 0.85)
+
+
+def zycie_koszary():
+    cyl(-0.55, -0.45, 0.04, 0.04, 0.6, DREWNO_C, v=6)                         # palus – słup do ćwiczeń
+    ludzik(-0.55, -0.22, 0.0, CZERWIEN, "mlot", "miecz", "legionista", 0.9)
+    with Grupa("anim_ogien_pochodnia", (-0.2, -0.86, 0.95)):
+        stozek(-0.2, -0.86, 0.95, 0.04, 0.0, 0.12, (255, 160, 40), v=5, emisja=3.5)
+
+
+def zycie_mury():
+    flaga(0.22, -0.2, 2.1, 0.55, CZERWIEN, "baszta")
+    for x in (-0.6, 0.6):
+        with Grupa("anim_ogien_pochodnia_%d" % int(x * 10 + 10), (x, -0.27, 1.0)):
+            stozek(x, -0.27, 1.0, 0.035, 0.0, 0.11, (255, 160, 40), v=5, emisja=3.5)
+        box(x, -0.25, 0.92, 0.03, 0.05, 0.1, DREWNO_C)
+
+
+def zycie_port():
+    cyl(0.7, 0.45, 0.22, 0.05, 1.2, DREWNO_C, v=6)                            # żuraw portowy
+    with Grupa("anim_obrot_z_zuraw", (0.7, 0.45, 1.4)):
+        belka((0.7, 0.45, 1.4), (0.2, -0.05, 1.6), 0.04, 0.04, DREWNO)
+        walec((0.2, -0.05, 1.6), (0.2, -0.05, 0.85), 0.006, (200, 180, 140), v=4)
+        box(0.2, -0.05, 0.72, 0.14, 0.14, 0.13, (180, 150, 100))
+    flaga(0.85, 0.85, 0.22, 0.9, (60, 100, 170), "port", szer=0.22)
+
+
+def zycie_akwedukt():
+    with Grupa("anim_woda_kanal", (0, 0, 2.66)):
+        box(0, 0, 2.64, 1.78, 0.18, 0.02, WODA)
+
+
+def zycie_termy():
+    box(0.55, 0.78, 0.04, 0.16, 0.16, 1.45, CEGLA)                            # komin pieca (praefurnium)
+    dym(0.55, 0.78, 1.55, "dym_piec")
+    dym(0, -0.72, 0.15, "dym_para")
+
+
+def zycie_amfiteatr():
+    for i, a in enumerate((0.6, 2.2, 3.8, 5.3)):
+        flaga(0.8 * math.cos(a), 0.66 * math.sin(a), 0.9, 0.45, (220, 180, 60) if i % 2 else CZERWIEN, "velarium_%d" % i, szer=0.18)
+
+
+def zycie_kuria():
+    for s_ in (-1, 1):
+        flaga(s_ * 0.5, -0.75, 0.04, 1.25, CZERWIEN, "spqr_%d" % (s_ + 1), szer=0.22)
+
+
+def zycie_bazylika():
+    for s_ in (-1, 1):
+        with Grupa("anim_ogien_lampa_%d" % (s_ + 1), (s_ * 0.27, -0.9, 0.62)):
+            stozek(s_ * 0.27, -0.9, 0.62, 0.025, 0.0, 0.08, (255, 190, 70), v=5, emisja=4.0)
+        box(s_ * 0.27, -0.9, 0.5, 0.06, 0.06, 0.12, BRAZ_C, metal=0.4)
+
+
+def zycie_rusztowanie():
+    ludzik(-0.25, -0.4, math.pi, (170, 150, 120), "mlot", "mlot", "murarz", 0.85)
+    ludzik(0.45, -0.75, 0.4, (140, 90, 60), "kolys", None, "pomocnik", 0.85)
+    with Grupa("anim_kolys_ladunek", (0.2, -0.75, 2.3)):
+        walec((0.2, -0.75, 2.3), (0.2, -0.75, 0.5), 0.006, (200, 180, 140), v=4)
+        box(0.2, -0.75, 0.35, 0.2, 0.2, 0.15, TRAWERTYN)
+
+
+ZYCIE = {"chata": zycie_chata, "domus": zycie_domus, "insula": zycie_insula, "pole": zycie_pole,
+         "winnica": zycie_winnica, "tartak": zycie_tartak, "kamieniolom": zycie_kamieniolom, "targ": zycie_targ,
+         "koszary": zycie_koszary, "mury": zycie_mury, "port": zycie_port, "akwedukt": zycie_akwedukt,
+         "termy": zycie_termy, "amfiteatr": zycie_amfiteatr, "kuria": zycie_kuria, "bazylika": zycie_bazylika,
+         "rusztowanie": zycie_rusztowanie}
 
 
 # ================================================================= ZABYTKI (1 pole, ≤ 5 m)
@@ -2437,7 +2637,10 @@ def podglad(katalog):
         if not chce(nazwa):
             continue
         czysc()
+        _wexillum_nr[0] = 0
         fn()
+        if nazwa in ZYCIE:
+            ZYCIE[nazwa]()
         przygotuj_render(256, 256, True, 16)
         swiat((210, 220, 236), 1.0)
         slonce(rot=(0.85, 0.15, -0.65), energia=3.6)
@@ -2457,7 +2660,10 @@ def main():
             if not chce(nazwa):
                 continue
             czysc()
+            _wexillum_nr[0] = 0
             fn()
+            if grupa is BUDYNKI and nazwa in ZYCIE:
+                ZYCIE[nazwa]()
             eksportuj(nazwa)
             if RENDERY and grupa is BUDYNKI and nazwa != "rusztowanie":
                 ikona_budynku(nazwa)

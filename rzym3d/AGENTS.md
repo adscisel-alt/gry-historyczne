@@ -46,6 +46,13 @@ Układ: **1 pole mapy = 2 m** (Godot: 2 jednostki), model stoi na z=0, środek p
   `ui/budynek_<nazwa>.png` 128×128 (ikona budynku w 3/4), `ui/tlo_tytul.png` 1280×720 (panorama Forum Romanum o zachodzie),
   `ui/tlo_bitwy.png` 1280×720 (pole bitwy, bez wojsk).
 
+## Ożywione budynki
+
+- Detale i ruchome części dodaje `ZYCIE[nazwa]()` po `m_<nazwa>()`; `eksportuj()` nie łączy obiektów `anim_*`.
+- Konwencja nazw (Godot: `_ozyw_model` / `_animuj_budynki` w `gra.gd`): `anim_obrot_x|z`, `anim_kolys`, `anim_pila`,
+  `anim_mlot`, `anim_ogien` (+ światło), `anim_woda` (shader wody), `anim_lodz`; puste `dym_*` (dym, `dym_para`, `dym_fontanna`).
+- Robotnik: `ludzik(x, y, rz, tunika, czynnosc, narzedzie, nazwa, s)` – ręce z narzędziem to część `anim_<czynnosc>_<nazwa>`.
+
 ## Woda i teren
 
 - Wierzch lądu: shader `_material_terenu()`; w kolorze wierzchołków rgb = kolor typu terenu (`_kolor_terenu`),
