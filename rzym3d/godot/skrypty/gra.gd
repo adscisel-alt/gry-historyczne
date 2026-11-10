@@ -1624,9 +1624,7 @@ func _zbuduj_teren() -> void:
 		for x in N:
 			var c := teren(x, y)
 			var h := wysokosc(x, y)
-			var kol := Color(D.teren[c].kolor)
-			var v := r.randf_range(-0.04, 0.04)
-			kol = Color(kol.r + v, kol.g + v, kol.b + v)
+			var kol := _kolor_terenu(c)
 			var x0 := x * T
 			var z0 := y * T
 			if _woda(c):
@@ -1635,7 +1633,7 @@ func _zbuduj_teren() -> void:
 					ile_morza += 1
 				_dno_i_woda(st, sw, x, y, c == "m")
 			else:
-				_quad(st, Vector3(x0, h, z0), Vector3(x0 + T, h, z0), Vector3(x0 + T, h, z0 + T), Vector3(x0, h, z0 + T), kol, Vector3.UP)
+				_wierzch_pola(st, x, y, h)
 			# ściany boczne między polami o różnej wysokości (brzegi koryta, skarpy wzgórz)
 			for kier in [Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0), Vector2i(0, -1)]:
 				var nx: int = x + kier.x
@@ -1646,8 +1644,9 @@ func _zbuduj_teren() -> void:
 				if hn >= h and not _woda(c):
 					continue
 				var bok := kol.darkened(0.3)
+				bok.a = 0.0
 				if not _woda(c) and _woda(teren(nx, ny)):
-					bok = Color(0.52, 0.44, 0.32)     # ziemista skarpa brzegu
+					bok = Color(0.52, 0.44, 0.32, 0.0)     # ziemista skarpa brzegu
 				var a: Vector3
 				var b: Vector3
 				if kier == Vector2i(1, 0):
@@ -1663,17 +1662,17 @@ func _zbuduj_teren() -> void:
 				if _woda(c):
 					ha = _dno(a.x, a.z, c == "m")
 					hb = _dno(b.x, b.z, c == "m")
-					bok = Color(0.2, 0.24, 0.22)
+					bok = Color(0.2, 0.24, 0.22, 0.0)
 				_quad(st, Vector3(a.x, ha, a.z), Vector3(b.x, hb, b.z), Vector3(b.x, hn, b.z), Vector3(a.x, hn, a.z), bok, Vector3(kier.x, 0, kier.y))
 	st.generate_normals()
 	var mi := MeshInstance3D.new()
 	mi.mesh = st.commit()
-	var mat := StandardMaterial3D.new()
-	mat.vertex_color_use_as_albedo = true
-	mat.vertex_color_is_srgb = true
-	mat.roughness = 0.95
-	mi.material_override = mat
+	mi.material_override = _material_terenu()
 	teren_wezel.add_child(mi)
+	siatka_budowy = MeshInstance3D.new()
+	siatka_budowy.visible = false
+	siatka_budowy.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	teren_wezel.add_child(siatka_budowy)
 	# morze poza mapą (rama), żeby wybrzeże nie kończyło się urwiskiem
 	var morska := ile_morza > 30
 	if morska:
@@ -1703,6 +1702,154 @@ func _zbuduj_teren() -> void:
 	teren_wezel.add_child(pod)
 
 
+# ----------------------------------------------------------------- teren: tekstura zamiast szachownicy
+# Wierzch pól rysuje shader: trawa w dwóch odcieniach, plamy ziemi i ścieżki mieszane szumem.
+# Typy terenu (droga, plaża, wzgórze, bagno…) wtapiają się miękko: kolor i „waga trawy” liczone są
+# w narożnikach pól jako średnia sąsiadów na tej samej wysokości (brak twardych krawędzi i szachownicy).
+const WAGA_TRAWY := {".": 1.0, "l": 0.8, "o": 0.8, "w": 0.32, "g": 0.0, "p": 0.0, "d": 0.0, "b": 0.3, "~": 0.0, "m": 0.0}
+var siatka_budowy: MeshInstance3D
+var _mat_terenu: ShaderMaterial
+
+
+func _kolor_terenu(c: String) -> Color:
+	match c:
+		"l": return Color("4f6e36")        # ściółka pod drzewami
+		"o": return Color("a3a066")        # sucha ziemia gaju
+		"w": return Color("b3a46a")        # piaszczyste wzgórze
+		"b": return Color("5e7a4c")
+	return Color(D.teren[c].kolor)
+
+
+func _kolor_rogu(cx: int, cy: int, h: float) -> Color:
+	## Średni kolor (rgb) i waga trawy (a) pól stykających się w narożniku i leżących na tej samej wysokości.
+	var suma := Color(0, 0, 0, 0)
+	var n := 0
+	for t in [Vector2i(cx - 1, cy - 1), Vector2i(cx, cy - 1), Vector2i(cx - 1, cy), Vector2i(cx, cy)]:
+		var c := teren(t.x, t.y)
+		if c == "" or _woda(c) or absf(wysokosc(t.x, t.y) - h) > 0.01:
+			continue
+		var k := _kolor_terenu(c)
+		suma += Color(k.r, k.g, k.b, WAGA_TRAWY.get(c, 0.0))
+		n += 1
+	return suma / maxf(n, 1)
+
+
+func _wierzch_pola(st: SurfaceTool, x: int, y: int, h: float) -> void:
+	var x0 := x * T
+	var z0 := y * T
+	var pts := [Vector3(x0, h, z0), Vector3(x0 + T, h, z0), Vector3(x0 + T, h, z0 + T), Vector3(x0, h, z0 + T)]
+	var kol := [_kolor_rogu(x, y, h), _kolor_rogu(x + 1, y, h), _kolor_rogu(x + 1, y + 1, h), _kolor_rogu(x, y + 1, h)]
+	for i in [0, 1, 2, 0, 2, 3]:
+		st.set_color(kol[i])
+		st.set_normal(Vector3.UP)
+		st.add_vertex(pts[i])
+
+
+func _szum_tekstura(ziarno: int, czest: float, rozmiar := 256) -> NoiseTexture2D:
+	var t := NoiseTexture2D.new()
+	t.width = rozmiar
+	t.height = rozmiar
+	t.seamless = true
+	var fn := FastNoiseLite.new()
+	fn.seed = ziarno
+	fn.frequency = czest
+	fn.fractal_octaves = 4
+	t.noise = fn
+	return t
+
+
+func _material_terenu() -> ShaderMaterial:
+	if _mat_terenu == null:
+		var sh := Shader.new()
+		sh.code = """shader_type spatial;
+render_mode diffuse_burley;
+
+uniform sampler2D szum : filter_linear_mipmap, repeat_enable;      // duże plamy
+uniform sampler2D szum_drobny : filter_linear_mipmap, repeat_enable; // źdźbła, grudki
+uniform vec3 trawa_jasna : source_color = vec3(0.50, 0.68, 0.31);
+uniform vec3 trawa_ciemna : source_color = vec3(0.34, 0.53, 0.22);
+uniform vec3 ziemia : source_color = vec3(0.45, 0.35, 0.22);
+uniform vec3 sciezka : source_color = vec3(0.62, 0.53, 0.37);
+uniform float ile_ziemi = 0.62;     // próg plam ziemi (mniej = więcej ziemi)
+uniform float ile_sciezek = 1.0;
+
+varying vec3 swiat;
+
+void vertex() {
+	swiat = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+}
+
+void fragment() {
+	vec2 p = swiat.xz;
+	float n1 = texture(szum, p * 0.018).r;
+	float n2 = texture(szum, p * 0.055 + vec2(0.37, 0.71)).r;
+	float d = texture(szum_drobny, p * 0.45).r;
+	float d2 = texture(szum_drobny, p * 1.7 + vec2(0.2, 0.6)).r;
+	// trawa: dwa odcienie mieszane dużym szumem + drobne źdźbła
+	vec3 trawa = mix(trawa_ciemna, trawa_jasna, smoothstep(0.3, 0.72, n1 + (d - 0.5) * 0.25));
+	trawa *= 0.88 + 0.22 * d2;
+	// plamy ziemi
+	float plama = smoothstep(ile_ziemi, ile_ziemi + 0.06, n2 * 0.75 + n1 * 0.25 + (d - 0.5) * 0.12);
+	vec3 kolor = mix(trawa, ziemia * (0.85 + 0.25 * d2), plama * 0.85);
+	// ścieżki: wąskie „grzbiety” szumu, wydeptane i poszarpane
+	float g = abs(texture(szum, p * 0.016 + vec2(0.13, 0.52)).r - 0.5);
+	float gdzie = smoothstep(0.5, 0.6, texture(szum, p * 0.009 + vec2(0.61, 0.27)).r);   // ścieżki tylko w części mapy
+	float sc = (1.0 - smoothstep(0.006, 0.014 + (d - 0.5) * 0.006, g)) * gdzie * ile_sciezek;
+	kolor = mix(kolor, sciezka * (0.88 + 0.2 * d2), sc * 0.85);
+	// typ terenu z wierzchołków (drogi, plaże, wzgórza…) – granica poszarpana szumem
+	vec3 typ = pow(COLOR.rgb, vec3(2.2)) * (0.9 + 0.18 * d2);
+	float waga = smoothstep(0.32, 0.68, COLOR.a + (n2 - 0.5) * 0.5 + (d - 0.5) * 0.2);
+	ALBEDO = mix(typ, kolor, waga);
+	ROUGHNESS = 0.95;
+}
+"""
+		_mat_terenu = ShaderMaterial.new()
+		_mat_terenu.shader = sh
+		_mat_terenu.set_shader_parameter("szum", _szum_tekstura(31, 0.012, 512))
+		_mat_terenu.set_shader_parameter("szum_drobny", _szum_tekstura(57, 0.05))
+	# klimat epoki: późne cesarstwo ma bardziej suchą, płową trawę i więcej wydeptanej ziemi
+	var sucho: bool = R.get("epoka", "") == "schylek"
+	_mat_terenu.set_shader_parameter("trawa_jasna", Color(0.58, 0.64, 0.33) if sucho else Color(0.5, 0.68, 0.31))
+	_mat_terenu.set_shader_parameter("trawa_ciemna", Color(0.4, 0.5, 0.24) if sucho else Color(0.34, 0.53, 0.22))
+	_mat_terenu.set_shader_parameter("ile_ziemi", 0.66 if sucho else 0.72)
+	return _mat_terenu
+
+
+func odswiez_siatke_budowy() -> void:
+	## Półprzezroczysta siatka pól tylko w trybie budowy; pola, na których można postawić wybrany
+	## budynek, są podświetlone na zielono.
+	if siatka_budowy == null:
+		return
+	siatka_budowy.visible = wybrany != "" and not S.is_empty()
+	if not siatka_budowy.visible:
+		return
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var g := 0.045
+	var linia := Color(1, 1, 1, 0.28)
+	var dobre := Color(0.35, 1.0, 0.35, 0.22)
+	for y in N:
+		for x in N:
+			var c := teren(x, y)
+			if c == "" or _woda(c):
+				continue
+			var h := wysokosc(x, y) + 0.035
+			var x0 := x * T
+			var z0 := y * T
+			if moze_budowac(S.aktywny, wybrany, x, y)[0]:
+				_quad(st, Vector3(x0 + g, h, z0 + g), Vector3(x0 + T - g, h, z0 + g), Vector3(x0 + T - g, h, z0 + T - g), Vector3(x0 + g, h, z0 + T - g), dobre, Vector3.UP)
+			# obrys pola (cienkie paski przy krawędziach)
+			_quad(st, Vector3(x0, h, z0), Vector3(x0 + T, h, z0), Vector3(x0 + T, h, z0 + g), Vector3(x0, h, z0 + g), linia, Vector3.UP)
+			_quad(st, Vector3(x0, h, z0 + g), Vector3(x0 + g, h, z0 + g), Vector3(x0 + g, h, z0 + T), Vector3(x0, h, z0 + T), linia, Vector3.UP)
+	siatka_budowy.mesh = st.commit()
+	var m := StandardMaterial3D.new()
+	m.vertex_color_use_as_albedo = true
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.cull_mode = BaseMaterial3D.CULL_DISABLED
+	siatka_budowy.material_override = m
+
+
 func _dno_i_woda(st: SurfaceTool, sw: SurfaceTool, x: int, y: int, morze: bool) -> void:
 	## Pole wody: dno (siatka 4 × 4, opadające od brzegu) i powierzchnia z głębokością w wierzchołkach.
 	var k := T / PODZIAL_WODY
@@ -1721,7 +1868,9 @@ func _dno_i_woda(st: SurfaceTool, sw: SurfaceTool, x: int, y: int, morze: bool) 
 				var p: Vector3 = pts[idx]
 				# dno: przy brzegu piasek i muł, w głębi ciemniej
 				var g := clampf((STOPA_BRZEGU - p.y) / 1.2, 0.0, 1.0)
-				st.set_color(Color(0.56, 0.5, 0.36).lerp(Color(0.16, 0.24, 0.26), g))
+				var kd := Color(0.56, 0.5, 0.36).lerp(Color(0.16, 0.24, 0.26), g)
+				kd.a = 0.0
+				st.set_color(kd)
 				st.add_vertex(p)
 			_quad_wody(sw, xa, za, xb, zb, _gl(h00), _gl(h10), _gl(h11), _gl(h01))
 
@@ -2094,6 +2243,7 @@ func odswiez_swiat() -> void:
 		dekor_wezel.add_child(n)
 		_znajdzki_wezly[klucz] = n
 	_rysuj_granice()
+	odswiez_siatke_budowy()
 
 
 func _rysuj_granice() -> void:
@@ -2325,6 +2475,7 @@ func wybierz_budynek(typ: String) -> void:
 	_przezroczysty(duch)
 	swiat.add_child(duch)
 	duch.visible = false
+	odswiez_siatke_budowy()
 	dzwiek("klik")
 
 
@@ -2344,6 +2495,7 @@ func anuluj_wybor() -> void:
 	if is_instance_valid(duch):
 		duch.queue_free()
 	duch = null
+	odswiez_siatke_budowy()
 	ui.odswiez()
 
 
@@ -2601,7 +2753,7 @@ func zrzuty(kat: String) -> void:
 		ui.pokaz_ekran()
 		await get_tree().create_timer(1.2).timeout
 		await _zrzut(kat, "04_rozdzial_%d_%s" % [ri + 1, R.id])
-	wybierz_budynek("swiatynia")
+	wybierz_budynek("domus")
 	najedz(Vector2i(int(R.start[0][0]) + 2, int(R.start[0][1]) + 2))
 	await _zrzut(kat, "05_budowa")
 	anuluj_wybor()

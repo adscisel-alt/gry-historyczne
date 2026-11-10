@@ -35,6 +35,19 @@ plansza wygląda jak prawdziwa makieta. W bitwie pas ostrości obejmuje oba szyk
   (rozmycie górnego i dolnego pasa), a ekspozycja i gęstość mgły jest dobrana tak, żeby scena
   wyglądała podobnie jak w Forward+.
 
+## Teren
+
+Plansza nie jest już szachownicą kolorowych pól. Wierzch terenu rysuje shader (`_material_terenu()` w `gra.gd`):
+jedna tekstura trawy w dwóch odcieniach z drobnymi „źdźbłami”, rzadkie plamy ziemi i wydeptane ścieżki,
+mieszane szumem (tekstury szumu generowane w grze, więc działa i w przeglądarce). Typy terenu – drogi, plaże,
+wzgórza, bagna, lasy, gaje oliwne – wtapiają się miękko: kolor i udział trawy liczone są w narożnikach pól jako
+średnia sąsiadów, a granicę dodatkowo szarpie szum. W późnym cesarstwie trawa jest bardziej sucha i płowa.
+
+**Siatka pól pojawia się tylko w trybie budowy** – jako półprzezroczysta nakładka, w której pola, na których
+można postawić wybrany budynek, świecą na zielono.
+
+![Tryb budowy](zrzuty/05_budowa.png)
+
 ## Drzewa
 
 Drzewa zostają low-poly, ale mają charakterystyczne sylwetki (`blender/generuj_modele.py`, sekcja „drzewa”):
