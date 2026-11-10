@@ -408,10 +408,13 @@ def zapisz_glb(nazwa):
     print("model:", nazwa)
 
 
+CZESCI_RUCHOME = ("anim_", "kon_", "slon_", "jezdziec")
+
+
 def eksportuj(nazwa):
     """Jeden obiekt siatki z punktem zaczepienia w (0,0,0). Części „anim_*” (koła, flagi, narzędzia, ogień,
     woda…) i puste punkty „dym_*” zostają osobnymi węzłami – Godot je animuje (gra.gd, _ozyw_model)."""
-    polacz([o for o in bpy.context.scene.objects if o.type == "MESH" and not o.name.startswith("anim_")],
+    polacz([o for o in bpy.context.scene.objects if o.type == "MESH" and not o.name.startswith(CZESCI_RUCHOME)],
            nazwa, (0, 0, 0))
     zapisz_glb(nazwa)
 
@@ -433,7 +436,7 @@ class Grupa:
         polacz(nowe, self.nazwa, self.pivot)
 
 
-CZESCI = ("noga_l", "noga_p", "reka_l", "reka_p")
+CZESCI = ("noga_l", "noga_p", "reka_l", "reka_p", "glowa", "peleryna")
 
 
 def eksportuj_postac(nazwa):
@@ -1712,12 +1715,12 @@ DOMYSLNE = dict(skora=SKORA, wlosy=(70, 50, 36), fryzura="krotkie", broda=None, 
                 plaszcz=None, helm=None, helm_kol=STAL, grzebien=None, poprzeczny=False, wieniec=None,
                 diadem=False, tarcza=None, tarcza_kol=CZERWIEN, tarcza_detal=ZOLTY, bron=None, lewa=None,
                 torkwes=False, opaska=False, toga=BIEL, toga_pas=None, kaptur=None, szarfa=None, kolczan=False,
-                mlody=False)
+                mlody=False, pioro=False)
 
 POSTACIE = {
     # Damian Ścisły — kronikarz serii, fioletowy płaszcz z kapturem, księga
     "damian": dict(stroj="kaptur", kaptur=FIOLET, tunika=KREM, spodnie=(86, 64, 52), buty=(70, 46, 30),
-                   wlosy=(120, 80, 44), bron="ksiega", skora=SKORA_J),
+                   wlosy=(120, 80, 44), bron="ksiega", skora=SKORA_J, pioro=True),
     # Romulus (legenda) — wojownik-założyciel: brązowy hełm, napierśnik, włócznia
     "romulus": dict(tunika=(150, 56, 40), zbroja="miesniowa", zbroja_kol=BRAZ, plaszcz=(120, 40, 30),
                     helm="brazowy", helm_kol=BRAZ, grzebien=CZERWIEN, broda="krotka", wlosy=(80, 54, 36),
@@ -2022,9 +2025,21 @@ def m_postac(p, ox=0.0, oy=0.0, czesci=False, siedzi=False):
             ikosfera(ox + s * 0.17, oy, 1.2, 0.12, zk, skala=(1.1, 1.2, 0.7))
         box(ox, oy, 0.78, 0.43, 0.43, 0.06, (90, 60, 34))
     if p["plaszcz"]:
-        box(ox, oy + 0.22, 0.32, 0.46, 0.05, 0.9, p["plaszcz"], rot=(0.12, 0, 0))
+        with Grupa("peleryna", (ox, oy + 0.2, 1.22), czesci):
+            box(ox, oy + 0.22, 0.32, 0.46, 0.05, 0.9, p["plaszcz"], rot=(0.12, 0, 0))
+            box(ox, oy + 0.255, 0.3, 0.47, 0.012, 0.05, tuple(int(c * 0.75) for c in p["plaszcz"]), rot=(0.12, 0, 0))
         box(ox, oy + 0.05, 1.18, 0.48, 0.36, 0.07, p["plaszcz"])
         kula(ox + 0.15, oy - 0.17, 1.2, 0.035, ZLOTO, seg=6, ringi=4, metal=0.6)
+    # pas z bronią boczną i sakiewką
+    if p["bron"] in ("gladius", "pilum", "miecz") and zb in ("segmentata", "kolczuga", "miesniowa"):
+        box(ox + 0.25, oy + 0.03, 0.5, 0.06, 0.045, 0.36, (96, 62, 36), rot=(0, 0.28, 0))     # pochwa gladiusa
+        box(ox + 0.29, oy + 0.03, 0.35, 0.065, 0.05, 0.05, BRAZ, rot=(0, 0.28, 0), metal=0.5)
+        kula(ox + 0.2, oy + 0.03, 0.73, 0.035, BRAZ, seg=6, ringi=4, metal=0.5)               # głowica
+        box(ox - 0.23, oy - 0.04, 0.6, 0.05, 0.035, 0.18, BRAZ_C, rot=(0, -0.2, 0), metal=0.3)  # pugio
+    elif st in ("tunika", "kaftan") and not zb:
+        kula(ox + 0.19, oy - 0.12, 0.72, 0.055, (130, 90, 56), seg=6, ringi=4, skala=(1, 0.7, 1.1))  # sakiewka
+    if st == "toga" and (p["wieniec"] or p["diadem"]):
+        torus(ox, oy, 1.2, 0.13, 0.012, ZLOTO, seg=12, mseg=4, metal=0.6)                    # złoty łańcuch
     if p["kolczan"]:
         walec((ox + 0.1, oy + 0.22, 0.7), (ox - 0.12, oy + 0.24, 1.3), 0.06, (120, 74, 40), v=8)
         for k in range(3):
@@ -2071,108 +2086,112 @@ def m_postac(p, ox=0.0, oy=0.0, czesci=False, siedzi=False):
                     tarcza_owalna(ox - 0.36, oy - 0.16, 0.82, p["tarcza_kol"], p["tarcza_detal"], -0.5)
                 if p["lewa"] == "luk":
                     luk_bron(dlon[0], dlon[1] - 0.02, dlon[2])
+                if p["pioro"]:                                                # gęsie pióro kronikarza
+                    walec(dlon, (dlon[0] + 0.03, dlon[1] - 0.08, dlon[2] + 0.22), 0.012, BIEL, v=4)
+                    box(dlon[0] + 0.02, dlon[1] - 0.06, dlon[2] + 0.16, 0.012, 0.05, 0.12, BIEL, rot=(-0.35, 0, 0))
     # ---------------------------------------------------------- głowa
-    wl = p["wlosy"]
-    cyl(ox, oy, 1.22, 0.075, 0.1, sk, v=8)
-    kula(ox, oy, 1.43, 0.18, sk, seg=12, ringi=8, skala=(1, 0.95, 1.05))
-    for sx in (-0.065, 0.065):
-        box(ox + sx, oy - 0.165, 1.46, 0.035, 0.02, 0.04, CZARNY)
-        box(ox + sx, oy - 0.162, 1.51, 0.07, 0.02, 0.025, tuple(int(c * 0.8) for c in wl))   # brwi
-    for s in (-1, 1):
-        kula(ox + s * 0.175, oy + 0.01, 1.43, 0.035, sk, seg=6, ringi=4, skala=(0.6, 1, 1.3))  # uszy
-    box(ox, oy - 0.18, 1.39, 0.045, 0.05, 0.08, tuple(int(c * .88) for c in sk))          # nos
-    box(ox, oy - 0.162, 1.33, 0.07, 0.02, 0.016, (150, 70, 60))                            # usta
-    if p["opaska"]:
-        box(ox - 0.065, oy - 0.175, 1.455, 0.09, 0.02, 0.075, CZARNY)
-        box(ox - 0.02, oy - 0.168, 1.5, 0.3, 0.02, 0.016, CZARNY, rot=(0, -0.45, 0))
-    w = p["wasy"]
-    if w == "galijskie":
-        box(ox, oy - 0.172, 1.355, 0.14, 0.04, 0.035, wl)
+    with Grupa("glowa", (ox, oy, 1.24), czesci):
+        wl = p["wlosy"]
+        cyl(ox, oy, 1.22, 0.075, 0.1, sk, v=8)
+        kula(ox, oy, 1.43, 0.18, sk, seg=12, ringi=8, skala=(1, 0.95, 1.05))
+        for sx in (-0.065, 0.065):
+            box(ox + sx, oy - 0.165, 1.46, 0.035, 0.02, 0.04, CZARNY)
+            box(ox + sx, oy - 0.162, 1.51, 0.07, 0.02, 0.025, tuple(int(c * 0.8) for c in wl))   # brwi
         for s in (-1, 1):
-            box(ox + s * 0.075, oy - 0.165, 1.28, 0.035, 0.035, 0.1, wl, rot=(0, s * 0.15, 0))
-    b = p["broda"]
-    if b in ("krotka", "dluga"):
-        kula(ox, oy - 0.035, 1.33, 0.165, wl, seg=10, ringi=6, skala=(1.06, 0.95, 0.78))
-        if b == "dluga":
-            kula(ox, oy - 0.1, 1.2, 0.12, wl, seg=8, ringi=6, skala=(1.0, 0.7, 1.3))
-        box(ox, oy - 0.19, 1.335, 0.075, 0.02, 0.02, (120, 54, 50))           # usta na brodzie
-        if not w:
-            box(ox, oy - 0.183, 1.36, 0.14, 0.03, 0.03, wl)
-    if p["stroj"] != "kaptur" and p["helm"] not in ("futrzany", "wilk"):
-        f = p["fryzura"]
-        if f in ("krotkie", "loki", "dlugie", "wezel"):
-            kula(ox, oy + 0.02, 1.5, 0.188, wl, seg=12, ringi=6, skala=(1.02, 1.0, 0.75))
-        if f == "loki":
-            for k in range(5):
-                kula(ox - 0.1 + k * 0.05, oy - 0.15, 1.55, 0.035, wl, seg=5, ringi=3)
-        if f == "lysy":
+            kula(ox + s * 0.175, oy + 0.01, 1.43, 0.035, sk, seg=6, ringi=4, skala=(0.6, 1, 1.3))  # uszy
+        box(ox, oy - 0.18, 1.39, 0.045, 0.05, 0.08, tuple(int(c * .88) for c in sk))          # nos
+        box(ox, oy - 0.162, 1.33, 0.07, 0.02, 0.016, (150, 70, 60))                            # usta
+        if p["opaska"]:
+            box(ox - 0.065, oy - 0.175, 1.455, 0.09, 0.02, 0.075, CZARNY)
+            box(ox - 0.02, oy - 0.168, 1.5, 0.3, 0.02, 0.016, CZARNY, rot=(0, -0.45, 0))
+        w = p["wasy"]
+        if w == "galijskie":
+            box(ox, oy - 0.172, 1.355, 0.14, 0.04, 0.035, wl)
             for s in (-1, 1):
-                kula(ox + s * 0.15, oy + 0.03, 1.45, 0.07, wl, seg=6, ringi=4, skala=(0.6, 1.2, 1))
-            kula(ox, oy + 0.1, 1.47, 0.14, wl, seg=8, ringi=5, skala=(1.1, 0.6, 0.8))
-        if f == "dlugie":
-            box(ox, oy + 0.1, 1.15, 0.34, 0.14, 0.38, wl)
+                box(ox + s * 0.075, oy - 0.165, 1.28, 0.035, 0.035, 0.1, wl, rot=(0, s * 0.15, 0))
+        b = p["broda"]
+        if b in ("krotka", "dluga"):
+            kula(ox, oy - 0.035, 1.33, 0.165, wl, seg=10, ringi=6, skala=(1.06, 0.95, 0.78))
+            if b == "dluga":
+                kula(ox, oy - 0.1, 1.2, 0.12, wl, seg=8, ringi=6, skala=(1.0, 0.7, 1.3))
+            box(ox, oy - 0.19, 1.335, 0.075, 0.02, 0.02, (120, 54, 50))           # usta na brodzie
+            if not w:
+                box(ox, oy - 0.183, 1.36, 0.14, 0.03, 0.03, wl)
+        if p["stroj"] != "kaptur" and p["helm"] not in ("futrzany", "wilk"):
+            f = p["fryzura"]
+            if f in ("krotkie", "loki", "dlugie", "wezel"):
+                kula(ox, oy + 0.02, 1.5, 0.188, wl, seg=12, ringi=6, skala=(1.02, 1.0, 0.75))
+            if f == "loki":
+                for k in range(5):
+                    kula(ox - 0.1 + k * 0.05, oy - 0.15, 1.55, 0.035, wl, seg=5, ringi=3)
+            if f == "lysy":
+                for s in (-1, 1):
+                    kula(ox + s * 0.15, oy + 0.03, 1.45, 0.07, wl, seg=6, ringi=4, skala=(0.6, 1.2, 1))
+                kula(ox, oy + 0.1, 1.47, 0.14, wl, seg=8, ringi=5, skala=(1.1, 0.6, 0.8))
+            if f == "dlugie":
+                box(ox, oy + 0.1, 1.15, 0.34, 0.14, 0.38, wl)
+                for s in (-1, 1):
+                    box(ox + s * 0.165, oy - 0.02, 1.22, 0.06, 0.18, 0.3, wl)
+            if f == "wezel":
+                box(ox, oy + 0.1, 1.28, 0.3, 0.12, 0.22, wl)
+                kula(ox + 0.15, oy + 0.02, 1.6, 0.07, wl, seg=8, ringi=5)
+        if p["mlody"]:
+            pass
+        # ---------------------------------------------------------- nakrycia głowy
+        h, hk = p["helm"], p["helm_kol"]
+        if st == "kaptur":
+            kol = p["kaptur"]
+            kula(ox, oy + 0.02, 1.53, 0.17, wl, seg=10, ringi=6, skala=(1.0, 1.0, 0.6))  # grzywka pod kapturem
+            kula(ox, oy + 0.07, 1.46, 0.22, kol, seg=14, ringi=9, skala=(1.0, 1.0, 1.08))
+            stozek(ox, oy + 0.18, 1.55, 0.09, 0.0, 0.2, kol, v=6, rot=(0.6, 0, 0))
+            box(ox, oy + 0.12, 1.12, 0.46, 0.2, 0.18, kol)                       # kaptur opada na plecy
+        elif h in ("galea", "brazowy", "galijski"):
+            kula(ox, oy + 0.01, 1.49, 0.2, hk, seg=12, ringi=7, skala=(1.0, 1.02, 0.85), **metal_kw(hk))
+            cyl(ox, oy + 0.0, 1.47, 0.205, 0.04, hk, v=12, **metal_kw(hk))
+            box(ox, oy + 0.17, 1.3, 0.34, 0.08, 0.18, hk, rot=(0.35, 0, 0), **metal_kw(hk))   # osłona karku
+            if h != "galijski":
+                box(ox, oy - 0.19, 1.55, 0.3, 0.06, 0.03, hk, rot=(-0.3, 0, 0), **metal_kw(hk))  # daszek
+                for s in (-1, 1):
+                    box(ox + s * 0.17, oy - 0.08, 1.3, 0.035, 0.13, 0.17, hk, rot=(0, -s * 0.12, 0), **metal_kw(hk))
+            kula(ox, oy + 0.01, 1.67, 0.035, hk, seg=6, ringi=4, **metal_kw(hk))
+            if p["grzebien"]:
+                box(ox, oy + 0.01, 1.66, 0.04, 0.04, 0.06, hk, **metal_kw(hk))
+                skala = (1.0, 0.16, 0.5) if p["poprzeczny"] else (0.16, 1.0, 0.5)
+                kula(ox, oy + 0.03, 1.72, 0.21, p["grzebien"], seg=12, ringi=7, skala=skala)
+        elif h == "stozkowy":
+            stozek(ox, oy, 1.48, 0.2, 0.02, 0.28, hk, v=8, metal=0.5, szorstkosc=0.4)
+            cyl(ox, oy, 1.46, 0.205, 0.05, BRAZ, v=8, metal=0.5)
+            box(ox, oy - 0.2, 1.36, 0.035, 0.03, 0.14, hk, metal=0.5)            # nosal
+        elif h == "futrzany":
+            cyl(ox, oy, 1.44, 0.215, 0.12, hk, v=10)
+            stozek(ox, oy, 1.56, 0.17, 0.02, 0.2, CZERWIEN_C, v=8)
+            kula(ox, oy, 1.76, 0.03, ZLOTO, seg=6, ringi=4)
             for s in (-1, 1):
-                box(ox + s * 0.165, oy - 0.02, 1.22, 0.06, 0.18, 0.3, wl)
-        if f == "wezel":
-            box(ox, oy + 0.1, 1.28, 0.3, 0.12, 0.22, wl)
-            kula(ox + 0.15, oy + 0.02, 1.6, 0.07, wl, seg=8, ringi=5)
-    if p["mlody"]:
-        pass
-    # ---------------------------------------------------------- nakrycia głowy
-    h, hk = p["helm"], p["helm_kol"]
-    if st == "kaptur":
-        kol = p["kaptur"]
-        kula(ox, oy + 0.02, 1.53, 0.17, wl, seg=10, ringi=6, skala=(1.0, 1.0, 0.6))  # grzywka pod kapturem
-        kula(ox, oy + 0.07, 1.46, 0.22, kol, seg=14, ringi=9, skala=(1.0, 1.0, 1.08))
-        stozek(ox, oy + 0.18, 1.55, 0.09, 0.0, 0.2, kol, v=6, rot=(0.6, 0, 0))
-        box(ox, oy + 0.12, 1.12, 0.46, 0.2, 0.18, kol)                       # kaptur opada na plecy
-    elif h in ("galea", "brazowy", "galijski"):
-        kula(ox, oy + 0.01, 1.49, 0.2, hk, seg=12, ringi=7, skala=(1.0, 1.02, 0.85), **metal_kw(hk))
-        cyl(ox, oy + 0.0, 1.47, 0.205, 0.04, hk, v=12, **metal_kw(hk))
-        box(ox, oy + 0.17, 1.3, 0.34, 0.08, 0.18, hk, rot=(0.35, 0, 0), **metal_kw(hk))   # osłona karku
-        if h != "galijski":
-            box(ox, oy - 0.19, 1.55, 0.3, 0.06, 0.03, hk, rot=(-0.3, 0, 0), **metal_kw(hk))  # daszek
+                box(ox + s * 0.18, oy, 1.3, 0.06, 0.14, 0.16, hk)               # nauszniki
+        elif h == "wilk":
+            kula(ox, oy + 0.03, 1.5, 0.205, hk, seg=10, ringi=7, skala=(1.02, 1.05, 0.8))
+            walec((ox, oy - 0.1, 1.62), (ox, oy - 0.3, 1.58), 0.07, hk, v=6, r2=0.035)   # pysk
+            kula(ox, oy - 0.31, 1.58, 0.025, CZARNY, seg=4, ringi=3)
             for s in (-1, 1):
-                box(ox + s * 0.17, oy - 0.08, 1.3, 0.035, 0.13, 0.17, hk, rot=(0, -s * 0.12, 0), **metal_kw(hk))
-        kula(ox, oy + 0.01, 1.67, 0.035, hk, seg=6, ringi=4, **metal_kw(hk))
-        if p["grzebien"]:
-            box(ox, oy + 0.01, 1.66, 0.04, 0.04, 0.06, hk, **metal_kw(hk))
-            skala = (1.0, 0.16, 0.5) if p["poprzeczny"] else (0.16, 1.0, 0.5)
-            kula(ox, oy + 0.03, 1.72, 0.21, p["grzebien"], seg=12, ringi=7, skala=skala)
-    elif h == "stozkowy":
-        stozek(ox, oy, 1.48, 0.2, 0.02, 0.28, hk, v=8, metal=0.5, szorstkosc=0.4)
-        cyl(ox, oy, 1.46, 0.205, 0.05, BRAZ, v=8, metal=0.5)
-        box(ox, oy - 0.2, 1.36, 0.035, 0.03, 0.14, hk, metal=0.5)            # nosal
-    elif h == "futrzany":
-        cyl(ox, oy, 1.44, 0.215, 0.12, hk, v=10)
-        stozek(ox, oy, 1.56, 0.17, 0.02, 0.2, CZERWIEN_C, v=8)
-        kula(ox, oy, 1.76, 0.03, ZLOTO, seg=6, ringi=4)
-        for s in (-1, 1):
-            box(ox + s * 0.18, oy, 1.3, 0.06, 0.14, 0.16, hk)               # nauszniki
-    elif h == "wilk":
-        kula(ox, oy + 0.03, 1.5, 0.205, hk, seg=10, ringi=7, skala=(1.02, 1.05, 0.8))
-        walec((ox, oy - 0.1, 1.62), (ox, oy - 0.3, 1.58), 0.07, hk, v=6, r2=0.035)   # pysk
-        kula(ox, oy - 0.31, 1.58, 0.025, CZARNY, seg=4, ringi=3)
-        for s in (-1, 1):
-            stozek(ox + s * 0.1, oy + 0.0, 1.62, 0.05, 0.0, 0.1, hk, v=4)
-            kula(ox + s * 0.05, oy - 0.2, 1.64, 0.015, (200, 170, 60), seg=4, ringi=3)
-        box(ox, oy + 0.18, 0.9, 0.34, 0.05, 0.55, hk, rot=(0.08, 0, 0))     # skóra na plecach
-        for s in (-1, 1):
-            walec((ox + s * 0.15, oy - 0.14, 1.22), (ox + s * 0.1, oy - 0.2, 1.05), 0.03, hk, v=5)
-    if p["wieniec"]:
-        kz = p["wieniec"]
-        torus(ox, oy + 0.01, 1.55, 0.175, 0.022, kz, seg=16, mseg=4)
-        for k in range(14):
-            a = k * 2 * math.pi / 14
-            if 1.1 < a < 2.0:
-                continue
-            kula(ox + 0.18 * math.cos(a), oy + 0.01 + 0.18 * math.sin(a), 1.57, 0.03,
-                 ZLOTO if k % 2 else (110, 150, 50), seg=4, ringi=3, skala=(1, 1, 0.5), metal=0.3)
-    if p["diadem"]:
-        torus(ox, oy + 0.01, 1.53, 0.18, 0.018, ZLOTO, seg=16, mseg=4, metal=0.6, szorstkosc=0.35)
-        kula(ox, oy - 0.18, 1.55, 0.03, (40, 120, 200), seg=6, ringi=4, szorstkosc=0.2)
-        for s in (-1, 1):
-            kula(ox + s * 0.1, oy - 0.15, 1.54, 0.02, (200, 40, 60), seg=4, ringi=3)
+                stozek(ox + s * 0.1, oy + 0.0, 1.62, 0.05, 0.0, 0.1, hk, v=4)
+                kula(ox + s * 0.05, oy - 0.2, 1.64, 0.015, (200, 170, 60), seg=4, ringi=3)
+            box(ox, oy + 0.18, 0.9, 0.34, 0.05, 0.55, hk, rot=(0.08, 0, 0))     # skóra na plecach
+            for s in (-1, 1):
+                walec((ox + s * 0.15, oy - 0.14, 1.22), (ox + s * 0.1, oy - 0.2, 1.05), 0.03, hk, v=5)
+        if p["wieniec"]:
+            kz = p["wieniec"]
+            torus(ox, oy + 0.01, 1.55, 0.175, 0.022, kz, seg=16, mseg=4)
+            for k in range(14):
+                a = k * 2 * math.pi / 14
+                if 1.1 < a < 2.0:
+                    continue
+                kula(ox + 0.18 * math.cos(a), oy + 0.01 + 0.18 * math.sin(a), 1.57, 0.03,
+                     ZLOTO if k % 2 else (110, 150, 50), seg=4, ringi=3, skala=(1, 1, 0.5), metal=0.3)
+        if p["diadem"]:
+            torus(ox, oy + 0.01, 1.53, 0.18, 0.018, ZLOTO, seg=16, mseg=4, metal=0.6, szorstkosc=0.35)
+            kula(ox, oy - 0.18, 1.55, 0.03, (40, 120, 200), seg=6, ringi=4, szorstkosc=0.2)
+            for s in (-1, 1):
+                kula(ox + s * 0.1, oy - 0.15, 1.54, 0.02, (200, 40, 60), seg=4, ringi=3)
     if p["torkwes"]:
         torus(ox, oy, 1.24, 0.1, 0.02, ZLOTO, seg=12, mseg=4, metal=0.6, szorstkosc=0.35)
 
@@ -2208,27 +2227,38 @@ def orzel(x, y, z, s=1.0, kolor=ZLOTO, skrzydla=True):
 
 
 def kon(kolor=(120, 80, 50), grzywa=(60, 40, 28), czaprak=CZERWIEN, s=1.0):
-    """Koń stojący frontem na -Y (jedna bryła)."""
+    """Koń frontem na -Y z ruchomymi częściami: kon_noga_lp/pp/lt/pt, kon_glowa, kon_ogon (galop w Godocie)."""
     kula(0, 0.05, 1.0 * s, 0.3 * s, kolor, seg=12, ringi=8, skala=(0.9, 2.05, 1.0))
-    for (x, y) in [(-0.14, -0.4), (0.14, -0.4), (-0.14, 0.48), (0.14, 0.48)]:
-        walec((x * s, y * s, 0.06 * s), (x * s, y * s, 0.9 * s), 0.055 * s, kolor, v=6)
-        cyl(x * s, y * s, 0, 0.065 * s, 0.08 * s, CZARNY, v=6)
-    walec((0, -0.42 * s, 1.08 * s), (0, -0.68 * s, 1.52 * s), 0.14 * s, kolor, v=8, r2=0.1 * s)
-    walec((0, -0.66 * s, 1.6 * s), (0, -0.98 * s, 1.38 * s), 0.1 * s, kolor, v=8, r2=0.07 * s)
-    kula(0, -0.7 * s, 1.58 * s, 0.11 * s, kolor, seg=8, ringi=6)
-    for sx in (-1, 1):
-        stozek(sx * 0.05 * s, -0.66 * s, 1.66 * s, 0.03 * s, 0.0, 0.1 * s, kolor, v=4)
-        kula(sx * 0.075 * s, -0.8 * s, 1.55 * s, 0.018 * s, CZARNY, seg=4, ringi=3)
-    belka((0, -0.38 * s, 1.25 * s), (0, -0.66 * s, 1.7 * s), 0.05 * s, 0.1 * s, grzywa)
-    walec((0, 0.62 * s, 1.15 * s), (0, 0.8 * s, 0.6 * s), 0.06 * s, grzywa, v=6, r2=0.03 * s)
+    for nazwa, (x, y) in (("lp", (-0.14, -0.4)), ("pp", (0.14, -0.4)), ("lt", (-0.14, 0.48)), ("pt", (0.14, 0.48))):
+        with Grupa("kon_noga_" + nazwa, (x * s, y * s, 0.9 * s)):
+            walec((x * s, y * s, 0.5 * s), (x * s, y * s, 0.92 * s), 0.07 * s, kolor, v=6, r2=0.055 * s)   # udo
+            walec((x * s, y * s, 0.06 * s), (x * s, y * s, 0.5 * s), 0.045 * s, kolor, v=6)              # nadpęcie
+            cyl(x * s, y * s, 0.2 * s, 0.05 * s, 0.06 * s, tuple(int(c * 0.8) for c in kolor), v=6)     # staw
+            cyl(x * s, y * s, 0, 0.062 * s, 0.08 * s, CZARNY, v=6)                                     # kopyto
+    with Grupa("kon_glowa", (0, -0.42 * s, 1.12 * s)):
+        walec((0, -0.42 * s, 1.08 * s), (0, -0.68 * s, 1.52 * s), 0.14 * s, kolor, v=8, r2=0.1 * s)
+        walec((0, -0.66 * s, 1.6 * s), (0, -0.98 * s, 1.38 * s), 0.1 * s, kolor, v=8, r2=0.07 * s)
+        kula(0, -0.7 * s, 1.58 * s, 0.11 * s, kolor, seg=8, ringi=6)
+        kula(0, -0.98 * s, 1.37 * s, 0.07 * s, tuple(int(c * 0.75) for c in kolor), seg=6, ringi=4)  # chrapy
+        for sx in (-1, 1):
+            stozek(sx * 0.05 * s, -0.66 * s, 1.66 * s, 0.03 * s, 0.0, 0.1 * s, kolor, v=4)
+            kula(sx * 0.075 * s, -0.8 * s, 1.55 * s, 0.018 * s, CZARNY, seg=4, ringi=3)
+        belka((0, -0.38 * s, 1.25 * s), (0, -0.66 * s, 1.7 * s), 0.05 * s, 0.1 * s, grzywa)
+        torus(0, -0.86 * s, 1.47 * s, 0.075 * s, 0.012 * s, (60, 40, 30), seg=8, mseg=3, rot=(0.9, 0, 0))  # uzda
+        walec((0, -0.95 * s, 1.42 * s), (0, -0.25 * s, 1.35 * s), 0.008 * s, (60, 40, 30), v=3)    # wodze
+    with Grupa("kon_ogon", (0, 0.62 * s, 1.15 * s)):
+        walec((0, 0.62 * s, 1.15 * s), (0, 0.8 * s, 0.6 * s), 0.06 * s, grzywa, v=6, r2=0.03 * s)
     box(0, 0.05 * s, 1.18 * s, 0.62 * s, 0.55 * s, 0.14 * s, czaprak)
     box(0, 0.05 * s, 1.17 * s, 0.64 * s, 0.57 * s, 0.03 * s, ZLOTO)
-    walec((0, -0.95 * s, 1.42 * s), (0, -0.25 * s, 1.35 * s), 0.008 * s, (60, 40, 30), v=3)   # wodze
+    for sx in (-1, 1):                                                        # strzemiona-pętle i frędzle czapraka
+        for k in range(4):
+            box(sx * 0.32 * s, (-0.15 + k * 0.1) * s, 1.06 * s, 0.015 * s, 0.03 * s, 0.08 * s, ZLOTO)
 
 
 def m_jezdziec(p, kol_konia, czaprak):
     kon(kol_konia, czaprak=czaprak)
-    wstaw(m_postac, z=0.55, y=0.08, a=(p, 0.0, 0.0, False, True))
+    with Grupa("jezdziec", (0, 0.08, 1.2)):                                  # jeździec kołysze się w siodle
+        wstaw(m_postac, z=0.55, y=0.08, a=(p, 0.0, 0.0, False, True))
 
 
 def m_ekwita():
@@ -2243,18 +2273,26 @@ def m_slon():
     """Słoń bojowy z wieżyczką i kornakiem (jedna bryła), frontem na -Y."""
     SL = (136, 130, 128)
     kula(0, 0.1, 1.3, 0.6, SL, seg=14, ringi=9, skala=(0.85, 1.3, 0.85))
-    for (x, y) in [(-0.3, -0.35), (0.3, -0.35), (-0.3, 0.55), (0.3, 0.55)]:
-        cyl(x, y, 0.0, 0.17, 1.05, SL, v=8)
-        cyl(x, y, 0.0, 0.18, 0.06, (200, 196, 186), v=8)
+    for nazwa, (x, y) in (("lp", (-0.3, -0.35)), ("pp", (0.3, -0.35)), ("lt", (-0.3, 0.55)), ("pt", (0.3, 0.55))):
+        with Grupa("slon_noga_" + nazwa, (x, y, 1.0)):
+            cyl(x, y, 0.0, 0.17, 1.05, SL, v=8)
+            cyl(x, y, 0.0, 0.18, 0.06, (200, 196, 186), v=8)
+            for k in range(3):                                                # paznokcie
+                kula(x - 0.08 + k * 0.08, y - 0.16, 0.05, 0.035, (220, 214, 200), seg=5, ringi=3)
     kula(0, -0.75, 1.6, 0.36, SL, seg=12, ringi=8, skala=(0.95, 0.9, 1.05))
     for s in (-1, 1):                                                         # uszy
-        kula(s * 0.36, -0.62, 1.6, 0.32, (124, 118, 116), seg=10, ringi=6, skala=(0.25, 0.8, 1.0))
+        with Grupa("slon_ucho_" + ("l" if s < 0 else "p"), (s * 0.3, -0.7, 1.62)):
+            kula(s * 0.36, -0.62, 1.6, 0.32, (124, 118, 116), seg=10, ringi=6, skala=(0.25, 0.8, 1.0))
         kula(s * 0.16, -1.05, 1.68, 0.03, CZARNY, seg=4, ringi=3)
         walec((s * 0.14, -1.0, 1.35), (s * 0.18, -1.32, 1.42), 0.045, (246, 240, 224), v=6, r2=0.012)  # ciosy
     pkt = [(0, -1.02, 1.5), (0, -1.15, 1.2), (0, -1.18, 0.85), (0, -1.1, 0.55), (0, -1.2, 0.35)]
-    for i, (a, b) in enumerate(zip(pkt, pkt[1:])):                           # trąba
-        walec(a, b, 0.13 - i * 0.022, SL, v=8, r2=0.11 - i * 0.022)
-    walec((0, 0.85, 1.35), (0, 1.0, 0.8), 0.04, SL, v=5, r2=0.015)            # ogon
+    with Grupa("slon_traba", (0, -1.02, 1.5)):
+        for i, (a, b) in enumerate(zip(pkt, pkt[1:])):                       # trąba
+            walec(a, b, 0.13 - i * 0.022, SL, v=8, r2=0.11 - i * 0.022)
+            cyl(b[0], b[1], b[2] - 0.02, 0.115 - i * 0.022, 0.03, (120, 114, 112), v=8)   # fałdy skóry
+    with Grupa("slon_ogon", (0, 0.85, 1.35)):
+        walec((0, 0.85, 1.35), (0, 1.0, 0.8), 0.04, SL, v=5, r2=0.015)         # ogon
+        kula(0, 1.0, 0.78, 0.04, CZARNY, seg=5, ringi=3, skala=(1, 1, 1.6))
     box(0, 0.15, 1.72, 1.05, 1.1, 0.12, CZERWIEN)                             # czaprak
     for s in (-1, 1):
         box(s * 0.53, 0.15, 1.1, 0.04, 0.95, 0.65, CZERWIEN)

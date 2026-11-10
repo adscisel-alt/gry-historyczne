@@ -46,6 +46,12 @@ Układ: **1 pole mapy = 2 m** (Godot: 2 jednostki), model stoi na z=0, środek p
   `ui/budynek_<nazwa>.png` 128×128 (ikona budynku w 3/4), `ui/tlo_tytul.png` 1280×720 (panorama Forum Romanum o zachodzie),
   `ui/tlo_bitwy.png` 1280×720 (pole bitwy, bez wojsk).
 
+## Animacja postaci
+
+- Części: `noga_l/p`, `reka_l/p`, `glowa`, `peleryna` (postać, `CZESCI` w Blenderze); `kon_noga_lp/pp/lt/pt`, `kon_glowa`,
+  `kon_ogon`, `jezdziec`; `slon_noga_*`, `slon_traba`, `slon_ucho_l/p`, `slon_ogon` (`CZESCI_RUCHOME`, nie są łączone).
+- Godot: `animuj_postac(węzeł, "stoi"|"idzie"|"atak", faza, postęp_ataku)` w `gra.gd`.
+
 ## Ożywione budynki
 
 - Detale i ruchome części dodaje `ZYCIE[nazwa]()` po `m_<nazwa>()`; `eksportuj()` nie łączy obiektów `anim_*`.

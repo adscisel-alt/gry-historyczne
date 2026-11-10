@@ -2524,10 +2524,10 @@ func _animuj(dt: float) -> void:
 			n.look_at(Vector3(cel.x, n.position.y, cel.z), Vector3.UP, true)
 		for u in n.get_children():
 			if u is Node3D and u.name != "etykieta":
-				_krok(u, t * 7.0 + u.position.x, 0.5 if idzie else 0.12)
+				animuj_postac(u, "idzie" if idzie else "stoi", t * 7.0 + u.position.x)
 	for p in _postacie:
 		if is_instance_valid(p):
-			_krok(p, t * 2.0, 0.08)
+			animuj_postac(p, "stoi", t)
 	for s in _statki:
 		var st: Vector3 = s.get_meta("start")
 		var f: float = s.get_meta("faza")
@@ -2541,14 +2541,103 @@ func _animuj(dt: float) -> void:
 		pass
 
 
+# ----------------------------------------------------------------- animacja postaci i jednostek
+# Części z Blendera: noga_l/p, reka_l/p, glowa, peleryna (piechota i postacie); kon_noga_lp/pp/lt/pt, kon_glowa,
+# kon_ogon, jezdziec (jazda); slon_noga_*, slon_traba, slon_ucho_l/p, slon_ogon (słoń).
+# Stany: „stoi” (oddech, rozglądanie się, peleryna na wietrze), „idzie” (marsz / galop), „atak” (cios mieczem).
+const CZESCI_POSTACI := ["noga_l", "noga_p", "reka_l", "reka_p", "glowa", "peleryna", "kon_noga_lp", "kon_noga_pp",
+	"kon_noga_lt", "kon_noga_pt", "kon_glowa", "kon_ogon", "jezdziec", "slon_noga_lp", "slon_noga_pp", "slon_noga_lt",
+	"slon_noga_pt", "slon_traba", "slon_ucho_l", "slon_ucho_p", "slon_ogon"]
+
+
+func _czesci_postaci(n: Node) -> Dictionary:
+	if n.has_meta("czesci"):
+		return n.get_meta("czesci")
+	var d := {}
+	for c in n.find_children("*", "Node3D", true, false):
+		var nm := String(c.name)
+		if nm in CZESCI_POSTACI:
+			d[nm] = [c, (c as Node3D).transform]
+	n.set_meta("czesci", d)
+	n.set_meta("faza0", randf() * TAU)
+	return d
+
+
+func _obroc(d: Dictionary, k: String, b: Basis, przesun := Vector3.ZERO) -> void:
+	if not d.has(k):
+		return
+	var baza: Transform3D = d[k][1]
+	(d[k][0] as Node3D).transform = Transform3D(baza.basis * b, baza.origin + przesun)
+
+
+func animuj_postac(n: Node, stan: String, faza: float, postep_ataku := 0.0) -> void:
+	## faza – kąt cyklu kroku; postep_ataku 0..1 – przebieg ciosu w stanie „atak”.
+	var d := _czesci_postaci(n)
+	if d.is_empty():
+		return
+	var f0: float = n.get_meta("faza0", 0.0)
+	var ruch := stan == "idzie"
+	var X := Vector3.RIGHT
+	var Y := Vector3.UP
+	var Z := Vector3.BACK
+	# --- piechota i postacie
+	if d.has("noga_l"):
+		var amp := 0.55 if ruch else 0.0
+		_obroc(d, "noga_l", Basis(X, sin(faza) * amp))
+		_obroc(d, "noga_p", Basis(X, -sin(faza) * amp))
+		var oddech := sin(t * 1.6 + f0)
+		if stan == "atak":
+			# zamach i cios: ręka z bronią wznosi się, potem tnie w dół; tarcza wysunięta
+			var k := sin(clampf(postep_ataku, 0.0, 1.0) * PI)
+			var ciecie := -2.0 * k + 0.9 * smoothstep(0.55, 1.0, postep_ataku)
+			_obroc(d, "reka_p", Basis(X, ciecie))
+			_obroc(d, "reka_l", Basis(X, -0.5 * k) * Basis(Z, 0.2 * k))
+		else:
+			var r := -sin(faza) * 0.5 if ruch else oddech * 0.04
+			_obroc(d, "reka_l", Basis(X, -r))
+			_obroc(d, "reka_p", Basis(X, r))
+		# głowa: przy marszu lekkie kiwanie, w spoczynku rozglądanie się
+		if ruch:
+			_obroc(d, "glowa", Basis(X, sin(faza * 2.0) * 0.05))
+		else:
+			var rozglad := sin(t * 0.37 + f0) * 0.45 * smoothstep(0.2, 0.8, absf(sin(t * 0.21 + f0 * 0.5)))
+			_obroc(d, "glowa", Basis(Y, rozglad) * Basis(X, oddech * 0.03))
+		# peleryna: przy marszu rozwiana, w spoczynku faluje na wietrze
+		var pel := (0.28 + sin(faza * 2.0) * 0.08) if ruch else (0.06 + sin(t * 1.9 + f0) * 0.05)
+		_obroc(d, "peleryna", Basis(X, -pel) * Basis(Z, sin(t * 1.3 + f0) * 0.04))
+	# --- koń: galop lub spokojne przestępowanie
+	if d.has("kon_noga_lp"):
+		var g := faza * 1.3
+		var amp_k := 0.6 if ruch else 0.0
+		_obroc(d, "kon_noga_lp", Basis(X, sin(g) * amp_k))
+		_obroc(d, "kon_noga_pp", Basis(X, sin(g + 0.6) * amp_k))
+		_obroc(d, "kon_noga_lt", Basis(X, sin(g + PI) * amp_k))
+		_obroc(d, "kon_noga_pt", Basis(X, sin(g + PI + 0.6) * amp_k))
+		var glowa_k := sin(g * 2.0) * 0.12 if ruch else sin(t * 0.6 + f0) * 0.08 + maxf(0.0, sin(t * 0.17 + f0)) * 0.25
+		_obroc(d, "kon_glowa", Basis(X, glowa_k))
+		_obroc(d, "kon_ogon", Basis(X, 0.15 + sin(t * 2.1 + f0) * 0.1) * Basis(Z, sin(t * 1.4 + f0) * 0.25))
+		_obroc(d, "jezdziec", Basis.IDENTITY, Vector3(0, absf(sin(g)) * 0.07 if ruch else sin(t * 1.6 + f0) * 0.006, 0))
+	# --- słoń: ciężki krok, wachlujące uszy, kołysząca się trąba
+	if d.has("slon_noga_lp"):
+		var g2 := faza * 0.7
+		var amp_s := 0.3 if ruch else 0.0
+		_obroc(d, "slon_noga_lp", Basis(X, sin(g2) * amp_s))
+		_obroc(d, "slon_noga_pt", Basis(X, sin(g2) * amp_s))
+		_obroc(d, "slon_noga_pp", Basis(X, -sin(g2) * amp_s))
+		_obroc(d, "slon_noga_lt", Basis(X, -sin(g2) * amp_s))
+		_obroc(d, "slon_traba", Basis(X, sin(t * 0.9 + f0) * 0.22 - 0.05) * Basis(Z, sin(t * 0.55 + f0) * 0.18))
+		var ucho := 0.15 + sin(t * 1.4 + f0) * 0.22
+		_obroc(d, "slon_ucho_l", Basis(Y, -ucho))
+		_obroc(d, "slon_ucho_p", Basis(Y, ucho))
+		_obroc(d, "slon_ogon", Basis(Z, sin(t * 2.4 + f0) * 0.35))
+	# Damian pisze w kronice (pióro w lewej dłoni)
+	if n.get_meta("postac", "") == "damian" and not ruch and d.has("reka_l"):
+		_obroc(d, "reka_l", Basis(X, -0.35 + sin(t * 7.0) * 0.05) * Basis(Z, sin(t * 3.1) * 0.08))
+
+
 func _krok(n: Node, faza: float, amp: float) -> void:
-	for nazwa in ["noga_l", "noga_p", "reka_l", "reka_p"]:
-		var c := n.find_child(nazwa, true, false)
-		if c is Node3D:
-			var znak := 1.0 if nazwa.ends_with("_l") else -1.0
-			if nazwa.begins_with("reka"):
-				znak = -znak
-			(c as Node3D).rotation.x = sin(faza) * amp * znak
+	## Zgodność wsteczna: marsz (amp > 0.2) albo spoczynek.
+	animuj_postac(n, "idzie" if amp > 0.2 else "stoi", faza)
 
 
 # ===================================================================== wejście
@@ -3011,4 +3100,36 @@ func zrzuty(kat: String) -> void:
 	await _zrzut(kat, "19_budynki_a")
 	await get_tree().create_timer(0.45).timeout
 	await _zrzut(kat, "19_budynki_b")
+	# galeria ruchu postaci i jednostek (marsz, galop, słoń, peleryna, pisanie, cios)
+	var scenka := Node3D.new()
+	scenka.position = POLE_BITWY + Vector3(0, 0, 40)
+	add_child(scenka)
+	var ziemia := MeshInstance3D.new()
+	var pm := PlaneMesh.new()
+	pm.size = Vector2(40, 20)
+	ziemia.mesh = pm
+	ziemia.material_override = _material_terenu()
+	scenka.add_child(ziemia)
+	var obsada := [["legionista", "idzie"], ["ekwita", "idzie"], ["slon", "idzie"], ["cezar", "stoi"], ["damian", "stoi"], ["galijczyk", "atak"], ["hun", "idzie"]]
+	var aktorzy := []
+	for i in obsada.size():
+		var u := instancja(obsada[i][0])
+		u.position = Vector3(-6.0 + i * 2.0, 0, 0)
+		u.rotation.y = -0.5 if obsada[i][1] != "atak" else 0.3
+		if obsada[i][0] == "damian":
+			u.set_meta("postac", "damian")
+		scenka.add_child(u)
+		aktorzy.append([u, obsada[i][1]])
+	scena = "galeria"
+	ui.pokaz_ekran()
+	kamera.position = scenka.position + Vector3(0, 3.0, 12.5)
+	kamera.look_at(scenka.position + Vector3(0, 1.1, 0))
+	ustaw_glebie(11.5, 0.5, true)
+	for klatka in ["20_ruch_a", "20_ruch_b"]:
+		var t0 := t
+		while t - t0 < (0.6 if klatka.ends_with("a") else 0.35):
+			for ak in aktorzy:
+				animuj_postac(ak[0], ak[1], t * 7.0, fmod(t * 1.2, 1.0) if ak[1] == "atak" else 0.0)
+			await get_tree().process_frame
+		await _zrzut(kat, klatka)
 	get_tree().quit()

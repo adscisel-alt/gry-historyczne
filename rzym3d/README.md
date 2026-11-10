@@ -35,6 +35,22 @@ plansza wygląda jak prawdziwa makieta. W bitwie pas ostrości obejmuje oba szyk
   (rozmycie górnego i dolnego pasa), a ekspozycja i gęstość mgły jest dobrana tak, żeby scena
   wyglądała podobnie jak w Forward+.
 
+## Postacie i jednostki – detale i animacje
+
+- **Detale**: pochwa z gladiusem i sztylet (pugio) przy pasie legionistów i pretorianów, sakiewki przy tunikach,
+  złoty łańcuch cesarzy, gęsie pióro kronikarza Damiana, peleryny z obszyciem; koń z uzdą, kopytami, stawami
+  i frędzlami czapraka; słoń z paznokciami i fałdami skóry na trąbie.
+- **Ruchome części** (Blender → Godot): głowa, peleryna, ręce i nogi postaci; nogi, głowa, ogon konia i jeździec;
+  nogi, trąba, uszy i ogon słonia.
+- **Animacje** (`animuj_postac()` w `gra.gd`):
+  - *spoczynek* – oddech, rozglądanie się, peleryna falująca na wietrze, koń skubiący trawę i machający ogonem,
+    słoń wachlujący uszami i kołyszący trąbą, Damian piszący piórem w kronice;
+  - *marsz* – kroki z wymachem rąk, kiwanie głową, rozwiana peleryna; jazda w galopie z jeźdźcem unoszącym się
+    w siodle; ciężki krok słonia;
+  - *atak* (bitwa) – oddziały biegną do starcia, potem zamach i cios mieczem z wysuniętą tarczą.
+
+![Ruch postaci](zrzuty/20_ruch_a.png)
+
 ## Budynki – detale i animacje
 
 Każdy budynek ma dodatkowe detale i „żyje” (`ZYCIE` w `blender/generuj_modele.py`, animacje w `_animuj_budynki()`):

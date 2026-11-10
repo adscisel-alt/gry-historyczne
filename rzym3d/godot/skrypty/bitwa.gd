@@ -392,12 +392,19 @@ func _animuj_starcie(moja: String, wroga: String, w: Dictionary) -> void:
 	z.scale = Vector3.ONE * 1.3
 	scena3d.add_child(z)
 	walczacy.append_array([a, z])
+	for u in [a, z]:
+		u.set_meta("stan", "idzie")
+		u.set_meta("start", t)
 	var tw := create_tween().set_parallel(true)
 	tw.tween_property(a, "position:x", -0.7, 0.6).set_trans(Tween.TRANS_QUAD)
 	tw.tween_property(z, "position:x", 0.7, 0.6).set_trans(Tween.TRANS_QUAD)
 	var tw2 := create_tween()
 	tw2.tween_interval(0.7)
 	tw2.tween_callback(func():
+		for u in [a, z]:
+			if is_instance_valid(u):
+				u.set_meta("stan", "atak")
+				u.set_meta("start", t)
 		g.dzwiek("tarcza")
 		var przegrany: Node3D = z if w.P > w.E else (a if w.E > w.P else null)
 		if przegrany:
@@ -433,7 +440,15 @@ func _process(dt: float) -> void:
 	t += dt
 	for n in moje_wezly + wrogie_wezly:
 		if is_instance_valid(n):
-			g._krok(n, t * 2.0 + n.position.z, 0.1)
+			g.animuj_postac(n, "stoi", t)
+	for n in walczacy:
+		if is_instance_valid(n) and n.has_meta("stan"):
+			var st: String = n.get_meta("stan")
+			var od: float = t - float(n.get_meta("start", t))
+			if st == "atak":
+				g.animuj_postac(n, "atak", 0.0, clampf(od / 0.55, 0.0, 1.0))
+			else:
+				g.animuj_postac(n, st, t * 9.0)
 	if is_instance_valid(g.kamera):
 		g.kamera.global_position = g.POLE_BITWY + Vector3(sin(t * 0.15) * 1.5, 5.5, 15)
 		g.kamera.look_at(g.POLE_BITWY + Vector3(0, 2.3, 0))
