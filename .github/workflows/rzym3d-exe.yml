@@ -3,15 +3,19 @@ name: Roman Empire 3D — zbuduj EXE i wersję web (Godot)
 # Eksportuje grę „Roman Empire — od narodzin przez rozkwit aż po upadek” (Godot 4.3) do pliku EXE
 # dla Windows, uruchamia autotest przejścia 8 rozdziałów i robi
 # zrzuty ekranu z prawdziwego renderowania (Xvfb + Mesa).
+# Wypchnięcie tagu rzym3d-v* dodatkowo publikuje wydanie (Release) z plikiem .exe i wersją przeglądarkową (.zip).
 on:
   push:
+    branches: ["**"]
     paths:
       - "rzym3d/**"
       - ".github/workflows/rzym3d-exe.yml"
+    tags:
+      - "rzym3d-v*"
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 env:
   GODOT_VERSION: "4.3"
@@ -79,3 +83,20 @@ jobs:
         with:
           name: zrzuty-ekranu-3d
           path: zrzuty3d/
+      - name: Paczka wersji przeglądarkowej
+        if: startsWith(github.ref, 'refs/tags/rzym3d-v')
+        run: cd rzym3d/build && zip -qr RomanEmpire3D-przegladarka.zip web
+      - name: Wydanie (tylko dla tagów)
+        if: startsWith(github.ref, 'refs/tags/rzym3d-v')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "Roman Empire — od narodzin przez rozkwit aż po upadek (${{ github.ref_name }})"
+          body: |
+            Kroniki Damiana Ścisła, część III — strategia turowa 3D o starożytnym Rzymie (753 p.n.e. – 476 n.e.).
+
+            - **RomanEmpire3D.exe** — wersja na Windows 10/11 (pobierz i uruchom).
+            - **RomanEmpire3D-przegladarka.zip** — wersja HTML5 do uruchomienia z dowolnego serwera WWW.
+            - Gra w przeglądarce online: https://adscisel-alt.github.io/gry-historyczne/rzym3d/graj/
+          files: |
+            rzym3d/build/RomanEmpire3D.exe
+            rzym3d/build/RomanEmpire3D-przegladarka.zip
