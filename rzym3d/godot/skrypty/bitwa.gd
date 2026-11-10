@@ -396,13 +396,28 @@ func _animuj_starcie(moja: String, wroga: String, w: Dictionary) -> void:
 		u.set_meta("stan", "idzie")
 		u.set_meta("start", t)
 	var tw := create_tween().set_parallel(true)
-	tw.tween_property(a, "position:x", -0.7, 0.6).set_trans(Tween.TRANS_QUAD)
-	tw.tween_property(z, "position:x", 0.7, 0.6).set_trans(Tween.TRANS_QUAD)
+	var balista: bool = g.D.karty[moja].model == "balista"
+	if balista:
+		# balista nie biegnie do starcia: zostaje z tyłu i strzela bełtem w nadbiegającego wroga
+		a.set_meta("balista", true)
+		a.set_meta("stan", "atak")
+		a.position.x = -3.8
+		tw.tween_property(z, "position:x", -1.6, 0.6).set_trans(Tween.TRANS_QUAD)
+		var tb := create_tween()
+		tb.tween_interval(0.12)
+		tb.tween_callback(func():
+			if is_instance_valid(a) and is_instance_valid(scena3d):
+				g.dzwiek("miecz")
+				var start: Vector3 = a.global_position + Vector3(0.9, 1.25, 0)
+				g.lot_belta(scena3d, start, scena3d.global_position + Vector3(-1.6, 1.1, 1.5), 0.45))
+	else:
+		tw.tween_property(a, "position:x", -0.7, 0.6).set_trans(Tween.TRANS_QUAD)
+		tw.tween_property(z, "position:x", 0.7, 0.6).set_trans(Tween.TRANS_QUAD)
 	var tw2 := create_tween()
 	tw2.tween_interval(0.7)
 	tw2.tween_callback(func():
 		for u in [a, z]:
-			if is_instance_valid(u):
+			if is_instance_valid(u) and not u.has_meta("balista"):
 				u.set_meta("stan", "atak")
 				u.set_meta("start", t)
 		g.dzwiek("tarcza")
@@ -410,7 +425,7 @@ func _animuj_starcie(moja: String, wroga: String, w: Dictionary) -> void:
 		if przegrany:
 			var t3 := create_tween()
 			t3.tween_property(przegrany, "rotation:z", (PI / 2.2) * (1 if przegrany == z else -1), 0.4)
-		_pyl_bitwy(Vector3(0, 0.5, 1.5)))
+		_pyl_bitwy(Vector3(-1.6 if balista else 0.0, 0.5, 1.5)))
 
 
 func _pyl_bitwy(poz: Vector3) -> void:
@@ -446,7 +461,8 @@ func _process(dt: float) -> void:
 			var st: String = n.get_meta("stan")
 			var od: float = t - float(n.get_meta("start", t))
 			if st == "atak":
-				g.animuj_postac(n, "atak", 0.0, clampf(od / 0.55, 0.0, 1.0))
+				var dl := 2.2 if n.has_meta("balista") else 0.55
+				g.animuj_postac(n, "atak", 0.0, clampf(od / dl, 0.0, 1.0))
 			else:
 				g.animuj_postac(n, st, t * 9.0)
 	if is_instance_valid(g.kamera):

@@ -2547,7 +2547,8 @@ func _animuj(dt: float) -> void:
 # Stany: „stoi” (oddech, rozglądanie się, peleryna na wietrze), „idzie” (marsz / galop), „atak” (cios mieczem).
 const CZESCI_POSTACI := ["noga_l", "noga_p", "reka_l", "reka_p", "glowa", "peleryna", "kon_noga_lp", "kon_noga_pp",
 	"kon_noga_lt", "kon_noga_pt", "kon_glowa", "kon_ogon", "jezdziec", "slon_noga_lp", "slon_noga_pp", "slon_noga_lt",
-	"slon_noga_pt", "slon_traba", "slon_ucho_l", "slon_ucho_p", "slon_ogon"]
+	"slon_noga_pt", "slon_traba", "slon_ucho_l", "slon_ucho_p", "slon_ogon", "balista_ramie_l", "balista_ramie_p",
+	"balista_suwak", "balista_belt", "balista_kolowrot"]
 
 
 func _czesci_postaci(n: Node) -> Dictionary:
@@ -2630,9 +2631,131 @@ func animuj_postac(n: Node, stan: String, faza: float, postep_ataku := 0.0) -> v
 		_obroc(d, "slon_ucho_l", Basis(Y, -ucho))
 		_obroc(d, "slon_ucho_p", Basis(Y, ucho))
 		_obroc(d, "slon_ogon", Basis(Z, sin(t * 2.4 + f0) * 0.35))
+	# balista: naciągnięta w spoczynku; w ataku strzał, przeładowanie (suwak, kołowrót, cięciwy)
+	if d.has("balista_ramie_l"):
+		_animuj_baliste(n, d, stan, postep_ataku)
 	# Damian pisze w kronice (pióro w lewej dłoni)
 	if n.get_meta("postac", "") == "damian" and not ruch and d.has("reka_l"):
 		_obroc(d, "reka_l", Basis(X, -0.35 + sin(t * 7.0) * 0.05) * Basis(Z, sin(t * 3.1) * 0.08))
+
+
+# ----------------------------------------------------------------- balista
+const BALISTA_KONIEC := Vector3(0.33, 0.0, -0.23)   # koniec ramienia względem osi wiązki (prawe; lewe – lustrzane)
+const BALISTA_ZWOLNIONA := 0.75                      # kąt ramion po strzale (rad)
+
+
+func _koniec_ramienia(d: Dictionary, k: String, kat: float) -> Vector3:
+	var baza: Transform3D = d[k][1]
+	var znak := -1.0 if k.ends_with("_l") else 1.0
+	return baza.origin + Basis(Vector3.UP, kat) * Vector3(BALISTA_KONIEC.x * znak, 0, BALISTA_KONIEC.z)
+
+
+func _animuj_baliste(n: Node, d: Dictionary, stan: String, p: float) -> void:
+	## Przebieg strzału (p 0..1): zwolnienie ramion (0–0.08), suwak jedzie po cięciwę (0.08–0.35),
+	## kołowrót ciągnie suwak z cięciwą i napina ramiona (0.35–0.95), nowy bełt na łożu (> 0.95).
+	var nap := 1.0
+	var wys := 0.0
+	var belt := true
+	var kolo := 0.0
+	if stan == "atak":
+		if p < 0.08:
+			nap = 1.0 - p / 0.08
+			belt = p < 0.01
+		elif p < 0.35:
+			nap = 0.0
+			wys = (p - 0.08) / 0.27
+			belt = false
+		elif p < 0.95:
+			var q := (p - 0.35) / 0.6
+			nap = q
+			wys = 1.0 - q
+			belt = false
+			kolo = q * TAU * 3.0
+	var kat := lerpf(BALISTA_ZWOLNIONA, 0.0, nap)
+	# lewe ramię obraca się o +kąt, prawe o –kąt: końce wychylają się do przodu (+Z) i na zewnątrz
+	_obroc(d, "balista_ramie_l", Basis(Vector3.UP, kat))
+	_obroc(d, "balista_ramie_p", Basis(Vector3.UP, -kat))
+	var tl := _koniec_ramienia(d, "balista_ramie_l", kat)
+	var tp := _koniec_ramienia(d, "balista_ramie_p", -kat)
+	var srodek_zwolniony := (_koniec_ramienia(d, "balista_ramie_l", BALISTA_ZWOLNIONA) + _koniec_ramienia(d, "balista_ramie_p", -BALISTA_ZWOLNIONA)) / 2.0
+	var zaczep: Vector3 = (d["balista_suwak"][1] as Transform3D).origin
+	var przes := Vector3(0, 0, wys * (srodek_zwolniony.z - zaczep.z))
+	_obroc(d, "balista_suwak", Basis.IDENTITY, przes)
+	_obroc(d, "balista_belt", Basis.IDENTITY, przes)
+	(d["balista_belt"][0] as Node3D).visible = belt
+	_obroc(d, "balista_kolowrot", Basis(Vector3.RIGHT, kolo))
+	# cięciwa: od końców ramion do zaczepu (naciągnięta) albo prosto między ramionami (po strzale)
+	var sr := ((tl + tp) / 2.0).lerp(zaczep + przes, nap)
+	var linki: Array = n.get_meta("cieciwy", [])
+	if linki.is_empty():
+		var korzen: Node3D = (d["balista_suwak"][0] as Node3D).get_parent()
+		var m := StandardMaterial3D.new()
+		m.albedo_color = Color(0.88, 0.84, 0.72)
+		for i in 2:
+			var mi := MeshInstance3D.new()
+			var cm := CylinderMesh.new()
+			cm.top_radius = 0.009
+			cm.bottom_radius = 0.009
+			cm.height = 1.0
+			cm.radial_segments = 4
+			cm.rings = 1
+			mi.mesh = cm
+			mi.material_override = m
+			korzen.add_child(mi)
+			linki.append(mi)
+		n.set_meta("cieciwy", linki)
+	_linka(linki[0], tl, sr)
+	_linka(linki[1], tp, sr)
+
+
+func _linka(mi: MeshInstance3D, a: Vector3, b: Vector3) -> void:
+	var y := b - a
+	if y.length() < 0.001:
+		return
+	var x := y.cross(Vector3.UP if absf(y.normalized().y) < 0.9 else Vector3.RIGHT).normalized()
+	var z := x.cross(y.normalized())
+	mi.transform = Transform3D(Basis(x, y, z), (a + b) / 2.0)
+
+
+func lot_belta(rodzic: Node3D, skad: Vector3, dokad: Vector3, czas := 0.4) -> void:
+	## Bełt z balisty leci łukiem do celu, przy trafieniu wzbija kurz.
+	var b := Node3D.new()
+	var drzewce := MeshInstance3D.new()
+	var cm := CylinderMesh.new()
+	cm.top_radius = 0.018
+	cm.bottom_radius = 0.018
+	cm.height = 1.1
+	drzewce.mesh = cm
+	drzewce.rotation.x = PI / 2
+	var md := StandardMaterial3D.new()
+	md.albedo_color = Color(0.72, 0.55, 0.34)
+	drzewce.material_override = md
+	b.add_child(drzewce)
+	var grot := MeshInstance3D.new()
+	var gm := CylinderMesh.new()
+	gm.top_radius = 0.0
+	gm.bottom_radius = 0.04
+	gm.height = 0.14
+	grot.mesh = gm
+	grot.rotation.x = -PI / 2
+	grot.position.z = -0.6
+	var mg := StandardMaterial3D.new()
+	mg.albedo_color = Color(0.7, 0.72, 0.76)
+	mg.metallic = 0.6
+	grot.material_override = mg
+	b.add_child(grot)
+	rodzic.add_child(b)
+	b.global_position = skad
+	var tw := b.create_tween()
+	tw.tween_method(func(u: float):
+		var p := skad.lerp(dokad, u) + Vector3.UP * sin(u * PI) * 0.6
+		var nast := skad.lerp(dokad, minf(u + 0.05, 1.0)) + Vector3.UP * sin(minf(u + 0.05, 1.0) * PI) * 0.6
+		b.global_position = p
+		if nast.distance_to(p) > 0.001:
+			b.look_at(nast, Vector3.UP), 0.0, 1.0, czas)
+	tw.tween_callback(func():
+		dzwiek("tarcza")
+		b.queue_free())
 
 
 func _krok(n: Node, faza: float, amp: float) -> void:
@@ -3030,8 +3153,13 @@ func zrzuty(kat: String) -> void:
 	bitwa.pomin_pytanie(true)
 	await get_tree().create_timer(0.8).timeout
 	await _zrzut(kat, "12_bitwa_karty")
+	bitwa.reka[0] = "balista"
+	Engine.time_scale = 0.1          # zwolnione tempo, żeby złapać bełt w locie
 	bitwa.zagraj(0)
-	await get_tree().create_timer(1.4).timeout
+	await get_tree().create_timer(0.3).timeout
+	await _zrzut(kat, "13b_bitwa_belt")
+	Engine.time_scale = 1.0
+	await get_tree().create_timer(1.0).timeout
 	await _zrzut(kat, "13_bitwa_starcie")
 	bitwa.zakoncz()
 	rozpocznij_rozdzial(3, [{"imie": "Ala", "rod": 0}, {"imie": "Kuba", "rod": 1}, {"imie": "Ola", "rod": 2}], "hotseat", 1)
@@ -3110,11 +3238,11 @@ func zrzuty(kat: String) -> void:
 	ziemia.mesh = pm
 	ziemia.material_override = _material_terenu()
 	scenka.add_child(ziemia)
-	var obsada := [["legionista", "idzie"], ["ekwita", "idzie"], ["slon", "idzie"], ["cezar", "stoi"], ["damian", "stoi"], ["galijczyk", "atak"], ["hun", "idzie"]]
+	var obsada := [["legionista", "idzie"], ["ekwita", "idzie"], ["slon", "idzie"], ["cezar", "stoi"], ["damian", "stoi"], ["galijczyk", "atak"], ["hun", "idzie"], ["balista", "atak"]]
 	var aktorzy := []
 	for i in obsada.size():
 		var u := instancja(obsada[i][0])
-		u.position = Vector3(-6.0 + i * 2.0, 0, 0)
+		u.position = Vector3(-6.3 + i * 1.8, 0, 0)
 		u.rotation.y = -0.5 if obsada[i][1] != "atak" else 0.3
 		if obsada[i][0] == "damian":
 			u.set_meta("postac", "damian")
@@ -3125,11 +3253,25 @@ func zrzuty(kat: String) -> void:
 	kamera.position = scenka.position + Vector3(0, 3.0, 12.5)
 	kamera.look_at(scenka.position + Vector3(0, 1.1, 0))
 	ustaw_glebie(11.5, 0.5, true)
-	for klatka in ["20_ruch_a", "20_ruch_b"]:
+	for klatka in ["20_ruch_a", "20_ruch_b", "20_ruch_c"]:
 		var t0 := t
-		while t - t0 < (0.6 if klatka.ends_with("a") else 0.35):
+		while t - t0 < {"20_ruch_a": 0.6, "20_ruch_b": 0.35, "20_ruch_c": 0.9}[klatka]:
 			for ak in aktorzy:
-				animuj_postac(ak[0], ak[1], t * 7.0, fmod(t * 1.2, 1.0) if ak[1] == "atak" else 0.0)
+				var cykl := fmod(t * 0.45, 1.0) if ak[0].name.begins_with("balista") or ak[0].has_node("balista_suwak") else fmod(t * 1.2, 1.0)
+				animuj_postac(ak[0], ak[1], t * 7.0, cykl if ak[1] == "atak" else 0.0)
 			await get_tree().process_frame
 		await _zrzut(kat, klatka)
+	# balista z bliska w czterech fazach: naciągnięta, po strzale, suwak po cięciwę, przeładowanie
+	var bal := instancja("balista")
+	bal.position = Vector3(0, 0, 0)
+	bal.rotation.y = -0.9
+	scenka.add_child(bal)
+	for ak in aktorzy:
+		ak[0].visible = false
+	kamera.position = scenka.position + Vector3(2.6, 2.3, 3.4)
+	kamera.look_at(scenka.position + Vector3(0, 0.75, 0))
+	ustaw_glebie(4.8, 0.5, true)
+	for faza in [["21_balista_1_naciagnieta", "stoi", 0.0], ["21_balista_2_strzal", "atak", 0.06], ["21_balista_3_suwak", "atak", 0.3], ["21_balista_4_przeladowanie", "atak", 0.7]]:
+		animuj_postac(bal, faza[1], 0.0, faza[2])
+		await _zrzut(kat, faza[0])
 	get_tree().quit()

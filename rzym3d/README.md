@@ -49,7 +49,13 @@ plansza wygląda jak prawdziwa makieta. W bitwie pas ostrości obejmuje oba szyk
     w siodle; ciężki krok słonia;
   - *atak* (bitwa) – oddziały biegną do starcia, potem zamach i cios mieczem z wysuniętą tarczą.
 
+- **Balista** (skorpion) ma ruchome ramiona w wiązkach ścięgien, suwak z zaczepem, bełt i kołowrót z korbami;
+  cięciwy gra liczy w każdej klatce między końcami ramion a zaczepem. W bitwie balista nie biegnie do starcia –
+  zostaje z tyłu: ramiona strzelają do przodu, bełt leci łukiem w nadbiegającego wroga, potem suwak jedzie
+  po cięciwę, kołowrót ściąga ją z powrotem, ramiona się napinają i na łożu pojawia się nowy bełt.
+
 ![Ruch postaci](zrzuty/20_ruch_a.png)
+![Balista – bełt w locie](zrzuty/13b_bitwa_belt.png)
 
 ## Budynki – detale i animacje
 

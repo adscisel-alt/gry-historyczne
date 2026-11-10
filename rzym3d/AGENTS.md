@@ -52,6 +52,9 @@ Układ: **1 pole mapy = 2 m** (Godot: 2 jednostki), model stoi na z=0, środek p
   `kon_ogon`, `jezdziec`; `slon_noga_*`, `slon_traba`, `slon_ucho_l/p`, `slon_ogon` (`CZESCI_RUCHOME`, nie są łączone).
 - Godot: `animuj_postac(węzeł, "stoi"|"idzie"|"atak", faza, postęp_ataku)` w `gra.gd`.
 
+- Balista: części `balista_ramie_l/p`, `balista_suwak`, `balista_belt`, `balista_kolowrot`; cykl strzału w `_animuj_baliste()`,
+  lot bełtu `lot_belta()`; w bitwie (`bitwa.gd`, `_animuj_starcie`) balista strzela z miejsca.
+
 ## Ożywione budynki
 
 - Detale i ruchome części dodaje `ZYCIE[nazwa]()` po `m_<nazwa>()`; `eksportuj()` nie łączy obiektów `anim_*`.

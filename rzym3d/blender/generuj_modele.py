@@ -408,7 +408,7 @@ def zapisz_glb(nazwa):
     print("model:", nazwa)
 
 
-CZESCI_RUCHOME = ("anim_", "kon_", "slon_", "jezdziec")
+CZESCI_RUCHOME = ("anim_", "kon_", "slon_", "jezdziec", "balista_")
 
 
 def eksportuj(nazwa):
@@ -2317,23 +2317,48 @@ def m_slon():
 
 
 def m_balista():
-    """Balista (skorpion) na trójnogu."""
+    """Balista (skorpion) na trójnogu, naciągnięta i gotowa do strzału. Ruchome części (Godot):
+    balista_ramie_l/p (ramiona w wiązkach ścięgien), balista_suwak (suwak z zaczepem), balista_belt (bełt),
+    balista_kolowrot (kołowrót z korbami). Cięciwy rysuje gra między końcami ramion a zaczepem."""
     for a in (0.0, 2.1, 4.2):
         belka((0, 0, 0.7), (0.5 * math.sin(a), -0.5 * math.cos(a) + 0.1, 0.0), 0.06, 0.06, DREWNO_C)
+        kula(0.5 * math.sin(a), -0.5 * math.cos(a) + 0.1, 0.02, 0.05, BRAZ_C, seg=5, ringi=3, metal=0.3)   # okucia stóp
     cyl(0, 0.0, 0.62, 0.08, 0.16, DREWNO, v=8)
-    box(0, 0.05, 0.78, 0.14, 1.3, 0.1, DREWNO_J, rot=(0.12, 0, 0))            # łoże
+    box(0, 0.05, 0.78, 0.14, 1.3, 0.1, DREWNO_J)                              # łoże
+    for s_ in (-1, 1):
+        box(s_ * 0.075, 0.05, 0.85, 0.02, 1.25, 0.04, DREWNO_C)               # prowadnice suwaka
+        for k in range(5):                                                    # zapadki (zębatka)
+            box(s_ * 0.085, 0.1 + k * 0.1, 0.89, 0.025, 0.03, 0.03, BRAZ, metal=0.5)
     box(0, -0.48, 0.82, 0.6, 0.14, 0.4, DREWNO)                               # rama skrętna
-    for s in (-1, 1):
-        cyl(s * 0.17, -0.48, 0.78, 0.07, 0.5, (90, 66, 40), v=8)              # wiązki ścięgien
-        cyl(s * 0.17, -0.48, 1.24, 0.09, 0.05, BRAZ, v=8, metal=0.5)
-        cyl(s * 0.17, -0.48, 0.74, 0.09, 0.05, BRAZ, v=8, metal=0.5)
-        belka((s * 0.17, -0.48, 1.0), (s * 0.5, -0.25, 1.0), 0.05, 0.05, DREWNO_C)   # ramiona
-    walec((-0.5, -0.25, 1.0), (0, 0.32, 0.95), 0.008, (220, 210, 180), v=3)  # cięciwa
-    walec((0.5, -0.25, 1.0), (0, 0.32, 0.95), 0.008, (220, 210, 180), v=3)
-    walec((0, 0.32, 0.92), (0, -0.85, 0.97), 0.015, DREWNO_J, v=5)           # bełt
-    stozek(0, -0.85, 0.97, 0.03, 0, 0.12, STAL, v=4, rot=(math.pi / 2, 0, 0))
-    walec_lezacy(0, 0.6, 0.86, 0.06, 0.3, DREWNO, os_="x", v=8)              # kołowrót
+    for s_ in (-1, 1):
+        cyl(s_ * 0.17, -0.48, 0.78, 0.07, 0.5, (90, 66, 40), v=8)              # wiązki ścięgien
+        cyl(s_ * 0.17, -0.48, 1.24, 0.09, 0.05, BRAZ, v=8, metal=0.5)
+        cyl(s_ * 0.17, -0.48, 0.74, 0.09, 0.05, BRAZ, v=8, metal=0.5)
+        for z in (0.82, 1.18):                                                # klucze napinające
+            box(s_ * 0.17, -0.48, z + 0.03, 0.2, 0.025, 0.025, BRAZ_C, metal=0.4)
+        with Grupa("balista_ramie_" + ("l" if s_ < 0 else "p"), (s_ * 0.17, -0.48, 1.0)):
+            belka((s_ * 0.17, -0.48, 1.0), (s_ * 0.5, -0.25, 1.0), 0.05, 0.05, DREWNO_C)
+            cyl(s_ * 0.5, -0.25, 0.97, 0.03, 0.06, BRAZ, v=6, metal=0.5)        # okucie końca ramienia
+    with Grupa("balista_suwak", (0, 0.32, 0.93)):                           # suwak z zaczepem
+        box(0, 0.36, 0.86, 0.13, 0.16, 0.06, DREWNO)
+        box(0, 0.3, 0.92, 0.05, 0.04, 0.06, BRAZ, metal=0.5)
+        walec((0, 0.44, 0.9), (0, 0.6, 0.88), 0.012, (200, 180, 140), v=4)     # lina do kołowrotu
+    with Grupa("balista_belt", (0, 0.32, 0.95)):                            # bełt
+        walec((0, 0.3, 0.95), (0, -0.85, 0.97), 0.015, DREWNO_J, v=5)
+        stozek(0, -0.85, 0.97, 0.03, 0, 0.12, STAL, v=4, rot=(math.pi / 2, 0, 0))
+        for k in range(3):                                                    # lotki
+            a = k * 2 * math.pi / 3
+            box(0.025 * math.cos(a), 0.22, 0.95 + 0.025 * math.sin(a), 0.01, 0.12, 0.04, BIEL, rot=(0, a, 0))
+    with Grupa("balista_kolowrot", (0, 0.6, 0.86)):                         # kołowrót z korbami
+        walec_lezacy(0, 0.6, 0.86, 0.06, 0.3, DREWNO, os_="x", v=8)
+        for sx in (-1, 1):
+            box(sx * 0.17, 0.6, 0.86, 0.03, 0.03, 0.24, DREWNO_C)
+            box(sx * 0.17, 0.6, 0.86, 0.03, 0.24, 0.03, DREWNO_C)
     box(0, -0.56, 0.82, 0.62, 0.02, 0.4, BRAZ_C, metal=0.3)                  # tarcza ochronna
+    box(0, -0.575, 0.97, 0.06, 0.02, 0.08, OTWOR)                            # okienko celownicze
+    cyl(0.35, 0.35, 0.0, 0.1, 0.25, STRZECHA_C, v=8)                          # kosz z zapasowymi bełtami
+    for k in range(4):
+        walec((0.32 + k * 0.02, 0.33, 0.1), (0.3 + k * 0.025, 0.36, 0.48), 0.01, DREWNO_J, v=4)
 
 
 # ================================================================= INNE
