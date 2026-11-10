@@ -1502,9 +1502,10 @@ func wysokosc(x: int, y: int) -> float:
 	var c := teren(x, y)
 	if c == "":
 		return 0.0
-	if c in WZGORZA:
-		return wys_punkt((x + 0.5) * T, (y + 0.5) * T)
-	return float(D.teren[c].h)
+	var h := teren_h((x + 0.5) * T, (y + 0.5) * T)
+	if _woda(c):
+		return maxf(h, POZIOM_WODY - 0.22)      # brodzenie przez rzekę zamiast chodzenia po dnie
+	return h
 
 
 # ----------------------------------------------------------------- rzeźba wzgórz
@@ -1643,10 +1644,13 @@ func zbuduj_swiat() -> void:
 	_animuj_nowe = true
 
 
-const POZIOM_WODY := -0.18     # lustro wody (ląd ma 0, plaża -0.05, stopa skarpy brzegu -0.3)
-const STOPA_BRZEGU := -0.3
-const PODZIAL_WODY := 4         # siatka dna i wody: 4 × 4 na pole
-var _dno_cache := {}
+const POZIOM_WODY := -0.34     # lustro wody (ląd ma 0) – brzeg łagodnie schodzi do niego pasem piasku i mułu
+const DNO_RZEKI := -1.0
+const DNO_MORZA := -1.7
+const RES := 4                  # siatka terenu i wody: 4 × 4 komórki na pole (0,5 m)
+var _h_siatka := PackedFloat32Array()     # wysokości wierzchołków (N*RES+1)^2
+var _w_siatka := PackedFloat32Array()     # rozmyta maska wody w wierzchołkach (0 ląd … 1 głęboka woda)
+var _siatka_mapa := ""
 var woda_mat: ShaderMaterial
 
 
@@ -1654,94 +1658,183 @@ func _woda(c: String) -> bool:
 	return c == "~" or c == "m"
 
 
-func _odl_do_ladu(px: float, pz: float) -> float:
-	## Odległość punktu (współrzędne świata) od najbliższego pola lądu (w metrach).
-	var tx := int(floor(px / T))
-	var tz := int(floor(pz / T))
-	var najl := 99.0
-	for dz in range(-3, 4):
-		for dx in range(-3, 4):
-			var c := teren(tx + dx, tz + dz)
-			if c == "" or _woda(c):
-				continue
-			var x0 := (tx + dx) * T
-			var z0 := (tz + dz) * T
-			var ox := maxf(maxf(x0 - px, px - (x0 + T)), 0.0)
-			var oz := maxf(maxf(z0 - pz, pz - (z0 + T)), 0.0)
-			najl = minf(najl, sqrt(ox * ox + oz * oz))
-	return najl
+# ----------------------------------------------------------------- teren: jedna siatka z rozmytą maską wody
+# Linia brzegu nie idzie po granicach pól: maska wody (komórki 0,5 m) jest rozmywana (3 × box blur ≈ gauss
+# σ ≈ 1,7 m), a z niej liczone są wysokość (łagodny stok brzegu → lustro wody → dno), pas piasku i mułu
+# po obu stronach oraz głębokość wody. Brzeg to izolinia maski – gładka krzywa zamiast schodków.
+func _rozmyj(m: PackedFloat32Array, w: int, h: int, r: int, przejscia: int) -> PackedFloat32Array:
+	var a := m.duplicate()
+	var b := PackedFloat32Array()
+	b.resize(w * h)
+	for _p in przejscia:
+		for y in h:                      # poziomo (brzegi mapy: wartość skrajna)
+			var suma := 0.0
+			for k in range(-r, r + 1):
+				suma += a[y * w + clampi(k, 0, w - 1)]
+			for x in w:
+				b[y * w + x] = suma / (2 * r + 1)
+				suma += a[y * w + clampi(x + r + 1, 0, w - 1)] - a[y * w + clampi(x - r, 0, w - 1)]
+		for x in w:                      # pionowo
+			var suma := 0.0
+			for k in range(-r, r + 1):
+				suma += b[clampi(k, 0, h - 1) * w + x]
+			for y in h:
+				a[y * w + x] = suma / (2 * r + 1)
+				suma += b[clampi(y + r + 1, 0, h - 1) * w + x] - b[clampi(y - r, 0, h - 1) * w + x]
+	return a
 
 
-func _dno(px: float, pz: float, morze: bool) -> float:
-	## Wysokość dna w punkcie: przy brzegu płytko (stopa skarpy), dalej coraz głębiej.
-	var klucz := Vector3i(int(round(px * 8)), int(round(pz * 8)), 1 if morze else 0)
-	if _dno_cache.has(klucz):
-		return _dno_cache[klucz]
-	var d := _odl_do_ladu(px, pz)
-	var h: float
-	if morze:
-		h = STOPA_BRZEGU - smoothstep(0.0, 5.0, d) * 1.25
-	else:
-		h = STOPA_BRZEGU - smoothstep(0.0, 1.5, d) * 0.7
-	_dno_cache[klucz] = h
-	return h
+func _przygotuj_teren() -> void:
+	## Liczy siatkę wysokości i maskę wody (raz na mapę). Używana przez wysokosc(), teren_h(), wodę i dekoracje.
+	if _siatka_mapa == mapa_hash and _h_siatka.size() > 0:
+		return
+	_siatka_mapa = mapa_hash
+	_przygotuj_wzgorza()
+	var nc := N * RES
+	var woda_m := PackedFloat32Array()
+	var morze_m := PackedFloat32Array()
+	woda_m.resize(nc * nc)
+	morze_m.resize(nc * nc)
+	for j in nc:
+		for i in nc:
+			var c := teren(i / RES, j / RES)
+			woda_m[j * nc + i] = 1.0 if _woda(c) else 0.0
+			morze_m[j * nc + i] = 1.0 if c == "m" else 0.0
+	# słabo rozmyta maska zachowuje wąskie cieki (rzeka szeroka na 1 pole), mocno rozmyta wygładza brzeg
+	var woda_mala := _rozmyj(woda_m, nc, nc, 1, 2)
+	woda_m = _rozmyj(woda_m, nc, nc, 3, 3)
+	for k in woda_m.size():
+		woda_m[k] = maxf(woda_m[k], woda_mala[k] * 0.6)
+	morze_m = _rozmyj(morze_m, nc, nc, 4, 2)
+	var g := nc + 1
+	_h_siatka.resize(g * g)
+	_w_siatka.resize(g * g)
+	for j in g:
+		for i in g:
+			# maska w wierzchołku = średnia 4 sąsiednich komórek
+			var w := 0.0
+			var wm := 0.0
+			for q in [Vector2i(i - 1, j - 1), Vector2i(i, j - 1), Vector2i(i - 1, j), Vector2i(i, j)]:
+				var ci := clampi(q.x, 0, nc - 1)
+				var cj := clampi(q.y, 0, nc - 1)
+				w += woda_m[cj * nc + ci]
+				wm += morze_m[cj * nc + ci]
+			w /= 4.0
+			wm /= 4.0
+			var px := float(i) / RES * T
+			var pz := float(j) / RES * T
+			var baza := _baza_gladka(px, pz)
+			var dno := lerpf(DNO_RZEKI, DNO_MORZA, clampf(wm / maxf(w, 0.001), 0.0, 1.0))
+			# łagodny stok brzegu: ląd → lustro wody (izolinia ≈ 0,47) → dno w środku nurtu
+			var f := smoothstep(0.18, 0.72, w)
+			_h_siatka[j * g + i] = lerpf(baza, dno, f)
+			_w_siatka[j * g + i] = w
+
+
+func _baza_gladka(px: float, pz: float) -> float:
+	## Wysokość lądu bez wody: dwuliniowo między środkami pól (plaża, bagno, droga płynnie) + rzeźba wzgórz.
+	var fx := px / T - 0.5
+	var fz := pz / T - 0.5
+	var x0 := int(floor(fx))
+	var z0 := int(floor(fz))
+	var u := fx - x0
+	var v := fz - z0
+	var h := func(x: int, z: int) -> float:
+		var c := teren(clampi(x, 0, N - 1), clampi(z, 0, N - 1))
+		if c == "" or _woda(c) or c in WZGORZA:
+			return 0.0
+		return float(D.teren[c].h)
+	var plaski: float = lerpf(lerpf(h.call(x0, z0), h.call(x0 + 1, z0), u), lerpf(h.call(x0, z0 + 1), h.call(x0 + 1, z0 + 1), u), v)
+	var tx := clampi(int(floor(px / T)), 0, N - 1)
+	var tz := clampi(int(floor(pz / T)), 0, N - 1)
+	if teren(tx, tz) in WZGORZA:
+		return plaski + wys_punkt(minf(px, N * T - 0.001), minf(pz, N * T - 0.001))
+	return plaski
+
+
+func teren_h(px: float, pz: float) -> float:
+	## Wysokość powierzchni terenu (także dna pod wodą) w dowolnym punkcie – dwuliniowo z siatki.
+	if _h_siatka.is_empty():
+		_przygotuj_teren()
+	var g := N * RES + 1
+	var fx := clampf(px / T * RES, 0.0, g - 1.001)
+	var fz := clampf(pz / T * RES, 0.0, g - 1.001)
+	var i := int(fx)
+	var j := int(fz)
+	var u := fx - i
+	var v := fz - j
+	return lerpf(lerpf(_h_siatka[j * g + i], _h_siatka[j * g + i + 1], u), lerpf(_h_siatka[(j + 1) * g + i], _h_siatka[(j + 1) * g + i + 1], u), v)
 
 
 func _zbuduj_teren() -> void:
-	_dno_cache = {}
+	_przygotuj_teren()
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var sw := SurfaceTool.new()      # powierzchnia wody (głębokość w kolorze wierzchołka)
 	sw.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var jest_woda := false
-	var r := RandomNumberGenerator.new()
-	r.seed = 7
+	var g := N * RES + 1
 	var ile_morza := 0
-	_przygotuj_wzgorza()
+	var jest_woda := false
 	for y in N:
 		for x in N:
-			var c := teren(x, y)
-			var h := baza_pola(x, y)
-			var kol := _kolor_terenu(c)
-			var x0 := x * T
-			var z0 := y * T
-			if _woda(c):
+			if teren(x, y) == "m":
+				ile_morza += 1
+			if _woda(teren(x, y)):
 				jest_woda = true
-				if c == "m":
-					ile_morza += 1
-				_dno_i_woda(st, sw, x, y, c == "m")
-			else:
-				_wierzch_pola(st, x, y, h)
-			# ściany boczne między polami o różnej wysokości (brzegi koryta, skarpy wzgórz)
-			for kier in [Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0), Vector2i(0, -1)]:
-				var nx: int = x + kier.x
-				var ny: int = y + kier.y
-				var hn := baza_pola(nx, ny) if teren(nx, ny) != "" else -1.6
-				if _woda(c) and teren(nx, ny) != "":
-					continue
-				if hn >= h and not _woda(c):
-					continue
-				var bok := kol.darkened(0.3)
-				bok.a = 0.0
-				if not _woda(c) and _woda(teren(nx, ny)):
-					bok = Color(0.52, 0.44, 0.32, 0.0)     # ziemista skarpa brzegu
-				var a: Vector3
-				var b: Vector3
-				if kier == Vector2i(1, 0):
-					a = Vector3(x0 + T, 0, z0 + T); b = Vector3(x0 + T, 0, z0)
-				elif kier == Vector2i(-1, 0):
-					a = Vector3(x0, 0, z0); b = Vector3(x0, 0, z0 + T)
-				elif kier == Vector2i(0, 1):
-					a = Vector3(x0, 0, z0 + T); b = Vector3(x0 + T, 0, z0 + T)
-				else:
-					a = Vector3(x0 + T, 0, z0); b = Vector3(x0, 0, z0)
-				var ha := h
-				var hb := h
-				if _woda(c):
-					ha = _dno(a.x, a.z, c == "m")
-					hb = _dno(b.x, b.z, c == "m")
-					bok = Color(0.2, 0.24, 0.22, 0.0)
-				_quad(st, Vector3(a.x, ha, a.z), Vector3(b.x, hb, b.z), Vector3(b.x, hn, b.z), Vector3(a.x, hn, a.z), bok, Vector3(kier.x, 0, kier.y))
+	# kolory w narożnikach pól (typ terenu + udział trawy)
+	var rogi := []
+	for cy in N + 1:
+		for cx in N + 1:
+			rogi.append(_kolor_rogu(cx, cy, 0.0))
+	var piasek := Color(0.80, 0.71, 0.52, 0.0)
+	var mul := Color(0.47, 0.40, 0.29, 0.0)
+	var dno_k := Color(0.30, 0.31, 0.25, 0.0)
+	var kolory := []
+	kolory.resize(g * g)
+	var punkty := []
+	punkty.resize(g * g)
+	for j in g:
+		for i in g:
+			var fx := float(i) / RES
+			var fz := float(j) / RES
+			var cx := mini(int(fx), N - 1)
+			var cz := mini(int(fz), N - 1)
+			var u := fx - cx
+			var v := fz - cz
+			var k: Color = (rogi[cz * (N + 1) + cx] as Color).lerp(rogi[cz * (N + 1) + cx + 1], u).lerp(
+				(rogi[(cz + 1) * (N + 1) + cx] as Color).lerp(rogi[(cz + 1) * (N + 1) + cx + 1], u), v)
+			var w := _w_siatka[j * g + i]
+			# pas przejścia: suchy piasek → mokry muł przy linii wody → ciemne dno
+			k = k.lerp(piasek, smoothstep(0.1, 0.3, w))
+			k = k.lerp(mul, smoothstep(0.3, 0.47, w))
+			k = k.lerp(dno_k, smoothstep(0.5, 0.85, w))
+			kolory[j * g + i] = k
+			punkty[j * g + i] = Vector3(fx * T, _h_siatka[j * g + i], fz * T)
+	for j in g - 1:
+		for i in g - 1:
+			var ids := [j * g + i, j * g + i + 1, (j + 1) * g + i + 1, (j + 1) * g + i]
+			# przekątna wzdłuż mniejszej różnicy wysokości – gładszy brzeg
+			var kolej := [0, 1, 2, 0, 2, 3]
+			if absf(_h_siatka[ids[1]] - _h_siatka[ids[3]]) < absf(_h_siatka[ids[0]] - _h_siatka[ids[2]]):
+				kolej = [0, 1, 3, 1, 2, 3]
+			for q in kolej:
+				st.set_color(kolory[ids[q]])
+				st.set_normal(Vector3.UP)
+				st.add_vertex(punkty[ids[q]])
+			# woda nad komórką, która choć jednym rogiem leży poniżej lustra
+			var najn := minf(minf(_h_siatka[ids[0]], _h_siatka[ids[1]]), minf(_h_siatka[ids[2]], _h_siatka[ids[3]]))
+			if najn < POZIOM_WODY + 0.02:
+				var p0: Vector3 = punkty[ids[0]]
+				var p2: Vector3 = punkty[ids[2]]
+				_quad_wody(sw, p0.x, p0.z, p2.x, p2.z, _gl(_h_siatka[ids[0]]), _gl(_h_siatka[ids[1]]), _gl(_h_siatka[ids[2]]), _gl(_h_siatka[ids[3]]))
+	# fartuch na krawędzi mapy
+	var ciemny := Color(0.22, 0.2, 0.16, 0.0)
+	for i in g - 1:
+		for brzeg in [[i, 0, i + 1, 0, Vector3(0, 0, -1)], [i + 1, g - 1, i, g - 1, Vector3(0, 0, 1)],
+				[0, i + 1, 0, i, Vector3(-1, 0, 0)], [g - 1, i, g - 1, i + 1, Vector3(1, 0, 0)]]:
+			var a: Vector3 = punkty[brzeg[1] * g + brzeg[0]]
+			var b: Vector3 = punkty[brzeg[3] * g + brzeg[2]]
+			_quad(st, a, b, Vector3(b.x, -1.6, b.z), Vector3(a.x, -1.6, a.z), ciemny, brzeg[4])
 	st.generate_normals()
 	var mi := MeshInstance3D.new()
 	mi.mesh = st.commit()
@@ -1804,7 +1897,7 @@ func _kolor_rogu(cx: int, cy: int, h: float) -> Color:
 	var n := 0
 	for t in [Vector2i(cx - 1, cy - 1), Vector2i(cx, cy - 1), Vector2i(cx - 1, cy), Vector2i(cx, cy)]:
 		var c := teren(t.x, t.y)
-		if c == "" or _woda(c) or absf(baza_pola(t.x, t.y) - h) > 0.01:
+		if c == "" or _woda(c):
 			continue
 		var k := _kolor_terenu(c)
 		suma += Color(k.r, k.g, k.b, WAGA_TRAWY.get(c, 0.0))
@@ -1953,34 +2046,8 @@ func odswiez_siatke_budowy() -> void:
 	siatka_budowy.material_override = m
 
 
-func _dno_i_woda(st: SurfaceTool, sw: SurfaceTool, x: int, y: int, morze: bool) -> void:
-	## Pole wody: dno (siatka 4 × 4, opadające od brzegu) i powierzchnia z głębokością w wierzchołkach.
-	var k := T / PODZIAL_WODY
-	for j in PODZIAL_WODY:
-		for i in PODZIAL_WODY:
-			var xa := x * T + i * k
-			var za := y * T + j * k
-			var xb := xa + k
-			var zb := za + k
-			var h00 := _dno(xa, za, morze)
-			var h10 := _dno(xb, za, morze)
-			var h11 := _dno(xb, zb, morze)
-			var h01 := _dno(xa, zb, morze)
-			var pts := [Vector3(xa, h00, za), Vector3(xb, h10, za), Vector3(xb, h11, zb), Vector3(xa, h01, zb)]
-			for idx in [0, 1, 2, 0, 2, 3]:
-				var p: Vector3 = pts[idx]
-				# dno: przy brzegu piasek i muł, w głębi ciemniej
-				var g := clampf((STOPA_BRZEGU - p.y) / 1.2, 0.0, 1.0)
-				var kd := Color(0.56, 0.5, 0.36).lerp(Color(0.16, 0.24, 0.26), g)
-				kd.a = 0.0
-				st.set_color(kd)
-				st.set_normal(Vector3.UP)
-				st.add_vertex(p)
-			_quad_wody(sw, xa, za, xb, zb, _gl(h00), _gl(h10), _gl(h11), _gl(h01))
-
-
 func _gl(dno: float) -> float:
-	return clampf((POZIOM_WODY - dno) / 1.2, 0.0, 1.0)
+	return clampf((POZIOM_WODY - dno) / 0.9, 0.0, 1.0)
 
 
 func _quad_wody(sw: SurfaceTool, xa: float, za: float, xb: float, zb: float, g00: float, g10: float, g11: float, g01: float) -> void:
@@ -2133,7 +2200,7 @@ func _dodaj(slownik: Dictionary, model: String, tr: Transform3D) -> void:
 
 func _na_ziemi(p: Vector3) -> Vector3:
 	## Postawienie obiektu na powierzchni terenu (także na stoku wzgórza).
-	return Vector3(p.x, wys_punkt(p.x, p.z), p.z)
+	return Vector3(p.x, teren_h(p.x, p.z), p.z)
 
 
 func _model_bazowy(model: String) -> String:
@@ -2236,14 +2303,15 @@ func _dekoracje() -> void:
 					if teren(x + k.x, y + k.y) == "~" and r.randf() < 0.75:
 						for q in r.randi_range(1, 2):
 							var wzdl := Vector3(k.y, 0, k.x) * r.randf_range(-0.75, 0.75)
-							var poz := Vector3((x + 0.5) * T, POZIOM_WODY - 0.08, (y + 0.5) * T) + Vector3(k.x, 0, k.y) * (T * 0.5 + 0.18) + wzdl
+							var poz := Vector3((x + 0.5) * T, 0, (y + 0.5) * T) + Vector3(k.x, 0, k.y) * (T * 0.5 + r.randf_range(-0.1, 0.35)) + wzdl
+							poz.y = maxf(teren_h(poz.x, poz.z), POZIOM_WODY - 0.3)
 							_dodaj(drzewa, _wariant("trzcina", r), Transform3D(Basis(Vector3.UP, r.randf() * TAU) * r.randf_range(0.6, 0.95), poz))
 			# urwiska skalne na krawędziach wzgórz
 			if c == "w":
 				for k in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
 					if _klif_pola.has(Vector2i(x + k.x, y + k.y)):
 						var srodek := Vector3((x + 0.5) * T, 0, (y + 0.5) * T) + Vector3(k.x, 0, k.y) * (T * 0.5 - 0.12)
-						srodek.y = baza_pola(x + k.x, y + k.y) - 0.04
+						srodek.y = teren_h(srodek.x + k.x * 0.4, srodek.z + k.y * 0.4) - 0.04
 						var wys: float = (wysokosc(x, y) - srodek.y + 0.06) / 1.15
 						var bas := Basis(Vector3.UP, atan2(float(k.x), float(k.y))).scaled(Vector3(r.randf_range(0.95, 1.1), wys, r.randf_range(0.8, 1.0)))
 						_dodaj(drzewa, _wariant("klif", r), Transform3D(bas, srodek))
@@ -2305,7 +2373,8 @@ func _dekoracje() -> void:
 		for k in 2:
 			var s := instancja("galera")
 			var p0: Vector2i = morze[r.randi_range(0, morze.size() - 1)]
-			s.position = pozycja(p0.x, p0.y) + Vector3(0, 0.05, 0)
+			s.position = pozycja(p0.x, p0.y)
+			s.position.y = POZIOM_WODY - 0.1
 			s.scale = Vector3.ONE * 0.6
 			s.set_meta("start", s.position)
 			s.set_meta("faza", r.randf() * TAU)
@@ -2411,10 +2480,7 @@ func odswiez_swiat() -> void:
 
 func _prostokat_na_terenie(st: SurfaceTool, xa: float, za: float, xb: float, zb: float, kol: Color, unies: float) -> void:
 	## Prostokąt (osie X/Z) położony na terenie – na wzgórzach dzielony tak, by szedł po stoku.
-	var wzg := false
-	for p in [Vector2(xa, za), Vector2(xb, zb), Vector2((xa + xb) / 2, (za + zb) / 2)]:
-		if teren(int(floor(p.x / T)), int(floor(p.y / T))) in WZGORZA:
-			wzg = true
+	var wzg := true      # teren nie jest już płaski przy brzegach i na wzgórzach – zawsze dzielimy
 	var nx := 1
 	var nz := 1
 	if wzg:
@@ -2427,7 +2493,7 @@ func _prostokat_na_terenie(st: SurfaceTool, xa: float, za: float, xb: float, zb:
 			var z0 := lerpf(za, zb, float(j) / nz)
 			var z1 := lerpf(za, zb, float(j + 1) / nz)
 			var h := func(px: float, pz: float) -> float:
-				return maxf(wys_punkt(px, pz), 0.0) + unies
+				return maxf(teren_h(px, pz), POZIOM_WODY) + unies
 			_quad(st, Vector3(x0, h.call(x0, z0), z0), Vector3(x1, h.call(x1, z0), z0), Vector3(x1, h.call(x1, z1), z1), Vector3(x0, h.call(x0, z1), z1), kol, Vector3.UP)
 
 

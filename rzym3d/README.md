@@ -147,11 +147,13 @@ Drzewa zostają low-poly, ale mają charakterystyczne sylwetki (`blender/generuj
 
 Woda ma własny shader (`_material_wody()` w `gra.gd`), działający tak samo w przeglądarce i na komputerze:
 
-- **Koryta i dno**: rzeki i morze leżą niżej niż ląd, więc powstają brzegi – niska ziemista skarpa nad lustrem wody.
-  Dno opada łagodnie od brzegu (siatka 4 × 4 na pole, głębokość liczona z odległości od lądu): przy brzegu piasek
-  i muł, w nurcie Tybru i na pełnym morzu ciemna głębia.
+- **Gładki brzeg zamiast schodków**: teren i woda to jedna siatka (komórki 0,5 m) liczona z rozmytej maski wody
+  (silne rozmycie ≈ gauss 1,7 m wygładza zakola i ukośne odcinki, słabe zachowuje wąskie cieki). Linia brzegu to
+  izolinia tej maski – krzywa zamiast granic pól, bez ciemnej skarpy. Lustro wody leży niżej (–0,34), a ląd schodzi
+  do niego łagodnym stokiem z pasem suchego piasku, mokrego mułu i ciemnego dna po obu stronach rzeki.
 - **Przezroczystość zależna od głębokości**: przy brzegu widać dno przez turkusową płyciznę, dalej woda gęstnieje
-  w granat. Głębokość jest zapisana w wierzchołkach powierzchni wody (nie wymaga bufora głębi, więc działa też w WebGL).
+  w granat. Głębokość (lustro minus dno z siatki terenu) jest zapisana w wierzchołkach powierzchni wody (nie wymaga
+  bufora głębi, więc działa też w WebGL).
 - **Fale**: dwie normal mapy (szum generowany w grze) przewijane w różnych kierunkach i skalach oraz delikatne
   kołysanie lustra wody.
 - **Piana przy brzegu**: poszarpany szumem pas płytkiej wody, pulsujący jak przybój – wzdłuż brzegów Tybru i plaż.

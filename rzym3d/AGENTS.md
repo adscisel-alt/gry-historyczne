@@ -77,8 +77,8 @@ Układ: **1 pole mapy = 2 m** (Godot: 2 jednostki), model stoi na z=0, środek p
 - Wierzch lądu: shader `_material_terenu()`; w kolorze wierzchołków rgb = kolor typu terenu (`_kolor_terenu`),
   a = udział trawy (`WAGA_TRAWY`), uśrednione w narożnikach (`_kolor_rogu`). Siatka budowy: `odswiez_siatke_budowy()`.
 
-- Pola `~` i `m` mają w `dane.py` wysokość stopy brzegu (-0.3); dno liczy `_dno()` z odległości od lądu, lustro wody
-  to `POZIOM_WODY` (-0.18). Shader wody: `_material_wody()` (głębokość w `COLOR.r` wierzchołków powierzchni).
+- Teren i dno: jedna siatka `RES`×`RES` na pole z rozmytej maski wody (`_przygotuj_teren()`, `_rozmyj()`); wysokość w punkcie
+  `teren_h()`, lustro `POZIOM_WODY` (-0.34). Shader wody: `_material_wody()` (głębokość w `COLOR.r` wierzchołków powierzchni).
 
 ## Polecenia
 
