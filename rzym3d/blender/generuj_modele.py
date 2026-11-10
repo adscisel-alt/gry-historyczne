@@ -374,9 +374,13 @@ def wstaw(fn, x=0.0, y=0.0, z=0.0, s=1.0, rz=0.0, a=()):
             o.matrix_world = M @ o.matrix_world
 
 
+_tekstury_szumu = {}
+
+
 def czysc():
     bpy.ops.wm.read_factory_settings(use_empty=True)
     _mat.clear()
+    _tekstury_szumu.clear()
 
 
 def polacz(obiekty, nazwa, pivot):
@@ -438,46 +442,255 @@ def eksportuj_postac(nazwa):
 
 
 # ================================================================= TEREN I DEKORACJE
-def m_cyprys():
-    cyl(0, 0, 0, 0.08, 0.4, DREWNO_C, v=6)
-    kula(0, 0, 1.25, 0.34, (40, 86, 50), seg=8, ringi=6, skala=(1, 1, 3.0))
-    kula(0.04, -0.03, 1.55, 0.26, (52, 100, 58), seg=8, ringi=6, skala=(1, 1, 3.4))
+# ----------------------------------------------------------------- drzewa (low-poly z charakterem)
+# Korona: kilka brył różnej wielkości, przesuniętych asymetrycznie, zlanych voxel-remeshem w jedną,
+# z lekkim displace szumem i decymacją (zostaje low-poly). Pień: wygięta, zwężająca się rura
+# z poszerzeniem przy ziemi i konarami wchodzącymi w koronę. Kolory w vertex colors (atrybut „Col”):
+# ciemniejszy spód, jaśniejsza góra korony. Godot dodaje losowy odcień dla każdego egzemplarza.
+import random as _random
 
 
-def m_pinia():
-    walec((0, 0, 0), (0.12, 0, 1.2), 0.08, (110, 80, 60), v=7, r2=0.06)
-    walec((0.12, 0, 1.2), (0.05, 0.05, 2.0), 0.06, (110, 80, 60), v=7, r2=0.05)
-    walec((0.1, 0.02, 1.6), (-0.4, 0.1, 1.95), 0.04, (110, 80, 60), v=6)
-    ikosfera(0.05, 0.05, 2.15, 0.85, (60, 108, 58), skala=(1, 1, 0.32))
-    ikosfera(-0.35, 0.1, 2.05, 0.45, (72, 122, 64), skala=(1, 1, 0.4))
-    ikosfera(0.35, -0.15, 2.3, 0.45, (52, 98, 54), skala=(1, 1, 0.35))
+
+def mat_vc():
+    """Materiał biorący kolor z atrybutu wierzchołków „Col” (eksportowany do glTF jako COLOR_0)."""
+    if "vc" in _mat:
+        return _mat["vc"]
+    m = bpy.data.materials.new("drzewo_vc")
+    m.use_nodes = True
+    nt = m.node_tree
+    p = nt.nodes["Principled BSDF"]
+    p.inputs["Roughness"].default_value = 0.88
+    ca = nt.nodes.new("ShaderNodeVertexColor")
+    ca.layer_name = "Col"
+    nt.links.new(ca.outputs["Color"], p.inputs["Base Color"])
+    m.diffuse_color = (0.3, 0.5, 0.25, 1)
+    _mat["vc"] = m
+    return m
 
 
-def m_oliwka(x=0, y=0, s=1.0):
-    walec((x, y, 0), (x + 0.1 * s, y, 0.55 * s), 0.1 * s, (120, 104, 84), v=7, r2=0.08 * s)
-    walec((x + 0.1 * s, y, 0.55 * s), (x - 0.15 * s, y + 0.05 * s, 0.9 * s), 0.07 * s, (120, 104, 84), v=6)
-    walec((x + 0.1 * s, y, 0.55 * s), (x + 0.3 * s, y - 0.05 * s, 0.95 * s), 0.06 * s, (120, 104, 84), v=6)
-    ikosfera(x, y, 1.05 * s, 0.5 * s, LISCIE_OL, skala=(1.2, 1, 0.6))
-    ikosfera(x - 0.3 * s, y + 0.1 * s, 0.95 * s, 0.3 * s, (110, 130, 84), skala=(1, 1, 0.7))
-    ikosfera(x + 0.35 * s, y - 0.1 * s, 1.1 * s, 0.32 * s, (144, 160, 110), skala=(1, 1, 0.7))
-    for (dx, dy, dz) in [(0.2, -0.4, 0.9), (-0.25, -0.3, 0.85), (0.5, -0.2, 1.0)]:
-        kula(x + dx * s, y + dy * s, dz * s, 0.04 * s, (60, 70, 50), seg=5, ringi=3)
+def _koloruj(o, dol, gora, z0=None, z1=None, szum=0.06, ziarno=1):
+    """Gradient pionowy w vertex colors (sRGB dol -> gora) z drobnym losowym szumem."""
+    me = o.data
+    if "Col" not in me.color_attributes:
+        me.color_attributes.new("Col", "BYTE_COLOR", "POINT")
+    attr = me.color_attributes["Col"]
+    zs = [(o.matrix_world @ v.co).z for v in me.vertices]
+    z0 = min(zs) if z0 is None else z0
+    z1 = max(zs) if z1 is None else z1
+    r = _random.Random(ziarno)
+    d, g = Vector(lin(dol)), Vector(lin(gora))
+    for i, z in enumerate(zs):
+        t = max(0.0, min(1.0, (z - z0) / max(z1 - z0, 1e-4)))
+        t = t * t * (3 - 2 * t)
+        c = d.lerp(g, t) * (1.0 + r.uniform(-szum, szum))
+        attr.data[i].color = (c.x, c.y, c.z, 1.0)
+    me.materials.clear()
+    me.materials.append(mat_vc())
+    return o
 
 
-def m_dab():
-    walec((0, 0, 0), (0, 0, 1.0), 0.16, (100, 72, 48), v=7, r2=0.12)
-    walec((0, 0, 0.8), (0.4, 0, 1.3), 0.07, (100, 72, 48), v=6)
-    walec((0, 0, 0.8), (-0.35, 0.1, 1.35), 0.07, (100, 72, 48), v=6)
-    ikosfera(0, 0, 1.65, 0.75, (70, 120, 56), skala=(1.05, 1, 0.85))
-    ikosfera(0.45, -0.15, 1.45, 0.45, (84, 136, 62))
-    ikosfera(-0.45, 0.15, 1.5, 0.48, (58, 106, 50))
-    ikosfera(0.1, -0.2, 2.1, 0.42, (92, 146, 68))
+def _zastosuj(o, mod):
+    bpy.context.view_layer.objects.active = o
+    o.select_set(True)
+    bpy.ops.object.modifier_apply(modifier=mod.name)
+    o.select_set(False)
 
 
-def m_krzak():
-    ikosfera(0, 0, 0.22, 0.32, (76, 128, 60), skala=(1.2, 1, 0.8))
-    ikosfera(0.28, 0.15, 0.18, 0.22, (64, 112, 54))
-    ikosfera(-0.25, 0.12, 0.16, 0.2, (90, 140, 68))
+def _bryly_korony(bryly, voxel=0.1, szum=0.07, skala_szumu=0.35, cel_scian=260, ziarno=1):
+    """bryly: [(x, y, z, r, (sx, sy, sz))] -> jedna zlana, poszarpana bryła korony (low-poly)."""
+    bpy.ops.object.select_all(action="DESELECT")
+    obiekty = []
+    for (x, y, z, r, sk) in bryly:
+        bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=2, radius=r, location=(x, y, z))
+        o = bpy.context.active_object
+        o.scale = sk
+        obiekty.append(o)
+    for o in obiekty:
+        o.select_set(True)
+    bpy.context.view_layer.objects.active = obiekty[0]
+    bpy.ops.object.transform_apply(location=False, rotation=True, scale=True)
+    bpy.ops.object.join()
+    o = bpy.context.view_layer.objects.active
+    o.select_set(False)
+    # zlanie brył w jedną (voxel remesh = „union” bez artefaktów na stykach)
+    rm = o.modifiers.new("zlanie", "REMESH")
+    rm.mode = "VOXEL"
+    rm.voxel_size = voxel
+    _zastosuj(o, rm)
+    # lekki displace szumem – nieregularna sylwetka
+    klucz = (round(skala_szumu, 3), ziarno)
+    if klucz not in _tekstury_szumu:
+        t = bpy.data.textures.new("szum_%d" % len(_tekstury_szumu), "CLOUDS")
+        t.noise_scale = skala_szumu
+        t.noise_depth = 1
+        _tekstury_szumu[klucz] = t
+    ds = o.modifiers.new("szum", "DISPLACE")
+    ds.texture = _tekstury_szumu[klucz]
+    ds.texture_coords = "OBJECT"
+    ds.strength = szum
+    ds.mid_level = 0.5
+    _zastosuj(o, ds)
+    # z powrotem low-poly
+    n = len(o.data.polygons)
+    if n > cel_scian:
+        dc = o.modifiers.new("lowpoly", "DECIMATE")
+        dc.ratio = cel_scian / n
+        _zastosuj(o, dc)
+    return o
+
+
+def _rura(punkty, promienie, v=7, nazwa="pien"):
+    """Wygięta, zwężająca się rura (pień, konar) przez kolejne punkty; zamknięta u góry."""
+    bm = bmesh.new()
+    pkt = [Vector(p) for p in punkty]
+    pierscienie = []
+    for i, (p, r) in enumerate(zip(pkt, promienie)):
+        kier = (pkt[min(i + 1, len(pkt) - 1)] - pkt[max(i - 1, 0)]).normalized()
+        a = kier.orthogonal().normalized()
+        b = kier.cross(a).normalized()
+        pier = []
+        for k in range(v):
+            ang = 2 * math.pi * k / v
+            pier.append(bm.verts.new(p + (a * math.cos(ang) + b * math.sin(ang)) * r))
+        pierscienie.append(pier)
+    for i in range(len(pierscienie) - 1):
+        for k in range(v):
+            p0, p1 = pierscienie[i], pierscienie[i + 1]
+            bm.faces.new((p0[k], p0[(k + 1) % v], p1[(k + 1) % v], p1[k]))
+    bm.faces.new(pierscienie[-1])
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    me = bpy.data.meshes.new(nazwa)
+    bm.to_mesh(me)
+    bm.free()
+    o = bpy.data.objects.new(nazwa, me)
+    bpy.context.collection.objects.link(o)
+    return o
+
+
+def _pien(os_, r0, r1, poszerzenie=1.6, v=7):
+    """Pień wzdłuż łamanej `os_`: zwęża się od r0 do r1, przy ziemi poszerzony (korzenie)."""
+    n = len(os_)
+    promienie = []
+    for i in range(n):
+        t = i / (n - 1)
+        r = r0 + (r1 - r0) * t
+        if i == 0:
+            r *= poszerzenie
+        elif i == 1:
+            r *= 1.0 + (poszerzenie - 1.0) * 0.3
+        promienie.append(r)
+    return _rura(os_, promienie, v=v)
+
+
+def _luk(a, b, wygiecie, n=5):
+    """Łamana od a do b wygięta bokiem o wektor `wygiecie` (największe w połowie)."""
+    a, b, w = Vector(a), Vector(b), Vector(wygiecie)
+    return [a.lerp(b, i / (n - 1)) + w * math.sin(math.pi * i / (n - 1)) for i in range(n)]
+
+
+KORA = ((78, 56, 40), (126, 98, 72))
+KORA_OL = ((86, 78, 64), (150, 140, 120))
+
+
+def m_pinia(ziarno=3):
+    """Pinia: wysoki, goły, lekko wygięty pień i płaska, parasolowata korona."""
+    r = _random.Random(ziarno)
+    os_ = _luk((0, 0, 0), (0.2, 0.05, 1.9), (0.18, 0.0, 0.0), n=6)
+    _koloruj(_pien(os_, 0.1, 0.055, poszerzenie=1.7), *KORA, ziarno=ziarno)
+    # konary rozchodzące się w koronę
+    szczyt = Vector(os_[-1])
+    for kat in (0.3, 2.4, 4.3):
+        k = szczyt + Vector((math.cos(kat) * 0.6, math.sin(kat) * 0.6, 0.3))
+        _koloruj(_rura(_luk(szczyt - Vector((0, 0, 0.12)), k, (0, 0, 0.08), n=4), [0.05, 0.042, 0.034, 0.026], v=5),
+                 *KORA, ziarno=ziarno + 1)
+    bryly = [(0.2, 0.05, 2.32, 0.6, (1.6, 1.45, 0.26))]
+    for i in range(6):
+        kat = i * 1.05 + r.uniform(-0.25, 0.25)
+        d = r.uniform(0.5, 0.72)
+        bryly.append((0.2 + math.cos(kat) * d, 0.05 + math.sin(kat) * d, 2.28 + r.uniform(-0.05, 0.08),
+                      r.uniform(0.3, 0.4), (1.35, 1.3, 0.36)))
+    k = _bryly_korony(bryly, voxel=0.08, szum=0.06, skala_szumu=0.3, cel_scian=280, ziarno=ziarno)
+    _koloruj(k, (30, 60, 34), (104, 146, 72), ziarno=ziarno)
+
+
+def m_cyprys(ziarno=5):
+    """Cyprys: wąskie, nieregularne wrzeciono (nie idealny stożek)."""
+    r = _random.Random(ziarno)
+    _koloruj(_pien(_luk((0, 0, 0), (0.02, 0, 0.5), (0.02, 0, 0), n=3), 0.07, 0.05, poszerzenie=1.5, v=6), *KORA, ziarno=ziarno)
+    bryly = []
+    z = 0.42
+    for i in range(6):
+        t = i / 5
+        rr = 0.3 * (1.0 - 0.55 * t) * r.uniform(0.85, 1.12)
+        bryly.append((r.uniform(-0.05, 0.05), r.uniform(-0.05, 0.05), z + rr * 1.1, rr, (1.0, r.uniform(0.85, 1.05), 1.7)))
+        z += rr * 1.15
+    bryly.append((0.02, 0.0, z + 0.12, 0.08, (1, 1, 2.2)))       # szpic
+    k = _bryly_korony(bryly, voxel=0.07, szum=0.06, skala_szumu=0.22, cel_scian=220, ziarno=ziarno)
+    _koloruj(k, (22, 48, 30), (74, 118, 62), ziarno=ziarno)
+
+
+def m_oliwka(x=0, y=0, s=1.0, ziarno=7):
+    """Oliwka: niski, poskręcany pień (dwa splecione) i szeroka, srebrzystozielona korona."""
+    r = _random.Random(ziarno)
+    przed = set(bpy.context.scene.objects)
+    # jeden gruby, poskręcany i pochylony pień, który nisko się rozwidla
+    pts = [(0.0, 0.0, 0.0), (0.06, 0.03, 0.12), (0.02, 0.07, 0.24), (0.1, 0.04, 0.36), (0.07, -0.02, 0.48), (0.14, 0.0, 0.6)]
+    _koloruj(_pien(pts, 0.11, 0.065, poszerzenie=1.6, v=7), *KORA_OL, ziarno=ziarno)
+    odnoga = [(0.04, 0.05, 0.22), (-0.06, 0.1, 0.34), (-0.04, 0.05, 0.46), (-0.14, 0.08, 0.6)]
+    _koloruj(_rura(odnoga, [0.07, 0.06, 0.05, 0.04], v=6), *KORA_OL, ziarno=ziarno + 1)
+    for kat in (0.6, 2.7, 4.6):
+        a = Vector((0, 0, 0.58))
+        b = a + Vector((math.cos(kat) * 0.45, math.sin(kat) * 0.45, 0.3))
+        _koloruj(_rura(_luk(a, b, (0, 0, 0.06), n=4), [0.045, 0.038, 0.03, 0.022], v=5), *KORA_OL, ziarno=ziarno)
+    bryly = [(0.08, 0.0, 0.98, 0.45, (1.5, 1.3, 0.48))]
+    for i in range(5):
+        kat = i * 1.3 + r.uniform(-0.4, 0.4)
+        d = r.uniform(0.42, 0.62)
+        bryly.append((0.08 + math.cos(kat) * d, math.sin(kat) * d, 0.92 + r.uniform(-0.08, 0.12), r.uniform(0.22, 0.32), (1.25, 1.15, 0.7)))
+    k = _bryly_korony(bryly, voxel=0.075, szum=0.08, skala_szumu=0.22, cel_scian=260, ziarno=ziarno)
+    _koloruj(k, (50, 66, 46), (112, 132, 92), ziarno=ziarno)
+    # owoce
+    for (dx, dy, dz) in [(0.25, -0.45, 0.85), (-0.3, -0.35, 0.82), (0.5, -0.15, 0.95)]:
+        kula(dx, dy, dz, 0.035, (60, 70, 50), seg=5, ringi=3)
+    if (x, y, s) != (0, 0, 1.0):
+        bpy.context.view_layer.update()
+        M = Matrix.Translation((x, y, 0)) @ Matrix.Scale(s, 4)
+        for o in bpy.context.scene.objects:
+            if o not in przed:
+                o.matrix_world = M @ o.matrix_world
+
+
+def m_dab(ziarno=11):
+    """Dąb: masywny, szeroki pień z konarami i kilka „pięter” listowia."""
+    r = _random.Random(ziarno)
+    os_ = _luk((0, 0, 0), (0.06, 0.02, 1.05), (0.07, 0.03, 0), n=5)
+    _koloruj(_pien(os_, 0.2, 0.12, poszerzenie=1.75, v=8), *KORA, ziarno=ziarno)
+    for kat, wys, dl in ((0.2, 0.75, 0.62), (2.3, 0.85, 0.58), (4.2, 0.95, 0.5)):
+        a = Vector((0.04, 0.0, wys))
+        b = a + Vector((math.cos(kat) * dl, math.sin(kat) * dl, 0.55))
+        _koloruj(_rura(_luk(a, b, (0, 0, 0.1), n=4), [0.085, 0.07, 0.055, 0.04], v=6), *KORA, ziarno=ziarno)
+    bryly = []
+    # dolne piętro – szerokie
+    for i in range(4):
+        kat = i * 1.57 + r.uniform(-0.3, 0.3)
+        bryly.append((math.cos(kat) * 0.48, math.sin(kat) * 0.45, 1.45 + r.uniform(-0.08, 0.08), r.uniform(0.42, 0.52), (1.15, 1.1, 0.78)))
+    # środkowe i górne piętro – mniejsze, przesunięte asymetrycznie
+    for i in range(3):
+        kat = i * 2.1 + 0.5 + r.uniform(-0.3, 0.3)
+        bryly.append((0.05 + math.cos(kat) * 0.3, math.sin(kat) * 0.28, 1.95 + r.uniform(-0.05, 0.05), r.uniform(0.36, 0.42), (1.15, 1.1, 0.75)))
+    bryly.append((-0.08, 0.06, 2.28, 0.3, (1.2, 1.1, 0.7)))
+    k = _bryly_korony(bryly, voxel=0.1, szum=0.09, skala_szumu=0.3, cel_scian=320, ziarno=ziarno)
+    _koloruj(k, (32, 64, 30), (118, 162, 76), ziarno=ziarno)
+
+
+def m_krzak(ziarno=13):
+    r = _random.Random(ziarno)
+    bryly = [(0, 0, 0.22, 0.3, (1.25, 1.05, 0.8))]
+    for i in range(3):
+        kat = i * 2.1 + r.uniform(-0.4, 0.4)
+        bryly.append((math.cos(kat) * 0.24, math.sin(kat) * 0.22, 0.18, r.uniform(0.17, 0.23), (1, 1, 0.9)))
+    k = _bryly_korony(bryly, voxel=0.06, szum=0.05, skala_szumu=0.18, cel_scian=120, ziarno=ziarno)
+    _koloruj(k, (46, 82, 40), (104, 150, 72), z0=0.0, ziarno=ziarno)
     for (x, y) in [(0.1, -0.28), (-0.15, -0.22)]:
         kula(x, y, 0.3, 0.035, (200, 60, 60), seg=5, ringi=3)
 

@@ -1847,6 +1847,9 @@ func _quad(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, d: Vector3, kol:
 		st.add_vertex(v)
 
 
+const DRZEWA := ["dab", "pinia", "cyprys", "oliwka", "krzak"]
+
+
 func _rozsiej(model: String, transformy: Array) -> void:
 	## Wiele kopii modelu jako MultiMesh (las, góry) – szybkie także w przeglądarce.
 	if transformy.is_empty():
@@ -1855,13 +1858,26 @@ func _rozsiej(model: String, transformy: Array) -> void:
 	var siatki := []
 	_zbierz_siatki(wzor, Transform3D.IDENTITY, siatki)
 	wzor.free()
+	# drzewa: każdy egzemplarz dostaje własny odcień (cieplejszy/chłodniejszy, jaśniejszy/ciemniejszy);
+	# kolor instancji mnoży się z gradientem z vertex colors modelu
+	var odcienie := []
+	if model in DRZEWA:
+		var r := RandomNumberGenerator.new()
+		r.seed = model.hash() + int(S.get("rozdzial", 0))
+		for i in transformy.size():
+			var o := r.randf_range(-1.0, 1.0)            # -1 chłodniej/sino, +1 cieplej/żółtawo
+			var j := r.randf_range(0.84, 1.12)           # jasność
+			odcienie.append(Color(j * (1.0 + 0.11 * o), j * (1.0 + 0.03 * o), j * (1.0 - 0.14 * o)))
 	for s in siatki:
 		var mm := MultiMesh.new()
 		mm.transform_format = MultiMesh.TRANSFORM_3D
+		mm.use_colors = not odcienie.is_empty()
 		mm.mesh = s[0]
 		mm.instance_count = transformy.size()
 		for i in transformy.size():
 			mm.set_instance_transform(i, transformy[i] * s[1])
+			if mm.use_colors:
+				mm.set_instance_color(i, odcienie[i])
 		var mmi := MultiMeshInstance3D.new()
 		mmi.multimesh = mm
 		if s[2]:
@@ -1883,9 +1899,10 @@ func _dekoracje() -> void:
 	var r := RandomNumberGenerator.new()
 	r.seed = 1234 + int(S.rozdzial)
 	var drzewa := {"dab": [], "pinia": [], "cyprys": [], "oliwka": [], "krzak": [], "skala_0": [], "skala_1": [], "gora": [], "trzcina": []}
-	var rodzaje := ["dab", "pinia", "dab", "cyprys"] if R.id in ["alezja", "upadek", "dacja"] else ["pinia", "cyprys", "dab", "pinia"]
+	# skład lasu: Italia i Afryka – pinie, cyprysy, dęby, oliwki; Galia, Dacja, północ – głównie dęby
+	var rodzaje := ["pinia", "cyprys", "dab", "pinia", "dab", "cyprys", "oliwka"]
 	if R.id in ["alezja", "upadek", "dacja"]:
-		rodzaje = ["dab", "dab", "pinia", "dab"]
+		rodzaje = ["dab", "dab", "dab", "pinia", "dab", "krzak"]
 	for y in N:
 		for x in N:
 			var c := teren(x, y)
@@ -1897,7 +1914,9 @@ func _dekoracje() -> void:
 					for k in 3:
 						var off := Vector3(r.randf_range(-0.65, 0.65), 0, r.randf_range(-0.65, 0.65))
 						var s := r.randf_range(0.75, 1.15)
-						drzewa[rodzaje[r.randi_range(0, 3)]].append(Transform3D(Basis(Vector3.UP, r.randf() * TAU).scaled(Vector3(s, s, s)), baza + off))
+						var sk := Vector3(s * r.randf_range(0.9, 1.1), s * r.randf_range(0.9, 1.12), s * r.randf_range(0.9, 1.1))
+						var pochyl := Basis(Vector3(1, 0, 0), r.randf_range(-0.05, 0.05)) * Basis(Vector3(0, 0, 1), r.randf_range(-0.05, 0.05))
+						drzewa[rodzaje[r.randi_range(0, rodzaje.size() - 1)]].append(Transform3D(pochyl * Basis(Vector3.UP, r.randf() * TAU).scaled(sk), baza + off))
 				"o":
 					for k in 2:
 						var off := Vector3(r.randf_range(-0.55, 0.55), 0, r.randf_range(-0.55, 0.55))

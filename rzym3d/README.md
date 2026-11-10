@@ -35,6 +35,19 @@ plansza wygląda jak prawdziwa makieta. W bitwie pas ostrości obejmuje oba szyk
   (rozmycie górnego i dolnego pasa), a ekspozycja i gęstość mgły jest dobrana tak, żeby scena
   wyglądała podobnie jak w Forward+.
 
+## Drzewa
+
+Drzewa zostają low-poly, ale mają charakterystyczne sylwetki (`blender/generuj_modele.py`, sekcja „drzewa”):
+
+- **Korona z kilku brył**: 3–7 brył różnej wielkości, przesuniętych asymetrycznie, zlanych w jedną voxel-remeshem,
+  z lekkim displace szumem i decymacją do ok. 200–300 ścian.
+- **Pień z charakterem**: wygięty, zwężający się ku górze, poszerzony przy ziemi, z 2–3 konarami wchodzącymi w koronę.
+- **Gatunki**: pinia (wysoki goły pień, płaska parasolowata korona), cyprys (wąskie, nieregularne wrzeciono),
+  oliwka (krępy, poskręcany pień i szeroka srebrzystozielona korona), dąb (masywny, z kilkoma piętrami listowia).
+  Lasy Italii mieszają pinie, cyprysy, dęby i oliwki; w Galii, Dacji i na północy rosną głównie dęby.
+- **Kolor**: gradient w vertex colors (ciemniejszy spód, jaśniejsza góra korony), a w Godocie każdy egzemplarz
+  w MultiMeshu dostaje losowy odcień i jasność oraz lekko nierówną skalę i pochylenie.
+
 ## Woda
 
 Woda ma własny shader (`_material_wody()` w `gra.gd`), działający tak samo w przeglądarce i na komputerze:
