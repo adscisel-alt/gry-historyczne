@@ -188,7 +188,8 @@ Woda ma własny shader (`_material_wody()` w `gra.gd`), działający tak samo w 
 
 - **Przeglądarka:** po scaleniu z `main` strona GitHub Pages publikuje grę pod `…/gry-historyczne/rzym3d/graj/`;
   workflow `rzym3d-exe.yml` buduje ją też przy każdym pushu (artefakt *RomanEmpire3D-przegladarka*).
-- **Windows:** `RomanEmpire3D.exe` w wydaniach (Releases) repozytorium – tag `rzym3d-v*` publikuje wydanie z EXE
+- **Windows:** `RomanEmpire3D.exe` w wydaniach (Releases) repozytorium – każdy push na main publikuje wydanie
+  `rzym3d-v<numer z pliku WERSJA>` z EXE
   i spakowaną wersją przeglądarkową; przy każdym pushu ten sam plik jest też artefaktem *RomanEmpire3D-Windows*.
 - **Godot 4.3+:** *Importuj* → `rzym3d/godot/project.godot` → F5.
 

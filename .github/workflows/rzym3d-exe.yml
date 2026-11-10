@@ -3,7 +3,9 @@ name: Roman Empire 3D — zbuduj EXE i wersję web (Godot)
 # Eksportuje grę „Roman Empire — od narodzin przez rozkwit aż po upadek” (Godot 4.3) do pliku EXE
 # dla Windows, uruchamia autotest przejścia 8 rozdziałów i robi
 # zrzuty ekranu z prawdziwego renderowania (Xvfb + Mesa).
-# Wypchnięcie tagu rzym3d-v* dodatkowo publikuje wydanie (Release) z plikiem .exe i wersją przeglądarkową (.zip).
+# Wydanie (Release) z plikiem .exe i wersją przeglądarkową (.zip) powstaje automatycznie przy każdym pushu
+# na main (tag rzym3d-v<numer z rzym3d/WERSJA>, istniejące wydanie jest aktualizowane), a także po wypchnięciu
+# tagu rzym3d-v* albo ręcznym uruchomieniu z polem „wydanie”.
 on:
   push:
     branches: ["**"]
@@ -13,6 +15,11 @@ on:
     tags:
       - "rzym3d-v*"
   workflow_dispatch:
+    inputs:
+      wydanie:
+        description: "Nazwa tagu wydania (np. rzym3d-v1.0) – puste: tylko budowa, bez wydania"
+        required: false
+        default: ""
 
 permissions:
   contents: write
@@ -83,14 +90,26 @@ jobs:
         with:
           name: zrzuty-ekranu-3d
           path: zrzuty3d/
+      - name: Nazwa wydania
+        id: wersja
+        run: |
+          if [ -n "${{ inputs.wydanie }}" ]; then t="${{ inputs.wydanie }}"
+          elif [[ "$GITHUB_REF" == refs/tags/rzym3d-v* ]]; then t="$GITHUB_REF_NAME"
+          elif [ "$GITHUB_REF" = "refs/heads/main" ]; then t="rzym3d-v$(tr -d '[:space:]' < rzym3d/WERSJA)"
+          else t=""; fi
+          echo "tag=$t" >> "$GITHUB_OUTPUT"
+          echo "Wydanie: ${t:-brak}"
       - name: Paczka wersji przeglądarkowej
-        if: startsWith(github.ref, 'refs/tags/rzym3d-v')
+        if: steps.wersja.outputs.tag != ''
         run: cd rzym3d/build && zip -qr RomanEmpire3D-przegladarka.zip web
-      - name: Wydanie (tylko dla tagów)
-        if: startsWith(github.ref, 'refs/tags/rzym3d-v')
+      - name: Wydanie (Release)
+        if: steps.wersja.outputs.tag != ''
         uses: softprops/action-gh-release@v2
         with:
-          name: "Roman Empire — od narodzin przez rozkwit aż po upadek (${{ github.ref_name }})"
+          tag_name: ${{ steps.wersja.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          make_latest: true
+          name: "Roman Empire — od narodzin przez rozkwit aż po upadek (${{ steps.wersja.outputs.tag }})"
           body: |
             Kroniki Damiana Ścisła, część III — strategia turowa 3D o starożytnym Rzymie (753 p.n.e. – 476 n.e.).
 
