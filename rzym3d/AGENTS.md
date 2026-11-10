@@ -46,6 +46,11 @@ Układ: **1 pole mapy = 2 m** (Godot: 2 jednostki), model stoi na z=0, środek p
   `ui/budynek_<nazwa>.png` 128×128 (ikona budynku w 3/4), `ui/tlo_tytul.png` 1280×720 (panorama Forum Romanum o zachodzie),
   `ui/tlo_bitwy.png` 1280×720 (pole bitwy, bez wojsk).
 
+## Woda i teren
+
+- Pola `~` i `m` mają w `dane.py` wysokość stopy brzegu (-0.3); dno liczy `_dno()` z odległości od lądu, lustro wody
+  to `POZIOM_WODY` (-0.18). Shader wody: `_material_wody()` (głębokość w `COLOR.r` wierzchołków powierzchni).
+
 ## Polecenia
 
 ```bash

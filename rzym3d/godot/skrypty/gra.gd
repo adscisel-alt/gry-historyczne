@@ -342,6 +342,7 @@ func _ustaw_klimat(epoka: String) -> void:
 	srodowisko.ambient_light_energy = n[5]
 	# chłodna mgła, lekko zabarwiona horyzontem epoki
 	srodowisko.fog_light_color = MGLA_KOLOR.lerp(n[1], 0.18) if epoka != "schylek" else Color(0.6, 0.6, 0.76)
+	_kolory_wody()
 	# GL Compatibility (przeglądarka) liczy światło w zakresie LDR i nie ma SSAO – scena wychodzi
 	# jaśniejsza, więc obniżamy ekspozycję i światło otoczenia, żeby wyglądała jak w Forward+.
 	if RenderingServer.get_rendering_device() == null:
@@ -1565,11 +1566,60 @@ func zbuduj_swiat() -> void:
 	odswiez_swiat()
 
 
+const POZIOM_WODY := -0.18     # lustro wody (ląd ma 0, plaża -0.05, stopa skarpy brzegu -0.3)
+const STOPA_BRZEGU := -0.3
+const PODZIAL_WODY := 4         # siatka dna i wody: 4 × 4 na pole
+var _dno_cache := {}
+var woda_mat: ShaderMaterial
+
+
+func _woda(c: String) -> bool:
+	return c == "~" or c == "m"
+
+
+func _odl_do_ladu(px: float, pz: float) -> float:
+	## Odległość punktu (współrzędne świata) od najbliższego pola lądu (w metrach).
+	var tx := int(floor(px / T))
+	var tz := int(floor(pz / T))
+	var najl := 99.0
+	for dz in range(-3, 4):
+		for dx in range(-3, 4):
+			var c := teren(tx + dx, tz + dz)
+			if c == "" or _woda(c):
+				continue
+			var x0 := (tx + dx) * T
+			var z0 := (tz + dz) * T
+			var ox := maxf(maxf(x0 - px, px - (x0 + T)), 0.0)
+			var oz := maxf(maxf(z0 - pz, pz - (z0 + T)), 0.0)
+			najl = minf(najl, sqrt(ox * ox + oz * oz))
+	return najl
+
+
+func _dno(px: float, pz: float, morze: bool) -> float:
+	## Wysokość dna w punkcie: przy brzegu płytko (stopa skarpy), dalej coraz głębiej.
+	var klucz := Vector3i(int(round(px * 8)), int(round(pz * 8)), 1 if morze else 0)
+	if _dno_cache.has(klucz):
+		return _dno_cache[klucz]
+	var d := _odl_do_ladu(px, pz)
+	var h: float
+	if morze:
+		h = STOPA_BRZEGU - smoothstep(0.0, 5.0, d) * 1.25
+	else:
+		h = STOPA_BRZEGU - smoothstep(0.0, 1.5, d) * 0.7
+	_dno_cache[klucz] = h
+	return h
+
+
 func _zbuduj_teren() -> void:
+	_dno_cache = {}
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var sw := SurfaceTool.new()      # powierzchnia wody (głębokość w kolorze wierzchołka)
+	sw.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var jest_woda := false
 	var r := RandomNumberGenerator.new()
 	r.seed = 7
+	var ile_morza := 0
 	for y in N:
 		for x in N:
 			var c := teren(x, y)
@@ -1577,19 +1627,27 @@ func _zbuduj_teren() -> void:
 			var kol := Color(D.teren[c].kolor)
 			var v := r.randf_range(-0.04, 0.04)
 			kol = Color(kol.r + v, kol.g + v, kol.b + v)
-			if c in ["~", "m"]:
-				kol = kol.darkened(0.25)
 			var x0 := x * T
 			var z0 := y * T
-			_quad(st, Vector3(x0, h, z0), Vector3(x0 + T, h, z0), Vector3(x0 + T, h, z0 + T), Vector3(x0, h, z0 + T), kol, Vector3.UP)
-			# ściany boczne między polami o różnej wysokości
+			if _woda(c):
+				jest_woda = true
+				if c == "m":
+					ile_morza += 1
+				_dno_i_woda(st, sw, x, y, c == "m")
+			else:
+				_quad(st, Vector3(x0, h, z0), Vector3(x0 + T, h, z0), Vector3(x0 + T, h, z0 + T), Vector3(x0, h, z0 + T), kol, Vector3.UP)
+			# ściany boczne między polami o różnej wysokości (brzegi koryta, skarpy wzgórz)
 			for kier in [Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0), Vector2i(0, -1)]:
 				var nx: int = x + kier.x
 				var ny: int = y + kier.y
 				var hn := wysokosc(nx, ny) if teren(nx, ny) != "" else -1.6
-				if hn >= h:
+				if _woda(c) and teren(nx, ny) != "":
+					continue
+				if hn >= h and not _woda(c):
 					continue
 				var bok := kol.darkened(0.3)
+				if not _woda(c) and _woda(teren(nx, ny)):
+					bok = Color(0.52, 0.44, 0.32)     # ziemista skarpa brzegu
 				var a: Vector3
 				var b: Vector3
 				if kier == Vector2i(1, 0):
@@ -1600,7 +1658,13 @@ func _zbuduj_teren() -> void:
 					a = Vector3(x0, 0, z0 + T); b = Vector3(x0 + T, 0, z0 + T)
 				else:
 					a = Vector3(x0 + T, 0, z0); b = Vector3(x0, 0, z0)
-				_quad(st, Vector3(a.x, h, a.z), Vector3(b.x, h, b.z), Vector3(b.x, hn, b.z), Vector3(a.x, hn, a.z), bok, Vector3(kier.x, 0, kier.y))
+				var ha := h
+				var hb := h
+				if _woda(c):
+					ha = _dno(a.x, a.z, c == "m")
+					hb = _dno(b.x, b.z, c == "m")
+					bok = Color(0.2, 0.24, 0.22)
+				_quad(st, Vector3(a.x, ha, a.z), Vector3(b.x, hb, b.z), Vector3(b.x, hn, b.z), Vector3(a.x, hn, a.z), bok, Vector3(kier.x, 0, kier.y))
 	st.generate_normals()
 	var mi := MeshInstance3D.new()
 	mi.mesh = st.commit()
@@ -1610,29 +1674,20 @@ func _zbuduj_teren() -> void:
 	mat.roughness = 0.95
 	mi.material_override = mat
 	teren_wezel.add_child(mi)
-	# woda (półprzezroczysta, falująca)
-	woda = MeshInstance3D.new()
-	var pm := PlaneMesh.new()
-	pm.size = Vector2(N * T + 200, N * T + 200)
-	woda.mesh = pm
-	woda.position = Vector3(N * T / 2, -0.14, N * T / 2)
-	var sh := Shader.new()
-	sh.code = """shader_type spatial;
-render_mode blend_mix, cull_disabled;
-uniform vec4 kolor : source_color = vec4(0.22, 0.48, 0.72, 0.78);
-void fragment() {
-	vec2 p = UV * 160.0;
-	float f = sin(p.x * 1.3 + TIME * 1.4) * sin(p.y * 1.1 - TIME * 1.1) + 0.5 * sin((p.x + p.y) * 2.1 + TIME * 2.0);
-	ALBEDO = kolor.rgb + vec3(0.05) * f;
-	ALPHA = kolor.a;
-	ROUGHNESS = 0.15;
-	SPECULAR = 0.7;
-}
-"""
-	var wm := ShaderMaterial.new()
-	wm.shader = sh
-	woda.material_override = wm
-	teren_wezel.add_child(woda)
+	# morze poza mapą (rama), żeby wybrzeże nie kończyło się urwiskiem
+	var morska := ile_morza > 30
+	if morska:
+		var rama := 160.0
+		var w := N * T
+		for q in [Rect2(-rama, -rama, w + 2 * rama, rama), Rect2(-rama, w, w + 2 * rama, rama), Rect2(-rama, 0, rama, w), Rect2(w, 0, rama, w)]:
+			var qq: Rect2 = q
+			_quad_wody(sw, qq.position.x, qq.position.y, qq.end.x, qq.end.y, 1.0, 1.0, 1.0, 1.0)
+	if jest_woda or morska:
+		woda = MeshInstance3D.new()
+		woda.mesh = sw.commit()
+		woda.material_override = _material_wody()
+		woda.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		teren_wezel.add_child(woda)
 	# podstawa pod mapą (żeby nie było widać pustki)
 	var pod := MeshInstance3D.new()
 	var pm2 := PlaneMesh.new()
@@ -1640,9 +1695,149 @@ void fragment() {
 	pod.mesh = pm2
 	pod.position = Vector3(N * T / 2, -1.6, N * T / 2)
 	var pmat := StandardMaterial3D.new()
-	pmat.albedo_color = Color("2b4a2a") if R.epoka != "schylek" else Color("3a3a2e")
+	if morska:
+		pmat.albedo_color = Color("1f3a40")
+	else:
+		pmat.albedo_color = Color("2b4a2a") if R.epoka != "schylek" else Color("3a3a2e")
 	pod.material_override = pmat
 	teren_wezel.add_child(pod)
+
+
+func _dno_i_woda(st: SurfaceTool, sw: SurfaceTool, x: int, y: int, morze: bool) -> void:
+	## Pole wody: dno (siatka 4 × 4, opadające od brzegu) i powierzchnia z głębokością w wierzchołkach.
+	var k := T / PODZIAL_WODY
+	for j in PODZIAL_WODY:
+		for i in PODZIAL_WODY:
+			var xa := x * T + i * k
+			var za := y * T + j * k
+			var xb := xa + k
+			var zb := za + k
+			var h00 := _dno(xa, za, morze)
+			var h10 := _dno(xb, za, morze)
+			var h11 := _dno(xb, zb, morze)
+			var h01 := _dno(xa, zb, morze)
+			var pts := [Vector3(xa, h00, za), Vector3(xb, h10, za), Vector3(xb, h11, zb), Vector3(xa, h01, zb)]
+			for idx in [0, 1, 2, 0, 2, 3]:
+				var p: Vector3 = pts[idx]
+				# dno: przy brzegu piasek i muł, w głębi ciemniej
+				var g := clampf((STOPA_BRZEGU - p.y) / 1.2, 0.0, 1.0)
+				st.set_color(Color(0.56, 0.5, 0.36).lerp(Color(0.16, 0.24, 0.26), g))
+				st.add_vertex(p)
+			_quad_wody(sw, xa, za, xb, zb, _gl(h00), _gl(h10), _gl(h11), _gl(h01))
+
+
+func _gl(dno: float) -> float:
+	return clampf((POZIOM_WODY - dno) / 1.2, 0.0, 1.0)
+
+
+func _quad_wody(sw: SurfaceTool, xa: float, za: float, xb: float, zb: float, g00: float, g10: float, g11: float, g01: float) -> void:
+	var pts := [Vector3(xa, POZIOM_WODY, za), Vector3(xb, POZIOM_WODY, za), Vector3(xb, POZIOM_WODY, zb), Vector3(xa, POZIOM_WODY, zb)]
+	var gl := [g00, g10, g11, g01]
+	for idx in [0, 1, 2, 0, 2, 3]:
+		sw.set_color(Color(gl[idx], 0, 0, 1))
+		sw.set_normal(Vector3.UP)
+		sw.set_uv(Vector2(pts[idx].x, pts[idx].z))
+		sw.add_vertex(pts[idx])
+
+
+func _material_wody() -> ShaderMaterial:
+	## Woda: przezroczystość i kolor zależne od głębokości, dwie przewijane normal mapy (fale),
+	## piana przy brzegu, fresnel z odbiciem nieba i odbicia otoczenia (radiance nieba).
+	if woda_mat:
+		_kolory_wody()
+		return woda_mat
+	var sh := Shader.new()
+	sh.code = """shader_type spatial;
+render_mode blend_mix, depth_draw_opaque, cull_back, specular_schlick_ggx;
+
+uniform vec3 kolor_plytki : source_color = vec3(0.22, 0.55, 0.6);
+uniform vec3 kolor_glebi : source_color = vec3(0.05, 0.20, 0.33);
+uniform vec3 kolor_nieba : source_color = vec3(0.78, 0.84, 0.90);
+uniform vec3 kolor_piany : source_color = vec3(0.96, 0.97, 0.95);
+uniform sampler2D fale_a : hint_normal, filter_linear_mipmap, repeat_enable;
+uniform sampler2D fale_b : hint_normal, filter_linear_mipmap, repeat_enable;
+uniform sampler2D szum : filter_linear_mipmap, repeat_enable;
+uniform vec2 przeplyw = vec2(0.018, 0.03);
+uniform float sila_fal = 0.4;
+uniform float pas_piany = 0.16;
+uniform float jasnosc = 1.0;        // Forward+ oświetla wodę mocniej niż GL Compatibility
+
+varying vec3 swiat;
+
+void vertex() {
+	swiat = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+	// delikatne kołysanie lustra wody (mniejsze przy brzegu)
+	float g = COLOR.r;
+	VERTEX.y += (sin(swiat.x * 0.9 + TIME * 1.4) + cos(swiat.z * 0.8 + TIME * 1.1)) * 0.012 * g;
+}
+
+void fragment() {
+	float g = COLOR.r;                 // 0 – brzeg, 1 – głęboko
+	vec2 uv = swiat.xz;
+	// dwie normal mapy przewijane w różnych kierunkach i skalach = fale
+	vec3 na = texture(fale_a, uv * 0.085 + TIME * przeplyw).rgb;
+	vec3 nb = texture(fale_b, uv * 0.13 + vec2(-TIME * przeplyw.y, TIME * przeplyw.x) * 0.8).rgb;
+	NORMAL_MAP = normalize(na + nb - 1.0) * 0.5 + 0.5;
+	NORMAL_MAP_DEPTH = sila_fal;
+	// kolor: płycizna turkusowa, głębia granatowa
+	vec3 woda = mix(kolor_plytki, kolor_glebi, smoothstep(0.05, 0.85, g));
+	// fresnel: pod małym kątem woda odbija niebo
+	float fres = pow(1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0), 4.0);
+	woda = mix(woda, kolor_nieba, clamp(fres * 0.6, 0.0, 0.5));
+	// piana przy brzegu: pas płytkiej wody poszarpany szumem, pulsujący jak fala przyboju
+	float s = texture(szum, uv * 0.42 + vec2(TIME * 0.025, -TIME * 0.018)).r;
+	float s2 = texture(szum, uv * 0.9 - vec2(TIME * 0.04, TIME * 0.03)).r;
+	float pas = 1.0 - smoothstep(pas_piany * 0.3, pas_piany, g + (s - 0.5) * 0.12);
+	float przybuj = 0.5 + 0.5 * sin(TIME * 1.6 - g * 40.0 + s * 4.0);
+	float piana = clamp(pas * smoothstep(0.35, 0.65, s2 * 0.6 + przybuj * 0.5), 0.0, 1.0);
+	piana = max(piana, (1.0 - smoothstep(0.0, pas_piany * 0.45, g)) * 0.85);
+	ALBEDO = mix(woda * jasnosc, kolor_piany, piana);
+	// przezroczystość zależna od głębokości: przy brzegu widać dno
+	ALPHA = clamp(mix(0.38, 0.94, smoothstep(0.0, 0.7, g)) + piana * 0.6 + fres * 0.15, 0.0, 1.0);
+	ROUGHNESS = mix(0.2, 0.7, piana);
+	METALLIC = 0.0;
+	SPECULAR = 0.28;
+}
+"""
+	woda_mat = ShaderMaterial.new()
+	woda_mat.shader = sh
+	woda_mat.set_shader_parameter("fale_a", _normal_mapa(11, 0.022))
+	woda_mat.set_shader_parameter("fale_b", _normal_mapa(23, 0.035))
+	var sz := NoiseTexture2D.new()
+	sz.width = 256
+	sz.height = 256
+	sz.seamless = true
+	var fn := FastNoiseLite.new()
+	fn.seed = 5
+	fn.frequency = 0.03
+	fn.fractal_octaves = 3
+	sz.noise = fn
+	woda_mat.set_shader_parameter("szum", sz)
+	woda_mat.set_shader_parameter("jasnosc", 1.0 if RenderingServer.get_rendering_device() == null else 0.55)
+	_kolory_wody()
+	return woda_mat
+
+
+func _normal_mapa(ziarno: int, czestotliwosc: float) -> NoiseTexture2D:
+	var t := NoiseTexture2D.new()
+	t.width = 256
+	t.height = 256
+	t.seamless = true
+	t.as_normal_map = true
+	t.bump_strength = 5.0
+	var fn := FastNoiseLite.new()
+	fn.seed = ziarno
+	fn.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
+	fn.frequency = czestotliwosc
+	fn.fractal_octaves = 3
+	t.noise = fn
+	return t
+
+
+func _kolory_wody() -> void:
+	## Odbicie nieba w kolorze horyzontu epoki (zmierzch późnego cesarstwa zabarwia wodę).
+	if woda_mat and niebo_mat:
+		woda_mat.set_shader_parameter("kolor_nieba", niebo_mat.sky_horizon_color.lerp(niebo_mat.sky_top_color, 0.35))
 
 
 func _quad(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, d: Vector3, kol: Color, n: Vector3) -> void:
@@ -1787,7 +1982,7 @@ func _dekoracje() -> void:
 		for k in 2:
 			var s := instancja("galera")
 			var p0: Vector2i = morze[r.randi_range(0, morze.size() - 1)]
-			s.position = pozycja(p0.x, p0.y) + Vector3(0, 0.3, 0)
+			s.position = pozycja(p0.x, p0.y) + Vector3(0, 0.05, 0)
 			s.scale = Vector3.ONE * 0.6
 			s.set_meta("start", s.position)
 			s.set_meta("faza", r.randf() * TAU)
@@ -2043,7 +2238,7 @@ func pole_pod_myszka(pm: Vector2) -> Vector2i:
 		wyn = Vector2i(int(floor(p.x / T)), int(floor(p.z / T)))
 		if teren(wyn.x, wyn.y) == "":
 			return Vector2i(-1, -1)
-		h = maxf(wysokosc(wyn.x, wyn.y), -0.14)
+		h = maxf(wysokosc(wyn.x, wyn.y), POZIOM_WODY)
 	return wyn
 
 
@@ -2142,6 +2337,7 @@ func najedz(pole: Vector2i) -> void:
 		return
 	kursor.visible = true
 	kursor.position = pozycja(pole.x, pole.y) + Vector3(0, 0.07, 0)
+	kursor.position.y = maxf(kursor.position.y, POZIOM_WODY + 0.05)
 	var km: StandardMaterial3D = kursor.material_override
 	if wybrany != "":
 		var ok: bool = moze_budowac(S.aktywny, wybrany, pole.x, pole.y)[0]
@@ -2442,4 +2638,17 @@ func zrzuty(kat: String) -> void:
 	ui.pokaz_ekran()
 	await get_tree().create_timer(1.0).timeout
 	await _zrzut(kat, "16_final")
+	# woda: wybrzeże pod Zamą i zbliżenie na koryto Tybru
+	for ujecie in [[2, Vector2(7, 9), 26.0, "17_woda_wybrzeze"], [0, Vector2(7.5, 13), 14.0, "18_woda_tyber"]]:
+		rozpocznij_rozdzial(ujecie[0], [{"imie": "Damian", "rod": 0}], "kampania", 1)
+		ui.zamknij_wszystko()
+		scena = "gra"
+		ui.pokaz_ekran()
+		cel_kam = Vector3(ujecie[1].x * T, 0, ujecie[1].y * T)
+		odl = ujecie[2]
+		yaw_cel = 0.6
+		yaw = 0.6
+		kamera.position = cel_kam + Vector3(0, 30, 20)
+		await get_tree().create_timer(2.5).timeout
+		await _zrzut(kat, ujecie[3])
 	get_tree().quit()

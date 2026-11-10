@@ -35,6 +35,25 @@ plansza wygląda jak prawdziwa makieta. W bitwie pas ostrości obejmuje oba szyk
   (rozmycie górnego i dolnego pasa), a ekspozycja i gęstość mgły jest dobrana tak, żeby scena
   wyglądała podobnie jak w Forward+.
 
+## Woda
+
+Woda ma własny shader (`_material_wody()` w `gra.gd`), działający tak samo w przeglądarce i na komputerze:
+
+- **Koryta i dno**: rzeki i morze leżą niżej niż ląd, więc powstają brzegi – niska ziemista skarpa nad lustrem wody.
+  Dno opada łagodnie od brzegu (siatka 4 × 4 na pole, głębokość liczona z odległości od lądu): przy brzegu piasek
+  i muł, w nurcie Tybru i na pełnym morzu ciemna głębia.
+- **Przezroczystość zależna od głębokości**: przy brzegu widać dno przez turkusową płyciznę, dalej woda gęstnieje
+  w granat. Głębokość jest zapisana w wierzchołkach powierzchni wody (nie wymaga bufora głębi, więc działa też w WebGL).
+- **Fale**: dwie normal mapy (szum generowany w grze) przewijane w różnych kierunkach i skalach oraz delikatne
+  kołysanie lustra wody.
+- **Piana przy brzegu**: poszarpany szumem pas płytkiej wody, pulsujący jak przybój – wzdłuż brzegów Tybru i plaż.
+- **Odbicia**: fresnel z kolorem nieba bieżącej epoki (np. złoty zmierzch późnego cesarstwa) i odbicia otoczenia
+  z nieba (w Forward+).
+- Na mapach nadmorskich morze ciągnie się poza planszę, więc wybrzeże nie kończy się urwiskiem.
+
+![Tyber](zrzuty/18_woda_tyber.png)
+![Wybrzeże pod Zamą](zrzuty/17_woda_wybrzeze.png)
+
 ## Rozdziały
 
 | # | Lata | Epoka | Rozdział | Zadania i bitwa |
