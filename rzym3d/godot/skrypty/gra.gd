@@ -123,6 +123,11 @@ func _ready() -> void:
 		await get_tree().process_frame
 		await samotest()
 		return
+	if "--zrzuty-szybkie" in args:
+		tryb = "zrzuty"
+		await get_tree().process_frame
+		await zrzuty_szybkie(args[args.find("--zrzuty-szybkie") + 1])
+		return
 	if tryb == "zrzuty":
 		var i := args.find("--zrzuty")
 		var kat: String = args[i + 1] if i + 1 < args.size() else "user://zrzuty"
@@ -346,7 +351,7 @@ func _ustaw_klimat(epoka: String) -> void:
 	# GL Compatibility (przeglądarka) liczy światło w zakresie LDR i nie ma SSAO – scena wychodzi
 	# jaśniejsza, więc obniżamy ekspozycję i światło otoczenia, żeby wyglądała jak w Forward+.
 	if RenderingServer.get_rendering_device() == null:
-		srodowisko.tonemap_exposure = 0.78
+		srodowisko.tonemap_exposure = 0.66
 		srodowisko.ambient_light_energy = n[5] * 0.75
 	else:
 		srodowisko.tonemap_exposure = 0.95
@@ -379,6 +384,7 @@ func _cien_kontaktowy(rodzic: Node3D, promien: float, sila := 0.45) -> void:
 	mi.material_override = m
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	mi.position.y = 0.015
+	mi.name = "cien_kontaktowy"
 	rodzic.add_child(mi)
 
 
@@ -1672,6 +1678,7 @@ func zbuduj_swiat() -> void:
 	_animowane = []
 	_animuj_nowe = false
 	_zbuduj_teren()
+	_sciezki_od_nowa()
 	_dekoracje()
 	odswiez_swiat()
 	_animuj_nowe = true
@@ -1994,6 +2001,8 @@ uniform vec3 ziemia : source_color = vec3(0.45, 0.35, 0.22);
 uniform vec3 sciezka : source_color = vec3(0.62, 0.53, 0.37);
 uniform float ile_ziemi = 0.62;     // próg plam ziemi (mniej = więcej ziemi)
 uniform float ile_sciezek = 1.0;
+uniform sampler2D sciezki : filter_linear, repeat_disable;       // maska sieci ścieżek (liczona w grze)
+uniform vec2 rozmiar_mapy = vec2(48.0, 48.0);
 
 varying vec3 swiat;
 varying vec3 normalna;
@@ -2018,11 +2027,13 @@ void fragment() {
 	// plamy ziemi
 	float plama = smoothstep(ile_ziemi - sucho * 0.12, ile_ziemi - sucho * 0.12 + 0.06, n2 * 0.75 + n1 * 0.25 + (d - 0.5) * 0.12);
 	vec3 kolor = mix(trawa, ziemia * (0.85 + 0.25 * d2), plama * 0.85);
-	// ścieżki: wąskie „grzbiety” szumu, wydeptane i poszarpane
-	float g = abs(texture(szum, p * 0.016 + vec2(0.13, 0.52)).r - 0.5);
-	float gdzie = smoothstep(0.5, 0.6, texture(szum, p * 0.009 + vec2(0.61, 0.27)).r);   // ścieżki tylko w części mapy
-	float sc = (1.0 - smoothstep(0.006, 0.014 + (d - 0.5) * 0.006, g)) * gdzie * ile_sciezek;
-	kolor = mix(kolor, sciezka * (0.88 + 0.2 * d2), sc * 0.85);
+	// ścieżki z sieci wyznaczonej w grze (siedziba → rzeka, zabytki, budynki), brzegi poszarpane szumem;
+	// wokół wydeptanego pasa trawa jest przerzedzona
+	float sc_m = texture(sciezki, p / rozmiar_mapy).r;
+	float sc = smoothstep(0.3, 0.62, sc_m + (d - 0.5) * 0.3 + (d2 - 0.5) * 0.12) * ile_sciezek;
+	float pobocze = smoothstep(0.05, 0.3, sc_m) * (1.0 - sc);
+	kolor = mix(kolor, mix(kolor, ziemia, 0.45), pobocze * 0.6);
+	kolor = mix(kolor, sciezka * (0.88 + 0.2 * d2), sc * 0.9);
 	// typ terenu z wierzchołków (drogi, plaże, wzgórza…) – granica poszarpana szumem
 	vec3 typ = pow(COLOR.rgb, vec3(2.2)) * (0.9 + 0.18 * d2);
 	float waga = smoothstep(0.32, 0.68, COLOR.a + (n2 - 0.5) * 0.5 + (d - 0.5) * 0.2);
@@ -2205,6 +2216,7 @@ func _quad(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, d: Vector3, kol:
 		st.add_vertex(v)
 
 
+const JASNOSC_DEKORU_GL := 1.0   # dobierane porównaniem zrzutów Forward+ i GL Compatibility
 const DRZEWA := ["dab", "pinia", "cyprys", "oliwka", "krzak"]
 
 
@@ -2240,6 +2252,32 @@ func _na_ziemi(p: Vector3) -> Vector3:
 	return Vector3(p.x, teren_h(p.x, p.z), p.z)
 
 
+var _gl_siatki := {}
+
+
+func _kolory_dla_gl(m: Mesh) -> Mesh:
+	## Renderer GL Compatibility (przeglądarka) dekoduje kolory wierzchołków z glTF jeszcze raz jak sRGB,
+	## przez co drzewa i skały wychodzą ciemniejsze i bardziej nasycone niż w Forward+. Kodujemy je więc
+	## odwrotnie (liniowe → sRGB), żeby po dekodowaniu wróciły do właściwych wartości.
+	if m == null or not (m is ArrayMesh):
+		return m
+	if _gl_siatki.has(m):
+		return _gl_siatki[m]
+	var nowa := ArrayMesh.new()
+	for i in m.get_surface_count():
+		var a: Array = m.surface_get_arrays(i)
+		var k = a[Mesh.ARRAY_COLOR]
+		if k is PackedColorArray and k.size() > 0:
+			var kk: PackedColorArray = k
+			for j in kk.size():
+				kk[j] = kk[j].linear_to_srgb()
+			a[Mesh.ARRAY_COLOR] = kk
+		nowa.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, a)
+		nowa.surface_set_material(i, m.surface_get_material(i))
+	_gl_siatki[m] = nowa
+	return nowa
+
+
 func _model_bazowy(model: String) -> String:
 	var i := model.rfind("_")
 	if i > 0 and model.substr(i + 1).is_valid_int() and model.left(i) in DRZEWA:
@@ -2258,13 +2296,20 @@ func _rozsiej(model: String, transformy: Array) -> void:
 	# drzewa: każdy egzemplarz dostaje własny odcień (cieplejszy/chłodniejszy, jaśniejszy/ciemniejszy);
 	# kolor instancji mnoży się z gradientem z vertex colors modelu
 	var odcienie := []
+	var korekta := JASNOSC_DEKORU_GL if RenderingServer.get_rendering_device() == null else 1.0
 	if _model_bazowy(model) in DRZEWA:
 		var r := RandomNumberGenerator.new()
 		r.seed = model.hash() + int(S.get("rozdzial", 0))
 		for i in transformy.size():
 			var o := r.randf_range(-1.0, 1.0)            # -1 chłodniej/sino, +1 cieplej/żółtawo
 			var j := r.randf_range(0.84, 1.12)           # jasność
-			odcienie.append(Color(j * (1.0 + 0.11 * o), j * (1.0 + 0.03 * o), j * (1.0 - 0.14 * o)))
+			odcienie.append(Color(j * (1.0 + 0.11 * o), j * (1.0 + 0.03 * o), j * (1.0 - 0.14 * o)) * korekta)
+	elif korekta != 1.0 and model != "gora":
+		for i in transformy.size():
+			odcienie.append(Color(korekta, korekta, korekta))
+	if RenderingServer.get_rendering_device() == null:
+		for s in siatki:
+			s[0] = _kolory_dla_gl(s[0])
 	for s in siatki:
 		var mm := MultiMesh.new()
 		mm.transform_format = MultiMesh.TRANSFORM_3D
@@ -2520,6 +2565,7 @@ func odswiez_swiat() -> void:
 		_znajdzki_wezly[klucz] = n
 	_rysuj_granice()
 	odswiez_siatke_budowy()
+	_sciezki_dorysuj()
 
 
 func _prostokat_na_terenie(st: SurfaceTool, xa: float, za: float, xb: float, zb: float, kol: Color, unies: float) -> void:
@@ -2539,6 +2585,225 @@ func _prostokat_na_terenie(st: SurfaceTool, xa: float, za: float, xb: float, zb:
 			var h := func(px: float, pz: float) -> float:
 				return maxf(teren_h(px, pz), POZIOM_WODY) + unies
 			_quad(st, Vector3(x0, h.call(x0, z0), z0), Vector3(x1, h.call(x1, z0), z0), Vector3(x1, h.call(x1, z1), z1), Vector3(x0, h.call(x0, z1), z1), kol, Vector3.UP)
+
+
+# ----------------------------------------------------------------- sieć ścieżek
+# Ścieżki nie są szumem: wyznacza je Dijkstra na siatce terenu (0,5 m). Koszt rośnie na stokach i na
+# wzgórzach, woda i góry są nieprzekraczalne – ścieżki same biegną dolinami między wzgórzami. Na start:
+# siedziba → brzeg rzeki/morza, siedziba → zabytki (np. Grota Luperkal), siedziba → w stronę obozu wroga,
+# siedziby graczy między sobą. Każdy nowy budynek dostaje odnogę do najbliższej ścieżki. Sieć jest
+# rysowana do tekstury `_sc_img` czytanej przez shader terenu.
+const SC_ROZ := 512
+var _sc_img: Image
+var _sc_tex: ImageTexture
+var _sc_siec := PackedByteArray()
+var _sc_polaczone := {}
+
+
+func _sc_kom(x: int, y: int) -> int:
+	## Komórka siatki w środku pola (x, y).
+	var g := N * RES + 1
+	return (y * RES + RES / 2) * g + x * RES + RES / 2
+
+
+func _sciezki_od_nowa() -> void:
+	var t0 := Time.get_ticks_msec()
+	var g := N * RES + 1
+	_sc_img = Image.create(SC_ROZ, SC_ROZ, false, Image.FORMAT_L8)
+	_sc_img.fill(Color(0, 0, 0))
+	_sc_siec = PackedByteArray()
+	_sc_siec.resize(g * g)
+	_sc_polaczone = {}
+	var siedziby := []
+	for i in S.gracze.size():
+		var st_: Array = R.start[i]
+		siedziby.append(_sc_kom(int(st_[0]), int(st_[1])))
+	for k in siedziby.size():
+		var s0: int = siedziby[k]
+		_sc_siec[s0] = 1
+		_sc_rysuj(_sc_szukaj(s0, "brzeg", -1, 70), 1.0)                       # do wody
+		for z in R.zabytki:                                                     # do zabytków w pobliżu
+			var cel := _sc_kom(int(z[0]), int(z[1]))
+			if absi(int(z[0]) - int(R.start[k][0])) + absi(int(z[1]) - int(R.start[k][1])) <= 14:
+				_sc_rysuj(_sc_szukaj(s0, "punkt", cel, 90), 0.9)
+		if not R.obozy.is_empty():                                              # szlak w stronę obozu wroga
+			var o: Array = R.obozy[0]
+			var x := int(lerpf(float(R.start[k][0]), float(o[0]), 0.7))
+			var y := int(lerpf(float(R.start[k][1]), float(o[1]), 0.7))
+			_sc_rysuj(_sc_szukaj(s0, "punkt", _sc_kom(x, y), 90), 0.75)
+		if k > 0:                                                               # między siedzibami graczy
+			_sc_rysuj(_sc_szukaj(s0, "punkt", siedziby[0], 140), 1.0)
+	_sciezki_dorysuj(true)
+	if OS.is_debug_build() or tryb != "":
+		print("SCIEZKI: %d ms" % (Time.get_ticks_msec() - t0))
+
+
+func _sciezki_dorysuj(wymus := false) -> void:
+	## Odnogi do budynków, które jeszcze nie są połączone z siecią (także w budowie).
+	if _sc_img == null or S.is_empty():
+		return
+	var zmiana := wymus
+	for b in S.budynki:
+		var klucz := "%d,%d" % [int(b.x), int(b.y)]
+		if _sc_polaczone.has(klucz):
+			continue
+		_sc_polaczone[klucz] = true
+		var c := _sc_kom(int(b.x), int(b.y))
+		if _sc_siec[c] == 1:
+			continue
+		var szer := 0.8 if b.typ in ["targ", "swiatynia", "kuria", "termy", "amfiteatr", "port"] else 0.6
+		_sc_rysuj(_sc_szukaj(c, "siec", -1, 40), szer)
+		zmiana = true
+	if zmiana:
+		if _sc_tex == null:
+			_sc_tex = ImageTexture.create_from_image(_sc_img)
+		else:
+			_sc_tex.set_image(_sc_img)
+		if _mat_terenu:
+			_mat_terenu.set_shader_parameter("sciezki", _sc_tex)
+			_mat_terenu.set_shader_parameter("rozmiar_mapy", Vector2(N * T, N * T))
+
+
+func _sc_szukaj(start: int, cel: String, punkt: int, zasieg: int) -> PackedInt32Array:
+	## Dijkstra na siatce (8 sąsiadów). cel: "brzeg" (płycizna), "siec" (istniejąca ścieżka), "punkt".
+	var g := N * RES + 1
+	var sx := start % g
+	var sy := start / g
+	var koszt := {start: 0.0}
+	var skad := {}
+	var kk := PackedFloat64Array([0.0])            # kopiec binarny: koszty (64 bity – jak słownik kosztów)
+	var kc := PackedInt32Array([start])            # kopiec binarny: komórki
+	var znaleziony := -1
+	var kroki := 0
+	while kk.size() > 0 and kroki < 60000:
+		kroki += 1
+		var ek := kk[0]
+		var c: int = kc[0]
+		var ost := kk.size() - 1
+		kk[0] = kk[ost]
+		kc[0] = kc[ost]
+		kk.resize(ost)
+		kc.resize(ost)
+		var i := 0
+		while true:                                 # przesiewanie w dół
+			var l := 2 * i + 1
+			if l >= kk.size():
+				break
+			var m := l
+			if l + 1 < kk.size() and kk[l + 1] < kk[l]:
+				m = l + 1
+			if kk[m] >= kk[i]:
+				break
+			var tk := kk[i]
+			kk[i] = kk[m]
+			kk[m] = tk
+			var tc := kc[i]
+			kc[i] = kc[m]
+			kc[m] = tc
+			i = m
+		if ek > koszt.get(c, INF):
+			continue
+		if c != start:
+			if (cel == "siec" and _sc_siec[c] == 1) or (cel == "punkt" and c == punkt) \
+					or (cel == "brzeg" and _w_siatka[c] > 0.28):
+				znaleziony = c
+				break
+		var cx := c % g
+		var cy := c / g
+		for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1), Vector2i(1, 1), Vector2i(-1, 1), Vector2i(1, -1), Vector2i(-1, -1)]:
+			var nx: int = cx + d.x
+			var ny: int = cy + d.y
+			if nx < 0 or ny < 0 or nx >= g or ny >= g or absi(nx - sx) > zasieg or absi(ny - sy) > zasieg:
+				continue
+			var n := ny * g + nx
+			if _w_siatka[n] > 0.36 and not (cel == "brzeg" and _w_siatka[n] <= 0.5):
+				continue                                # woda
+			if teren(nx / RES, ny / RES) == "g":
+				continue                                # góry
+			var dh := absf(_h_siatka[n] - _h_siatka[c])
+			var dl := 1.414 if d.x != 0 and d.y != 0 else 1.0
+			var k: float = dl * (1.0 + 14.0 * dh + 0.8 * maxf(_h_siatka[n], 0.0))
+			if teren(nx / RES, ny / RES) in ["l", "b"]:
+				k *= 1.6                                # przez las i bagno niechętnie
+			if _sc_siec[n] == 1:
+				k *= 0.5                                # chętnie po istniejących ścieżkach
+			var nk: float = koszt[c] + k
+			if nk < koszt.get(n, INF):
+				koszt[n] = nk
+				skad[n] = c
+				kk.append(nk)                       # przesiewanie w górę
+				kc.append(n)
+				var j := kk.size() - 1
+				while j > 0:
+					var rodz := (j - 1) / 2
+					if kk[rodz] <= kk[j]:
+						break
+					var tk := kk[j]
+					kk[j] = kk[rodz]
+					kk[rodz] = tk
+					var tc := kc[j]
+					kc[j] = kc[rodz]
+					kc[rodz] = tc
+					j = rodz
+	var wynik := PackedInt32Array()
+	if znaleziony < 0:
+		return wynik
+	var c := znaleziony
+	while c != start:
+		wynik.append(c)
+		c = skad[c]
+	wynik.append(start)
+	wynik.reverse()
+	return wynik
+
+
+func _sc_rysuj(sciezka: PackedInt32Array, szer: float) -> void:
+	## Wygładzona (Chaikin) i lekko wijąca się linia wbita do maski; komórki trafiają do sieci.
+	if sciezka.size() < 2:
+		return
+	var g := N * RES + 1
+	var pts := []
+	for c in sciezka:
+		_sc_siec[c] = 1
+		pts.append(Vector2(float(c % g) / RES * T, float(c / g) / RES * T))
+	for _it in 3:                                   # Chaikin: zaokrąglenie załamań siatki
+		var nowe := [pts[0]]
+		for i in pts.size() - 1:
+			var a: Vector2 = pts[i]
+			var b: Vector2 = pts[i + 1]
+			nowe.append(a.lerp(b, 0.25))
+			nowe.append(a.lerp(b, 0.75))
+		nowe.append(pts[pts.size() - 1])
+		pts = nowe
+	var skala := SC_ROZ / (N * T)
+	var r := maxf(1.2, szer * 0.5 * skala)
+	var dlug := 0.0
+	for i in pts.size() - 1:
+		var a: Vector2 = pts[i]
+		var b: Vector2 = pts[i + 1]
+		var odc := a.distance_to(b)
+		var kroki := maxi(1, int(odc * skala / 0.8))
+		var nrm := (b - a).orthogonal().normalized()
+		for k in kroki:
+			var p := a.lerp(b, float(k) / kroki)
+			dlug += odc / kroki
+			p += nrm * sin(dlug * 0.9) * 0.12                # łagodne wicie się ścieżki
+			_sc_stempel(p * skala, r * (0.9 + 0.2 * sin(dlug * 2.3)))
+
+
+func _sc_stempel(srodek: Vector2, r: float) -> void:
+	var x0 := maxi(0, int(srodek.x - r - 1))
+	var x1 := mini(SC_ROZ - 1, int(srodek.x + r + 1))
+	var y0 := maxi(0, int(srodek.y - r - 1))
+	var y1 := mini(SC_ROZ - 1, int(srodek.y + r + 1))
+	for y in range(y0, y1 + 1):
+		for x in range(x0, x1 + 1):
+			var d := Vector2(x + 0.5, y + 0.5).distance_to(srodek)
+			var v := clampf(1.0 - (d - r * 0.55) / (r * 0.6), 0.0, 1.0)
+			if v > 0.0:
+				var stara := _sc_img.get_pixel(x, y).r
+				if v > stara:
+					_sc_img.set_pixel(x, y, Color(v, v, v))
 
 
 func _rysuj_granice() -> void:
@@ -3177,20 +3442,29 @@ func _bohater(n: Node3D, imie: String, kolor: Color) -> void:
 	n.set_meta("baza_tr", n.transform)
 	_cien_kontaktowy(n, 0.75, 0.55)
 	# krąg w kolorze bohatera pod stopami
+	# płaski kwad z teksturą pierścienia (gradient radialny) – okrągły pod każdym kątem kamery
 	var krag := MeshInstance3D.new()
-	var tm := TorusMesh.new()
-	tm.inner_radius = 0.5
-	tm.outer_radius = 0.6
-	tm.rings = 24
-	tm.ring_segments = 4
-	krag.mesh = tm
-	krag.scale = Vector3(1, 0.05, 1)
-	krag.position = n.position + Vector3(0, 0.03, 0)
+	var pm := PlaneMesh.new()
+	pm.size = Vector2(1.35, 1.35)
+	krag.mesh = pm
+	krag.position = n.position + Vector3(0, 0.035, 0)
+	krag.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var gr_ := Gradient.new()
+	gr_.set_color(0, Color(1, 1, 1, 0))
+	gr_.set_offset(1, 1.0)
+	gr_.set_color(1, Color(1, 1, 1, 0))
+	for p_ in [[0.66, 0.0], [0.74, 0.18], [0.8, 1.0], [0.9, 1.0], [0.96, 0.0]]:
+		gr_.add_point(p_[0], Color(1, 1, 1, p_[1]))
+	var gt := GradientTexture2D.new()
+	gt.gradient = gr_
+	gt.fill = GradientTexture2D.FILL_RADIAL
+	gt.fill_from = Vector2(0.5, 0.5)
+	gt.fill_to = Vector2(1.0, 0.5)
+	gt.width = 128
+	gt.height = 128
 	var km := StandardMaterial3D.new()
-	km.albedo_color = Color(kolor, 0.85)
-	km.emission_enabled = true
-	km.emission = kolor
-	km.emission_energy_multiplier = 0.6
+	km.albedo_texture = gt
+	km.albedo_color = Color(kolor, 0.9)
 	km.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	km.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	krag.material_override = km
@@ -3211,7 +3485,8 @@ void fragment() {
 	m.shader = sh
 	m.set_shader_parameter("kolor", kolor)
 	for c in n.find_children("*", "MeshInstance3D", true, false):
-		(c as MeshInstance3D).material_overlay = m
+		if not String(c.name).begins_with("cien_kontaktowy"):      # poświata tylko na postaci, nie na cieniu
+			(c as MeshInstance3D).material_overlay = m
 	dekor_wezel.add_child(n)
 	_postacie.append(n)
 	var l := etykieta(imie, 52, kolor.lightened(0.35))
@@ -3238,7 +3513,7 @@ func _idle_bohatera(n: Node3D, d: Dictionary) -> void:
 	var krag = n.get_meta("krag", null)
 	if krag and is_instance_valid(krag):
 		var s := 1.0 + 0.06 * sin(t * 2.2 + f0)
-		(krag as Node3D).scale = Vector3(s, 0.05, s)
+		(krag as Node3D).scale = Vector3(s, 1.0, s)
 
 
 func _krok(n: Node, faza: float, amp: float) -> void:
@@ -3564,6 +3839,30 @@ func _zrzut(kat: String, nazwa: String) -> void:
 	var img := get_viewport().get_texture().get_image()
 	img.save_png(kat.path_join(nazwa + ".png"))
 	print("ZRZUT: ", nazwa)
+
+
+func zrzuty_szybkie(kat: String) -> void:
+	## Dwa ujęcia Palatynu (z góry i z boku) – szybkie porównanie rendererów.
+	DirAccess.make_dir_recursive_absolute(kat)
+	tryb = ""
+	muzyka_on = false
+	lektor_on = false
+	rozpocznij_rozdzial(0, [{"imie": "Damian", "rod": 0}], "kampania", 1)
+	ui.zamknij_wszystko()
+	scena = "gra"
+	ui.pokaz_ekran()
+	_kamera_na_siedzibe(0)
+	kamera.position = cel_kam + Vector3(0, 30, 20)
+	await get_tree().create_timer(1.5).timeout
+	await _zrzut(kat, "a_gora")
+	scena = "galeria"
+	ui.pokaz_ekran()
+	kamera.position = Vector3(10.5 * T, 6.5, 22.5 * T)
+	kamera.look_at(Vector3(14.0 * T, 0.6, 12.5 * T))
+	ustaw_glebie(22.0)
+	await get_tree().create_timer(1.5).timeout
+	await _zrzut(kat, "b_bok")
+	get_tree().quit()
 
 
 func zrzuty(kat: String) -> void:
