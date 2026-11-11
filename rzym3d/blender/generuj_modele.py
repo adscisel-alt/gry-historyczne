@@ -408,7 +408,177 @@ def zapisz_glb(nazwa):
     print("model:", nazwa)
 
 
-CZESCI_RUCHOME = ("anim_", "kon_", "slon_", "jezdziec", "balista_")
+CZESCI_RUCHOME = ("anim_", "kon_", "slon_", "jezdziec", "balista_", "sciana_", "strzecha")
+
+
+# ----------------------------------------------------------------- fazowanie krawędzi i wypalony AO
+def fazuj(o, szer=0.012):
+    """Bevel na ostrych krawędziach – krawędzie łapią światło (low-poly, 1 segment)."""
+    m = o.modifiers.new("faza", "BEVEL")
+    m.width = szer
+    m.segments = 1
+    m.limit_method = "ANGLE"
+    m.angle_limit = math.radians(35)
+    m.use_clamp_overlap = True
+    m.harden_normals = False
+    bpy.context.view_layer.objects.active = o
+    bpy.ops.object.select_all(action="DESELECT")
+    o.select_set(True)
+    bpy.ops.object.modifier_apply(modifier=m.name)
+    o.select_set(False)
+
+
+def _swiat_ao(zasieg):
+    sc = bpy.context.scene
+    if sc.world is None:
+        sc.world = bpy.data.worlds.new("swiat_ao")
+    sc.world.light_settings.distance = zasieg
+    sc.render.engine = "CYCLES"
+    sc.cycles.device = "CPU"
+    sc.cycles.samples = 24
+    try:
+        sc.cycles.use_denoising = False
+    except Exception:
+        pass
+
+
+def _ziemia_pod():
+    bpy.ops.mesh.primitive_plane_add(size=8, location=(0, 0, -0.001))
+    return bpy.context.active_object
+
+
+def warianty_gn(o, ziarno, sila=0.12, skala=(1.0, 1.0, 1.0)):
+    """Geometry Nodes: deformacja szumem 4D (W = ziarno) i nierówna skala – każdy wariant ma inną sylwetkę."""
+    ng = bpy.data.node_groups.new("warianty_%d" % ziarno, "GeometryNodeTree")
+    ng.interface.new_socket(name="Geometry", in_out="INPUT", socket_type="NodeSocketGeometry")
+    ng.interface.new_socket(name="Geometry", in_out="OUTPUT", socket_type="NodeSocketGeometry")
+    N = ng.nodes
+    we = N.new("NodeGroupInput")
+    wy = N.new("NodeGroupOutput")
+    poz = N.new("GeometryNodeInputPosition")
+    szum = N.new("ShaderNodeTexNoise")
+    szum.noise_dimensions = "4D"
+    szum.inputs["W"].default_value = ziarno * 1.37
+    szum.inputs["Scale"].default_value = 1.6
+    szum.inputs["Detail"].default_value = 1.0
+    odejm = N.new("ShaderNodeVectorMath")
+    odejm.operation = "SUBTRACT"
+    odejm.inputs[1].default_value = (0.5, 0.5, 0.5)
+    mnoz = N.new("ShaderNodeVectorMath")
+    mnoz.operation = "SCALE"
+    mnoz.inputs["Scale"].default_value = sila * 2.0
+    # wysokość wpływu: przy ziemi (z ≈ 0) bez deformacji – drzewo nie odrywa się od podłoża
+    sep = N.new("ShaderNodeSeparateXYZ")
+    mapz = N.new("ShaderNodeMapRange")
+    mapz.inputs["From Min"].default_value = 0.0
+    mapz.inputs["From Max"].default_value = 0.6
+    mnoz2 = N.new("ShaderNodeVectorMath")
+    mnoz2.operation = "SCALE"
+    ustaw = N.new("GeometryNodeSetPosition")
+    trans = N.new("GeometryNodeTransform")
+    trans.inputs["Scale"].default_value = skala
+    L = ng.links
+    L.new(poz.outputs["Position"], szum.inputs["Vector"])
+    L.new(szum.outputs["Color"], odejm.inputs[0])
+    L.new(odejm.outputs["Vector"], mnoz.inputs[0])
+    L.new(poz.outputs["Position"], sep.inputs[0])
+    L.new(sep.outputs["Z"], mapz.inputs["Value"])
+    L.new(mnoz.outputs["Vector"], mnoz2.inputs[0])
+    L.new(mapz.outputs["Result"], mnoz2.inputs["Scale"])
+    L.new(we.outputs[0], ustaw.inputs["Geometry"])
+    L.new(mnoz2.outputs["Vector"], ustaw.inputs["Offset"])
+    L.new(ustaw.outputs["Geometry"], trans.inputs["Geometry"])
+    L.new(trans.outputs["Geometry"], wy.inputs[0])
+    m = o.modifiers.new("warianty", "NODES")
+    m.node_group = ng
+    bpy.context.view_layer.objects.active = o
+    bpy.ops.object.select_all(action="DESELECT")
+    o.select_set(True)
+    bpy.ops.object.modifier_apply(modifier=m.name)
+    o.select_set(False)
+
+
+def wypal_teksture(o, rozmiar=512, zasieg=0.6, sila=0.75):
+    """Wypala kolor materiałów pomnożony przez ambient occlusion do jednej tekstury (Smart UV).
+    Model dostaje jeden materiał z tą teksturą – w glTF/Godot widać miękkie cienie w zakamarkach
+    i przy styku z ziemią."""
+    _swiat_ao(zasieg)
+    ziemia = _ziemia_pod()
+    bpy.ops.object.select_all(action="DESELECT")
+    bpy.context.view_layer.objects.active = o
+    o.select_set(True)
+    bpy.ops.object.mode_set(mode="EDIT")
+    bpy.ops.mesh.select_all(action="SELECT")
+    bpy.ops.uv.smart_project(angle_limit=math.radians(66), island_margin=0.012)
+    bpy.ops.object.mode_set(mode="OBJECT")
+    obrazy = {}
+    for rodzaj in ("DIFFUSE", "AO"):
+        img = bpy.data.images.new("%s_%s" % (o.name, rodzaj), rozmiar, rozmiar, alpha=False, float_buffer=True)
+        for m in o.data.materials:
+            if m is None:
+                continue
+            m.use_nodes = True
+            nt = m.node_tree
+            n = nt.nodes.get("cel_wypalania") or nt.nodes.new("ShaderNodeTexImage")
+            n.name = "cel_wypalania"
+            n.image = img
+            nt.nodes.active = n
+        if rodzaj == "DIFFUSE":
+            bpy.ops.object.bake(type="DIFFUSE", pass_filter={"COLOR"}, margin=4, use_clear=True)
+        else:
+            bpy.ops.object.bake(type="AO", margin=4, use_clear=True)
+        obrazy[rodzaj] = img
+    import numpy as np
+    kol = np.array(obrazy["DIFFUSE"].pixels[:], dtype=np.float32).reshape(-1, 4)
+    ao = np.array(obrazy["AO"].pixels[:], dtype=np.float32).reshape(-1, 4)[:, :1]
+    wynik = kol.copy()
+    wynik[:, :3] = kol[:, :3] * (1.0 - sila + sila * ao)
+    wynik[:, 3] = 1.0
+    gotowy = bpy.data.images.new(o.name + "_tekstura", rozmiar, rozmiar, alpha=False)
+    gotowy.colorspace_settings.name = "sRGB"
+    # piksele float (liniowe) -> sRGB dla obrazu 8-bitowego
+    lin_ = np.clip(wynik[:, :3], 0, 1)
+    srgb = np.where(lin_ <= 0.0031308, lin_ * 12.92, 1.055 * np.power(lin_, 1 / 2.4) - 0.055)
+    wynik[:, :3] = srgb
+    gotowy.pixels[:] = wynik.ravel()
+    gotowy.pack()
+    m = bpy.data.materials.new(o.name + "_wypalony")
+    m.use_nodes = True
+    nt = m.node_tree
+    bsdf = nt.nodes["Principled BSDF"]
+    bsdf.inputs["Roughness"].default_value = 0.82
+    tx = nt.nodes.new("ShaderNodeTexImage")
+    tx.image = gotowy
+    nt.links.new(tx.outputs["Color"], bsdf.inputs["Base Color"])
+    o.data.materials.clear()
+    o.data.materials.append(m)
+    bpy.data.objects.remove(ziemia)
+    for im in obrazy.values():
+        bpy.data.images.remove(im)
+
+
+def ao_wierzcholki(o, zasieg=0.5, sila=0.6):
+    """AO wypalony do kolorów wierzchołków i pomnożony przez gradient „Col” (drzewa, skały)."""
+    me = o.data
+    if "Col" not in me.color_attributes:
+        return
+    _swiat_ao(zasieg)
+    ziemia = _ziemia_pod()
+    me.color_attributes.new("AO", "BYTE_COLOR", "POINT")
+    me.color_attributes.active_color = me.color_attributes["AO"]
+    bpy.ops.object.select_all(action="DESELECT")
+    bpy.context.view_layer.objects.active = o
+    o.select_set(True)
+    bpy.ops.object.bake(type="AO", target="VERTEX_COLORS")
+    kol, ao = me.color_attributes["Col"], me.color_attributes["AO"]
+    for i in range(len(kol.data)):
+        a = ao.data[i].color[0]
+        c = kol.data[i].color
+        f = 1.0 - sila + sila * a
+        kol.data[i].color = (c[0] * f, c[1] * f, c[2] * f, 1.0)
+    me.color_attributes.remove(me.color_attributes["AO"])
+    me.color_attributes.active_color = me.color_attributes["Col"]
+    bpy.data.objects.remove(ziemia)
 
 
 def eksportuj(nazwa):
@@ -705,34 +875,97 @@ def m_krzak(ziarno=13):
         kula(x, y, 0.3, 0.035, (200, 60, 60), seg=5, ringi=3)
 
 
-def m_skala_0():
-    ikosfera(0, 0, 0.35, 0.6, KAMIEN, skala=(1.2, 1, 0.75))
-    ikosfera(0.55, 0.35, 0.22, 0.38, KAMIEN_C, skala=(1, 1.1, 0.8))
-    ikosfera(-0.45, 0.45, 0.18, 0.3, KAMIEN_J)
+def m_skala_0(ziarno=21):
+    """Głaz: kilka brył zlanych w jedną, poszarpanych szumem (warianty: ziarno)."""
+    r = _random.Random(ziarno)
+    bryly = [(0, 0, 0.3, 0.55, (1.25, 1.0, 0.7))]
+    for i in range(r.randint(2, 3)):
+        a = r.uniform(0, 6.28)
+        bryly.append((math.cos(a) * 0.45, math.sin(a) * 0.4, 0.2, r.uniform(0.25, 0.38), (1.1, 1.0, 0.8)))
+    k = _bryly_korony(bryly, voxel=0.07, szum=0.09, skala_szumu=0.25, cel_scian=160, ziarno=ziarno)
+    _koloruj(k, (78, 74, 68), (150, 144, 132), z0=0.0, ziarno=ziarno)
 
 
-def m_skala_1():
-    ikosfera(0, 0.1, 0.6, 0.55, KAMIEN_C, skala=(0.9, 0.8, 1.2))
-    ikosfera(0.45, -0.2, 0.3, 0.4, KAMIEN, skala=(1, 1, 0.8))
-    ikosfera(-0.45, -0.25, 0.2, 0.3, KAMIEN_J, skala=(1.2, 1, 0.7))
-    ikosfera(0.1, 0.1, 1.1, 0.25, KAMIEN_J)
-    kula(-0.2, -0.4, 0.05, 0.2, (90, 140, 70), seg=6, ringi=4, skala=(1.4, 1, 0.5))
+def m_skala_1(ziarno=23):
+    """Skałka z kępą trawy."""
+    r = _random.Random(ziarno)
+    bryly = [(0, 0.1, 0.55, 0.5, (0.95, 0.85, 1.25)), (0.42, -0.2, 0.3, 0.38, (1, 1, 0.8)),
+             (-0.42, -0.22, 0.2, r.uniform(0.25, 0.32), (1.2, 1, 0.7))]
+    k = _bryly_korony(bryly, voxel=0.07, szum=0.1, skala_szumu=0.22, cel_scian=180, ziarno=ziarno)
+    _koloruj(k, (74, 70, 64), (146, 140, 128), z0=0.0, ziarno=ziarno)
+    kp = _bryly_korony([(-0.25, -0.45, 0.05, 0.18, (1.5, 1, 0.5))], voxel=0.05, szum=0.04, cel_scian=60, ziarno=ziarno)
+    _koloruj(kp, (60, 100, 50), (110, 150, 70), z0=0.0, ziarno=ziarno)
 
 
-def m_trzcina():
-    cyl(0, 0, 0, 0.7, 0.02, (80, 130, 150), v=12)
-    for i in range(22):
-        a = i * 2.4
-        r = 0.15 + 0.45 * ((i * 37) % 10) / 10
-        x, y = r * math.cos(a), r * math.sin(a)
-        h = 0.8 + 0.5 * ((i * 53) % 7) / 7
-        nach = 0.12 * math.cos(a * 3)
-        walec((x, y, 0), (x + nach, y + nach * 0.5, h), 0.018, (96, 140, 64), v=4)
-        if i % 2 == 0:
-            walec((x + nach, y + nach * 0.5, h - 0.05), (x + nach * 1.05, y + nach * 0.52, h + 0.15), 0.035,
-                  (120, 84, 50), v=5)
-        else:
-            belka((x, y, 0), (x - nach * 2, y + 0.1, h * 0.8), 0.04, 0.008, (110, 156, 70))
+def m_klif(ziarno=31):
+    """Skalne urwisko do krawędzi wzgórza (wzdłuż osi X, lico na -Y): kanciaste warstwy tufu i trawertynu,
+    zlane voxel-remeshem, lekko poszarpane szumem; na koronie pas trawy."""
+    r = _random.Random(ziarno)
+    bpy.ops.object.select_all(action="DESELECT")
+    bloki = []
+    z = 0.0
+    warstwa = 0
+    while z < 1.0:                                                            # poziome ławice skały
+        h = r.uniform(0.22, 0.34)
+        x = -1.0
+        while x < 1.0:
+            w = r.uniform(0.3, 0.55)
+            gl = r.uniform(0.32, 0.46) - warstwa * 0.04
+            o = box(x + w / 2, r.uniform(-0.06, 0.06) + warstwa * 0.05, z, w * 1.02, gl, h * r.uniform(0.9, 1.1),
+                    KAMIEN, rot=(0, r.uniform(-0.06, 0.06), r.uniform(-0.08, 0.08)))
+            bloki.append(o)
+            x += w * 0.92
+        z += h * 0.92
+        warstwa += 1
+    for o in bloki:
+        o.select_set(True)
+    bpy.context.view_layer.objects.active = bloki[0]
+    bpy.ops.object.transform_apply(location=False, rotation=True, scale=True)
+    bpy.ops.object.join()
+    k = bpy.context.view_layer.objects.active
+    k.select_set(False)
+    rm = k.modifiers.new("zlanie", "REMESH")
+    rm.mode = "VOXEL"
+    rm.voxel_size = 0.05
+    _zastosuj(k, rm)
+    t = bpy.data.textures.new("klif_szum_%d" % ziarno, "CLOUDS")
+    t.noise_scale = 0.2
+    ds = k.modifiers.new("szum", "DISPLACE")
+    ds.texture = t
+    ds.texture_coords = "OBJECT"
+    ds.strength = 0.06
+    _zastosuj(k, ds)
+    dc = k.modifiers.new("lowpoly", "DECIMATE")
+    dc.decimate_type = "DISSOLVE"                                             # płaskie lica zostają płaskie
+    dc.angle_limit = math.radians(8)
+    _zastosuj(k, dc)
+    tr = k.modifiers.new("tri", "TRIANGULATE")
+    _zastosuj(k, tr)
+    _koloruj(k, (100, 84, 66), (180, 162, 128), z0=0.0, ziarno=ziarno, szum=0.14)
+    gora_ = max(v.co.z for v in k.data.vertices)
+    kp = _bryly_korony([(0.0, 0.18, gora_ - 0.08, 0.5, (2.1, 0.7, 0.22))], voxel=0.06, szum=0.04,
+                       cel_scian=70, ziarno=ziarno)                          # trawa na koronie urwiska
+    _koloruj(kp, (70, 110, 52), (118, 158, 74), ziarno=ziarno)
+
+
+def m_trzcina(ziarno=41):
+    """Kępa trzciny (bez podstawy – stoi w płytkiej wodzie albo na brzegu): łodygi i brązowe kolby."""
+    r = _random.Random(ziarno)
+    for i in range(r.randint(16, 22)):
+        a = r.uniform(0, 6.28)
+        rr = r.uniform(0.05, 0.42)
+        x, y = rr * math.cos(a), rr * math.sin(a)
+        h = r.uniform(0.75, 1.35)
+        nx, ny = r.uniform(-0.18, 0.18), r.uniform(-0.18, 0.18)
+        walec((x, y, -0.15), (x + nx, y + ny, h), 0.016, (96, 140, 64) if i % 3 else (130, 150, 70), v=4)
+        if i % 3 == 0:
+            walec((x + nx * 0.92, y + ny * 0.92, h - 0.2), (x + nx, y + ny, h - 0.02), 0.035, (110, 72, 40), v=5)
+        if i % 4 == 0:                                                        # liście
+            belka((x, y, 0.2), (x + nx * 2.5, y + ny * 2.5, 0.75), 0.05, 0.008, (110, 150, 70))
+    for o in [o for o in bpy.context.scene.objects if o.type == "MESH"]:
+        brazowe = o.data.materials and o.data.materials[0].name.startswith("m_6e4828")
+        _koloruj(o, (70, 46, 26) if brazowe else (58, 88, 42), (120, 80, 46) if brazowe else (146, 172, 86),
+                 z0=-0.15, z1=1.3, ziarno=ziarno)
 
 
 def m_gora():
@@ -804,24 +1037,132 @@ def baza(sx, sy, kolor, h=0.04):
     box(0, 0, 0, sx, sy, h, kolor)
 
 
+def _normal_mapa(nazwa, wzor, rozmiar=256, sila=2.0):
+    """Normal mapa z mapy wysokości (numpy): wzor(u, v) -> wysokość 0..1."""
+    import numpy as np
+    u, v = np.meshgrid(np.linspace(0, 1, rozmiar, endpoint=False), np.linspace(0, 1, rozmiar, endpoint=False))
+    h = wzor(u, v).astype(np.float32)
+    dx = (np.roll(h, -1, 1) - np.roll(h, 1, 1)) * sila
+    dy = (np.roll(h, -1, 0) - np.roll(h, 1, 0)) * sila
+    n = np.stack([-dx, -dy, np.ones_like(h)], -1)
+    n /= np.linalg.norm(n, axis=-1, keepdims=True)
+    px = np.concatenate([n * 0.5 + 0.5, np.ones((rozmiar, rozmiar, 1), np.float32)], -1)
+    img = bpy.data.images.new(nazwa, rozmiar, rozmiar, alpha=False)
+    img.colorspace_settings.name = "Non-Color"
+    img.pixels[:] = px.ravel()
+    img.pack()
+    return img
+
+
+def _kolor_mapa(nazwa, wzor, rozmiar=256):
+    import numpy as np
+    u, v = np.meshgrid(np.linspace(0, 1, rozmiar, endpoint=False), np.linspace(0, 1, rozmiar, endpoint=False))
+    rgb = wzor(u, v).astype(np.float32)
+    px = np.concatenate([rgb, np.ones((rozmiar, rozmiar, 1), np.float32)], -1)
+    img = bpy.data.images.new(nazwa, rozmiar, rozmiar, alpha=False)
+    img.pixels[:] = px.ravel()
+    img.pack()
+    return img
+
+
+def mat_teksturowy(nazwa, kolor_img, normal_img, sila_normalnej=1.0, szorstkosc=0.9):
+    m = bpy.data.materials.new(nazwa)
+    m.use_nodes = True
+    nt = m.node_tree
+    bsdf = nt.nodes["Principled BSDF"]
+    bsdf.inputs["Roughness"].default_value = szorstkosc
+    tk = nt.nodes.new("ShaderNodeTexImage")
+    tk.image = kolor_img
+    nt.links.new(tk.outputs["Color"], bsdf.inputs["Base Color"])
+    tn = nt.nodes.new("ShaderNodeTexImage")
+    tn.image = normal_img
+    nm = nt.nodes.new("ShaderNodeNormalMap")
+    nm.inputs["Strength"].default_value = sila_normalnej
+    nt.links.new(tn.outputs["Color"], nm.inputs["Color"])
+    nt.links.new(nm.outputs["Normal"], bsdf.inputs["Normal"])
+    return m
+
+
+def _szum2d(u, v, czest, ziarno=0):
+    import numpy as np
+    r = np.random.default_rng(ziarno)
+    w = np.zeros_like(u)
+    for k in range(4):
+        fx, fy = r.uniform(0.6, 1.4, 2) * czest * (2 ** k)
+        fx, fy = round(fx), round(fy)                                         # całkowite – szum się zapętla
+        w += np.sin(2 * np.pi * (u * fx + r.uniform())) * np.sin(2 * np.pi * (v * fy + r.uniform())) / (2 ** k)
+    return w * 0.5 + 0.5
+
+
 def m_chata():
-    """Chata z Palatynu (VIII w. p.n.e.): okrągła, z plecionki i gliny, stożkowy dach ze strzechy."""
-    baza(1.7, 1.7, ZIEMIA_J)
-    cyl(0, 0, 0.04, 0.62, 0.75, GLINA, v=14)
-    for i in range(10):
-        a = i * 2 * math.pi / 10
-        cyl(0.63 * math.cos(a), 0.63 * math.sin(a), 0.04, 0.035, 0.78, DREWNO_C, v=5)
-    stozek(0, 0, 0.75, 0.88, 0.05, 1.05, STRZECHA, v=14)
-    stozek(0, 0, 0.75, 0.9, 0.7, 0.12, STRZECHA_C, v=14)
-    stozek(0, 0, 1.7, 0.08, 0.02, 0.18, STRZECHA_C, v=8)
-    box(0, -0.6, 0.04, 0.36, 0.1, 0.6, OTWOR)                                 # wejście
-    box(0, -0.7, 0.04, 0.5, 0.2, 0.04, DREWNO_C)
-    for s in (-1, 1):
-        cyl(s * 0.24, -0.74, 0.04, 0.04, 0.85, DREWNO, v=6)                    # daszek nad wejściem
-    box(0, -0.74, 0.86, 0.6, 0.28, 0.05, STRZECHA_C, rot=(-0.3, 0, 0))
-    cyl(0.6, -0.55, 0.04, 0.16, 0.3, (150, 96, 60), v=8)                       # gliniany dzban
-    for (x, y) in [(-0.7, 0.4), (-0.75, -0.2)]:
-        box(x, y, 0.04, 0.3, 0.12, 0.12, DREWNO)
+    """Chata z Palatynu (VIII w. p.n.e.): ściana z plecionki oblepionej gliną (normal mapa), strzecha
+    z warstw słomy (normal mapa źdźbeł), żerdzie dachu wystające nad kalenicą, płot, amfory, palenisko
+    i wydeptana ziemia wokół."""
+    import numpy as np
+    # wydeptana ziemia: nieregularny placek z jaśniejszą ścieżką do wejścia
+    r = _random.Random(5)
+    pts = []
+    for i in range(14):
+        a = i * 2 * math.pi / 14
+        rr = 0.86 + r.uniform(-0.06, 0.04)
+        pts.append((rr * math.cos(a), rr * math.sin(a)))
+    graniastoslup(pts, 0.0, 0.035, ZIEMIA_J)
+    graniastoslup([(-0.22, -0.55), (0.22, -0.55), (0.3, -0.9), (-0.3, -0.9)], 0.0, 0.038, (190, 158, 112))
+    for (x, y, rr) in [(-0.62, 0.35, 0.12), (0.55, 0.52, 0.09), (-0.2, 0.72, 0.1)]:
+        cyl(x, y, 0.0, rr, 0.04, (150, 116, 80), v=7)                         # ciemniejsze plamy błota
+    # ściana: plecionka z gliną
+    tex_g = _kolor_mapa("glina_kolor", lambda u, v: np.stack([
+        0.48 + 0.1 * _szum2d(u, v, 6, 1), 0.36 + 0.08 * _szum2d(u, v, 6, 1), 0.24 + 0.05 * _szum2d(u, v, 6, 2)], -1) ** 2.2)
+    nrm_g = _normal_mapa("glina_normal", lambda u, v: 0.55 * np.abs(np.sin(np.pi * (u * 24 + 0.5 * np.round(v * 8) % 2)))
+                         * (0.6 + 0.4 * np.abs(np.sin(np.pi * v * 8))) + 0.45 * _szum2d(u, v, 10, 3), sila=6.0)
+    with Grupa("sciana_chaty", (0, 0, 0)):
+        cyl(0, 0, 0.03, 0.62, 0.78, KREM, v=16)
+    sc = bpy.data.objects["sciana_chaty"]
+    sc.data.materials.clear()
+    sc.data.materials.append(mat_teksturowy("glina", tex_g, nrm_g, 1.0))
+    for i in range(12):                                                       # słupy nośne wtopione w ścianę
+        a = i * 2 * math.pi / 12
+        cyl(0.63 * math.cos(a), 0.63 * math.sin(a), 0.03, 0.035, 0.82, DREWNO_C, v=5)
+    # strzecha: kilka warstw słomy, każda z postrzępionym brzegiem
+    tex_s = _kolor_mapa("sloma_kolor", lambda u, v: np.stack([
+        0.78 + 0.12 * _szum2d(u * 3, v, 30, 4), 0.64 + 0.1 * _szum2d(u * 3, v, 30, 4), 0.34 + 0.06 * _szum2d(u, v, 20, 5)], -1) ** 2.2)
+    nrm_s = _normal_mapa("sloma_normal", lambda u, v: np.abs(np.sin(np.pi * u * 90 + 3 * _szum2d(u, v, 8, 6)))
+                         * 0.7 + 0.3 * _szum2d(u, v, 30, 7), sila=5.0)
+    with Grupa("strzecha", (0, 0, 0.8)):
+        for k, (r0, r1, z0, h) in enumerate([(0.95, 0.72, 0.76, 0.26), (0.76, 0.52, 0.98, 0.28),
+                                             (0.56, 0.3, 1.22, 0.3), (0.34, 0.08, 1.48, 0.32)]):
+            st = stozek(0, 0, z0, r0, r1, h, STRZECHA, v=18)
+            # postrzępiony okap: wierzchołki dolnego pierścienia losowo opuszczone
+            for vtx in st.data.vertices:
+                if vtx.co.z < 0:
+                    vtx.co.z -= r.uniform(0.0, 0.05)
+                    vtx.co.x *= 1.0 + r.uniform(-0.03, 0.04)
+                    vtx.co.y *= 1.0 + r.uniform(-0.03, 0.04)
+        stozek(0, 0, 1.78, 0.1, 0.03, 0.12, STRZECHA_C, v=8)
+    sz = bpy.data.objects["strzecha"]
+    sz.data.materials.clear()
+    sz.data.materials.append(mat_teksturowy("slomа", tex_s, nrm_s, 1.2))
+    # żerdzie dachu wystające nad kalenicą (krzyżują się jak w chatach z Palatynu) i wiązania
+    for a in (0.4, 1.9, 3.5, 5.0):
+        walec((0.5 * math.cos(a), 0.5 * math.sin(a), 1.05), (-0.08 * math.cos(a), -0.08 * math.sin(a), 2.05), 0.022, DREWNO_C, v=5)
+    for z, rr in ((0.92, 0.88), (1.16, 0.66)):
+        torus(0, 0, z, rr, 0.012, DREWNO_C, seg=20, mseg=3)                   # powrósła ściskające słomę
+    # wejście z daszkiem
+    box(0, -0.6, 0.03, 0.36, 0.12, 0.62, OTWOR)
+    box(0, -0.68, 0.03, 0.48, 0.16, 0.04, DREWNO_C)
+    for s_ in (-1, 1):
+        cyl(s_ * 0.24, -0.74, 0.03, 0.035, 0.84, DREWNO, v=6)
+    box(0, -0.76, 0.82, 0.62, 0.3, 0.06, STRZECHA_C, rot=(-0.3, 0, 0))
+    # amfory, dzban, ławka, drewno na opał
+    for (x, y, h) in [(0.62, -0.5, 0.26), (0.72, -0.32, 0.22)]:
+        cyl(x, y, 0.03, 0.08, h * 0.7, TERAKOTA_C, v=10)
+        kula(x, y, 0.03 + h * 0.7, 0.08, TERAKOTA_C, seg=10, ringi=5, skala=(1, 1, 0.8))
+        cyl(x, y, 0.03 + h * 0.75, 0.03, h * 0.35, TERAKOTA, v=8)
+        for s_ in (-1, 1):
+            torus(x + s_ * 0.06, y, 0.03 + h * 0.85, 0.035, 0.01, TERAKOTA_C, rot=(math.pi / 2, 0, 0), seg=8, mseg=3)
+    box(0.0, 0.78, 0.03, 0.5, 0.14, 0.16, DREWNO)                             # ławka
+    for k in range(4):
+        walec_lezacy(-0.72, 0.25 + k * 0.03, 0.06 + (k % 2) * 0.07, 0.04, 0.4, DREWNO_J, os_="y", v=6)
 
 
 def m_domus():
@@ -2684,8 +3025,14 @@ def ikona():
 
 
 # ================================================================= MAIN
+TEREN_WARIANTY = {"cyprys": (m_cyprys, 5), "pinia": (m_pinia, 3), "oliwka": (m_oliwka, 7), "dab": (m_dab, 11),
+                  "krzak": (m_krzak, 13), "skala_0": (m_skala_0, 21), "skala_1": (m_skala_1, 23),
+                  "trzcina": (m_trzcina, 41), "klif": (m_klif, 31)}
+ILE_WARIANTOW = 4
+BEZ_WYPALANIA = ("rusztowanie",)
 TEREN = {"cyprys": m_cyprys, "pinia": m_pinia, "oliwka": m_oliwka, "dab": m_dab, "krzak": m_krzak,
-         "skala_0": m_skala_0, "skala_1": m_skala_1, "trzcina": m_trzcina, "gora": m_gora, "wzgorze": m_wzgorze}
+         "skala_0": m_skala_0, "skala_1": m_skala_1, "trzcina": m_trzcina, "gora": m_gora, "wzgorze": m_wzgorze,
+         "klif": m_klif}
 BUDYNKI = {"chata": m_chata, "domus": m_domus, "insula": m_insula, "pole": m_pole, "winnica": m_winnica,
            "tartak": m_tartak, "kamieniolom": m_kamieniolom, "targ": m_targ, "swiatynia": m_swiatynia,
            "koszary": m_koszary, "mury": m_mury, "port": m_port, "akwedukt": m_akwedukt, "termy": m_termy,
@@ -2697,6 +3044,36 @@ INNE = {"galera": m_galera, "sztandar": m_sztandar, "znacznik": m_znacznik, "ogn
 JEDNOSTKI = ["legionista", "welita", "lucznik", "ekwita", "pretorianin", "balista", "galijczyk", "kartaginczyk",
              "slon", "german", "hun", "got"]
 JEDNOSTKI_BRYLY = {"ekwita": m_ekwita, "hun": m_hun, "slon": m_slon, "balista": m_balista}
+
+
+def eksportuj_wypalony(nazwa):
+    """Budynek: łączenie, fazowanie krawędzi (bevel) i wypalenie koloru z AO do tekstury."""
+    obs = [o for o in bpy.context.scene.objects if o.type == "MESH" and not o.name.startswith(CZESCI_RUCHOME)]
+    o = polacz(obs, nazwa, (0, 0, 0))
+    fazuj(o, 0.012)
+    wypal_teksture(o, 512 if nazwa in BUDYNKI else 768, zasieg=0.45, sila=0.85)
+    zapisz_glb(nazwa)
+
+
+def eksportuj_warianty(nazwa):
+    """Roślinność i skały: ILE_WARIANTOW wersji (inne ziarno budowy + deformacja Geometry Nodes), AO w kolorach
+    wierzchołków. Pliki <nazwa>_0..N-1.glb, a <nazwa>.glb = wariant 0 (zgodność wsteczna)."""
+    fn, ziarno0 = TEREN_WARIANTY[nazwa]
+    for w in range(ILE_WARIANTOW):
+        czysc()
+        fn(ziarno=ziarno0 + w * 101)
+        obs = [o for o in bpy.context.scene.objects if o.type == "MESH"]
+        o = polacz(obs, "%s_%d" % (nazwa, w), (0, 0, 0))
+        if w > 0:
+            r = _random.Random(ziarno0 * 7 + w)
+            warianty_gn(o, ziarno0 + w, sila=0.07 if nazwa in ("klif", "trzcina") else 0.1,
+                        skala=(r.uniform(0.88, 1.12), r.uniform(0.88, 1.12), r.uniform(0.9, 1.15)))
+        if nazwa.startswith(("skala", "klif")):
+            fazuj(o, 0.02)
+        ao_wierzcholki(o, zasieg=0.5 if nazwa != "trzcina" else 0.25, sila=0.75)
+        zapisz_glb("%s_%d" % (nazwa, w))
+        if w == 0:
+            zapisz_glb(nazwa)
 
 
 def podglad(katalog):
@@ -2733,12 +3110,18 @@ def main():
         for nazwa, fn in grupa.items():
             if not chce(nazwa):
                 continue
+            if nazwa in TEREN_WARIANTY:
+                eksportuj_warianty(nazwa)
+                continue
             czysc()
             _wexillum_nr[0] = 0
             fn()
             if grupa is BUDYNKI and nazwa in ZYCIE:
                 ZYCIE[nazwa]()
-            eksportuj(nazwa)
+            if grupa in (BUDYNKI, ZABYTKI, OBOZY) and nazwa not in BEZ_WYPALANIA:
+                eksportuj_wypalony(nazwa)
+            else:
+                eksportuj(nazwa)
             if RENDERY and grupa is BUDYNKI and nazwa != "rusztowanie":
                 ikona_budynku(nazwa)
     for nazwa in JEDNOSTKI:

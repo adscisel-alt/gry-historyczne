@@ -64,13 +64,21 @@ Układ: **1 pole mapy = 2 m** (Godot: 2 jednostki), model stoi na z=0, środek p
   `anim_mlot`, `anim_ogien` (+ światło), `anim_woda` (shader wody), `anim_lodz`; puste `dym_*` (dym, `dym_para`, `dym_fontanna`).
 - Robotnik: `ludzik(x, y, rz, tunika, czynnosc, narzedzie, nazwa, s)` – ręce z narzędziem to część `anim_<czynnosc>_<nazwa>`.
 
+## Modele: fazowanie, AO, warianty
+
+- Budynki/zabytki/obozy: `eksportuj_wypalony()` = `fazuj()` (bevel) + `wypal_teksture()` (kolor × AO do tekstury);
+  części `sciana_*`, `strzecha` (chata, z normal mapami) i `anim_*` nie są łączone ani wypalane.
+- Roślinność i skały: `eksportuj_warianty()` → `<nazwa>_0..3.glb` (`warianty_gn()` – Geometry Nodes) + `ao_wierzcholki()`;
+  Godot losuje warianty w `_wariant()`.
+- Wzgórza: `wys_punkt()` / `baza_pola()` / `_przygotuj_wzgorza()` w `gra.gd`; klify na polach z `_klif_pola`.
+
 ## Woda i teren
 
 - Wierzch lądu: shader `_material_terenu()`; w kolorze wierzchołków rgb = kolor typu terenu (`_kolor_terenu`),
   a = udział trawy (`WAGA_TRAWY`), uśrednione w narożnikach (`_kolor_rogu`). Siatka budowy: `odswiez_siatke_budowy()`.
 
-- Pola `~` i `m` mają w `dane.py` wysokość stopy brzegu (-0.3); dno liczy `_dno()` z odległości od lądu, lustro wody
-  to `POZIOM_WODY` (-0.18). Shader wody: `_material_wody()` (głębokość w `COLOR.r` wierzchołków powierzchni).
+- Teren i dno: jedna siatka `RES`×`RES` na pole z rozmytej maski wody (`_przygotuj_teren()`, `_rozmyj()`); wysokość w punkcie
+  `teren_h()`, lustro `POZIOM_WODY` (-0.34). Shader wody: `_material_wody()` (głębokość w `COLOR.r` wierzchołków powierzchni).
 
 ## Polecenia
 

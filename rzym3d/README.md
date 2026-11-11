@@ -94,6 +94,32 @@ osobne węzły z modeli Blendera o nazwach `anim_obrot_*`, `anim_kolys_*`, `anim
 
 ![Ożywiona dzielnica](zrzuty/19_budynki_a.png)
 
+## Modele i teren (Blender)
+
+- **Wzgórza jako rzeźba terenu**: Palatyn, Awentyn, Eskwilin i pozostałe wzgórza to skośne, trawiaste stoki
+  (heightmapa `wys_punkt()` w `gra.gd`) o zaokrąglonych szczytach. Każde wzgórze ma własną wysokość (większe są wyższe)
+  i falującą wierzchowinę. Pokrywa je ta sama tekstura terenu co resztę mapy, tylko na szczytach trawa jest suchsza,
+  płowa i z większą ilością gołej ziemi. W kilku miejscach (zawsze nad wodą, poza tym na ok. 1/5 krawędzi) stok
+  przechodzi w skalne urwisko z modułów `klif_0..3` dopasowanych do wysokości stoku.
+
+![Wzgórza Rzymu](zrzuty/23_wzgorza.png)
+- **Fazowane krawędzie i wypalony AO**: budynki, zabytki i obozy mają bevel (krawędzie łapią światło), a kolor
+  z ambient occlusion jest wypalony do tekstury (Cycles, Smart UV). Drzewa, krzewy, skały i trzciny mają AO
+  wypalony w kolorach wierzchołków.
+- **Warianty z Geometry Nodes**: po 4 wersje pinii, cyprysów, oliwek, dębów, krzewów, skał, trzcin i klifów
+  (inne ziarno budowy + deformacja szumem 4D i nierówna skala w węźle Geometry Nodes). Godot losuje wariant,
+  obrót, skalę i pochylenie każdego egzemplarza.
+- **Roślinność Lacjum**: w Italii rosną pinie o parasolowatych koronach, cyprysy i oliwki (bez drzew liściastych),
+  nad Tybrem kępy trzciny z kolbami w płytkiej wodzie; w Afryce oliwki i pinie; dęby tylko w Galii, Dacji i na północy.
+- **Chata z Palatynu**: ściana z plecionki oblepionej gliną i strzecha z warstw słomy (obie z normal mapami),
+  żerdzie dachu krzyżujące się nad kalenicą, powrósła, a wokół wydeptana ziemia, płot, amfory, ławka, drewno
+  i palenisko.
+- **Bohaterowie** (Damian i dowódca rozdziału) są większe, mają ciepłą poświatę sylwetki, kolorowy krąg pod
+  stopami i wyraźną animację spoczynku: przenoszenie ciężaru, rozglądanie się, co kilka sekund gest (Romulus
+  i wodzowie unoszą broń, Damian podnosi kronikę), Damian pisze piórem.
+
+![Palatyn – wzgórza, trzciny, bohaterowie](zrzuty/04_rozdzial_1_palatyn.png)
+
 ## Teren
 
 Plansza nie jest już szachownicą kolorowych pól. Wierzch terenu rysuje shader (`_material_terenu()` w `gra.gd`):
@@ -124,11 +150,13 @@ Drzewa zostają low-poly, ale mają charakterystyczne sylwetki (`blender/generuj
 
 Woda ma własny shader (`_material_wody()` w `gra.gd`), działający tak samo w przeglądarce i na komputerze:
 
-- **Koryta i dno**: rzeki i morze leżą niżej niż ląd, więc powstają brzegi – niska ziemista skarpa nad lustrem wody.
-  Dno opada łagodnie od brzegu (siatka 4 × 4 na pole, głębokość liczona z odległości od lądu): przy brzegu piasek
-  i muł, w nurcie Tybru i na pełnym morzu ciemna głębia.
+- **Gładki brzeg zamiast schodków**: teren i woda to jedna siatka (komórki 0,5 m) liczona z rozmytej maski wody
+  (silne rozmycie ≈ gauss 1,7 m wygładza zakola i ukośne odcinki, słabe zachowuje wąskie cieki). Linia brzegu to
+  izolinia tej maski – krzywa zamiast granic pól, bez ciemnej skarpy. Lustro wody leży niżej (–0,34), a ląd schodzi
+  do niego łagodnym stokiem z pasem suchego piasku, mokrego mułu i ciemnego dna po obu stronach rzeki.
 - **Przezroczystość zależna od głębokości**: przy brzegu widać dno przez turkusową płyciznę, dalej woda gęstnieje
-  w granat. Głębokość jest zapisana w wierzchołkach powierzchni wody (nie wymaga bufora głębi, więc działa też w WebGL).
+  w granat. Głębokość (lustro minus dno z siatki terenu) jest zapisana w wierzchołkach powierzchni wody (nie wymaga
+  bufora głębi, więc działa też w WebGL).
 - **Fale**: dwie normal mapy (szum generowany w grze) przewijane w różnych kierunkach i skalach oraz delikatne
   kołysanie lustra wody.
 - **Piana przy brzegu**: poszarpany szumem pas płytkiej wody, pulsujący jak przybój – wzdłuż brzegów Tybru i plaż.
