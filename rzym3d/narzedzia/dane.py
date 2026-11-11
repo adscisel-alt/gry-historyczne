@@ -286,6 +286,11 @@ KARTY = {
     "kartagina_baleary": {"nazwa": "Procarze z Balearów", "typ": "strzelcy", "sila": 5, "frakcja": "kartagina", "model": "welita"},
     "slonie": {"nazwa": "Słonie bojowe", "typ": "jazda", "sila": 8, "frakcja": "kartagina", "model": "slon"},
     "weterani_hannibala": {"nazwa": "Weterani Hannibala", "typ": "piechota", "sila": 7, "frakcja": "kartagina", "model": "kartaginczyk"},
+    "egipscy_wlocznicy": {"nazwa": "Włócznicy egipscy (machimoi)", "typ": "piechota", "sila": 5, "frakcja": "egipt", "model": "egipcjanin"},
+    "lucznicy_nubijscy": {"nazwa": "Łucznicy nubijscy", "typ": "strzelcy", "sila": 6, "frakcja": "egipt", "model": "nubijczyk"},
+    "legiony_antoniusza": {"nazwa": "Legiony Antoniusza", "typ": "piechota", "sila": 6, "frakcja": "egipt", "model": "legionista"},
+    "jazda_galacka": {"nazwa": "Jazda galacka", "typ": "jazda", "sila": 6, "frakcja": "egipt", "model": "ekwita"},
+    "marynarze_kleopatry": {"nazwa": "Marynarze z galer Kleopatry", "typ": "piechota", "sila": 7, "frakcja": "egipt", "model": "egipcjanin"},
     "germanie": {"nazwa": "Wojownicy germańscy", "typ": "piechota", "sila": 6, "frakcja": "germanie", "model": "german"},
     "germanie_las": {"nazwa": "Zasadzka w lesie", "typ": "strzelcy", "sila": 6, "frakcja": "germanie", "model": "german"},
     "germanie_jazda": {"nazwa": "Jazda Cherusków", "typ": "jazda", "sila": 5, "frakcja": "germanie", "model": "ekwita"},
@@ -306,6 +311,7 @@ FRAKCJE = {
     "sabinowie": {"nazwa": "Sabinowie", "kolor": "8a6b3a"},
     "galowie": {"nazwa": "Galowie", "kolor": "2f7a3a"},
     "kartagina": {"nazwa": "Kartagina", "kolor": "6a3a8a"},
+    "egipt": {"nazwa": "Antoniusz i Kleopatra", "kolor": "c9a227"},
     "germanie": {"nazwa": "Germanie", "kolor": "5a4632"},
     "dakowie": {"nazwa": "Dakowie", "kolor": "3a5f8a"},
     "maksencjusz": {"nazwa": "Wojska Maksencjusza", "kolor": "6b6b6b"},
@@ -330,6 +336,10 @@ TAKTYKI = {
     "wizygoci": {"nazwa": "Szarża Wizygotów", "opis": "Sojusznicy Teodoryka: twoja karta +4.", "efekt": {"plus": 4}},
     "wzgorze": {"nazwa": "Zajęcie wzgórza", "opis": "Aecjusz zajmuje wzniesienie: wróg traci przewagę typu, tarcza +2.",
                 "efekt": {"bez_przewagi": True, "tarcza": 2}},
+    "liburny": {"nazwa": "Liburny Agryppy", "opis": "Lekkie, zwrotne okręty Agryppy omijają ciężkie galery: wróg traci przewagę typu, twoja karta +2.",
+                "efekt": {"bez_przewagi": True, "plus": 2}},
+    "ucieczka": {"nazwa": "Ucieczka Kleopatry", "opis": "Okręty Kleopatry odpływają z bitwy, a za nimi Antoniusz: wróg –4.",
+                 "efekt": {"wrog_minus": 4}},
     "sabinki": {"nazwa": "Sabinki między wojskami", "opis": "Kobiety wzywają do pokoju: wróg –2, tarcza +2.",
                 "efekt": {"wrog_minus": 2, "tarcza": 2}},
 }
@@ -368,6 +378,14 @@ POSTACIE = {
                        "opis": "Zjednoczył plemiona Galii przeciw Cezarowi. Po oblężeniu Alezji (52 p.n.e.) poddał się, by ratować swoich ludzi.",
                        "fakty": ["Wygrał z Cezarem pod Gergowią", "Stosował taktykę spalonej ziemi", "Oblężony w Alezji", "Dziś bohater narodowy Francji"],
                        "ciekawostka": "Cezar otoczył Alezję dwoma pierścieniami umocnień: jednym przeciw obrońcom, drugim przeciw odsieczy."},
+    "kleopatra": {"imie": "Kleopatra VII", "lata": "69–30 p.n.e.", "rola": "Ostatnia królowa Egiptu",
+                  "opis": "Królowa z greckiej dynastii Ptolemeuszy. Związała się najpierw z Juliuszem Cezarem, potem z Markiem Antoniuszem. Po klęsce pod Akcjum i wejściu Oktawiana do Aleksandrii odebrała sobie życie (30 p.n.e.).",
+                  "fakty": ["Jako pierwsza z Ptolemeuszy nauczyła się języka egipskiego", "Mówiła wieloma językami", "Miała syna z Cezarem – Cezariona", "Po jej śmierci Egipt stał się rzymską prowincją"],
+                  "ciekawostka": "Żyła bliżej naszych czasów niż czasów budowy piramid w Gizie!"},
+    "antoniusz": {"imie": "Marek Antoniusz", "lata": "83–30 p.n.e.", "rola": "Wódz i triumwir, sojusznik Kleopatry",
+                  "opis": "Zaufany oficer Cezara. Po jego śmierci rządził wschodem państwa w drugim triumwiracie. Związał się z Kleopatrą, co Oktawian wykorzystał w propagandzie. Pokonany pod Akcjum (31 p.n.e.).",
+                  "fakty": ["Wygłosił mowę na pogrzebie Cezara", "Wraz z Oktawianem pokonał zabójców Cezara pod Filippi (42 p.n.e.)", "Rządził wschodnimi prowincjami", "Zmarł w Aleksandrii w 30 p.n.e."],
+                  "ciekawostka": "Szekspir napisał o nim i Kleopatrze sztukę „Antoniusz i Kleopatra”."},
     "august": {"imie": "Oktawian August", "lata": "63 p.n.e.–14 n.e.", "rola": "Pierwszy cesarz",
                "opis": "Przybrany syn Cezara. Pokonał Antoniusza i Kleopatrę pod Akcjum (31 p.n.e.), w 27 p.n.e. otrzymał tytuł Augusta. Zaczął się Pax Romana.",
                "fakty": ["Nazywał siebie princepsem – pierwszym obywatelem", "„Zastałem Rzym ceglany, zostawiam marmurowy”", "Po klęsce Warusa (9 n.e.) wołał: „Warusie, oddaj legiony!”", "Rządził 41 lat"],
@@ -428,6 +446,12 @@ PYTANIA = [
     ("republika", "Kto w czasie zagrożenia otrzymywał władzę na maksymalnie 6 miesięcy?", ["Dyktator", "Cesarz", "Trybun", "Edyl"], 0),
     ("republika", "Jak nazywał się rzymski miecz legionisty?", ["Gladius", "Katana", "Szabla", "Falks"], 0),
     ("republika", "Jak nazywała się prostokątna tarcza legionisty?", ["Scutum", "Pilum", "Toga", "Galea"], 0),
+    ("republika", "Jak nazywała się ostatnia królowa Egiptu z dynastii Ptolemeuszy?", ["Kleopatra VII", "Nefertiti", "Hatszepsut", "Zenobia"], 0),
+    ("republika", "Gdzie w 31 p.n.e. flota Oktawiana pokonała Antoniusza i Kleopatrę?", ["Pod Akcjum", "Pod Zamą", "Pod Kannami", "Pod Alezją"], 0),
+    ("republika", "Kto dowodził flotą Oktawiana pod Akcjum?", ["Marek Agryppa", "Juliusz Cezar", "Scypion", "Mariusz"], 0),
+    ("republika", "Jak nazywała się słynna latarnia morska w Aleksandrii?", ["Faros", "Kolos", "Panteon", "Akropol"], 0),
+    ("republika", "Co dostarczał Egipt Rzymowi po 30 p.n.e.?", ["Ogromne ilości zboża", "Bursztyn", "Cynę", "Futra"], 0),
+    ("republika", "Nad jaką rzeką leży Egipt?", ["Nil", "Tyber", "Eufrat", "Dunaj"], 0),
     # Cesarstwo
     ("cesarstwo", "Kto był pierwszym cesarzem rzymskim?", ["Oktawian August", "Juliusz Cezar", "Neron", "Trajan"], 0),
     ("cesarstwo", "Co oznacza „Pax Romana”?", ["Pokój rzymski", "Rzymską pocztę", "Wojnę z Persją", "Rzymski chleb"], 0),
@@ -492,29 +516,32 @@ ENCYKLOPEDIA = [
     ("rubikon", "Rubikon", "miejsca", "Rzeczka – granica Italii. Wódz nie mógł jej przekroczyć z wojskiem. Cezar to zrobił w 49 p.n.e. Dziś „przekroczyć Rubikon” to podjąć nieodwracalną decyzję.", 4),
     ("alezja", "Alezja", "wojsko", "Galijski gród na wzgórzu, oblężony przez Cezara w 52 p.n.e. Cezar zbudował dwa pierścienie wałów i odparł ogromną odsiecz.", 4),
     ("triumwirat", "Triumwirat", "pojęcia", "Porozumienie trzech mężów. Pierwszy: Cezar, Pompejusz i Krassus (60 p.n.e.). Drugi: Oktawian, Antoniusz i Lepidus.", 4),
-    ("cesarstwo", "Pryncypat", "pojęcia", "Ustrój stworzony przez Augusta: pozornie republika z senatem, naprawdę – władza jednego człowieka, „pierwszego obywatela” (princepsa).", 5),
-    ("pax", "Pax Romana", "pojęcia", "Ok. 200 lat względnego pokoju od Augusta. Kwitł handel, budowano drogi i miasta od Brytanii po Syrię.", 5),
-    ("teutoburg", "Las Teutoburski", "wojsko", "W 9 n.e. Germanie Arminiusza wciągnęli 3 legiony Warusa w zasadzkę w lasach i bagnach. Rzym zrezygnował z podboju Germanii – granicą został Ren.", 5),
-    ("bursztyn", "Szlak bursztynowy", "miejsca", "Szlak z Akwilei nad Bałtyk. Rzymscy kupcy kupowali bursztyn. Ptolemeusz (II w.) wymienił osadę Calisia – wiele osób utożsamia ją z Kaliszem.", 5),
-    ("akwedukt", "Akwedukt", "wynalazki", "Kanał na łukach doprowadzający wodę z gór. Woda płynęła siłą grawitacji, dzięki niewielkiemu spadkowi. Rzym miał 11 akweduktów.", 5),
-    ("forum", "Forum", "miejsca", "Główny plac miasta: targ, sądy, świątynie, kuria senatu. Każde rzymskie miasto miało swoje forum.", 5),
-    ("koloseum", "Koloseum", "miejsca", "Amfiteatr Flawiuszów, otwarty w 80 n.e. przez Tytusa. Mieścił ok. 50 tysięcy widzów. Nad widownią rozpinano płócienny dach – velarium.", 6),
-    ("gladiatorzy", "Gladiatorzy", "pojęcia", "Zawodowi wojownicy areny – często niewolnicy lub jeńcy. Walczyli w różnych strojach: myrmillo, retiarius (z siecią i trójzębem), tracki.", 6),
-    ("pompeje", "Pompeje", "miejsca", "Miasto zasypane popiołem Wezuwiusza w 79 n.e. Dzięki temu przetrwały domy, malowidła, a nawet chleb w piecach.", 6),
-    ("dacja", "Dacja", "miejsca", "Kraina nad Dunajem (dziś Rumunia). Trajan podbił ją w 106 n.e. i zdobył złoto Daków. Król Decebal wolał umrzeć niż się poddać.", 6),
-    ("panteon", "Panteon", "miejsca", "Świątynia wszystkich bogów, przebudowana za Hadriana (ok. 125 n.e.). Kopuła ma 43 m średnicy i okrągły otwór – oculus.", 6),
-    ("termy", "Termy", "miejsca", "Publiczne łaźnie: zimna (frigidarium), letnia (tepidarium) i gorąca (caldarium) kąpiel, siłownia, ogrody i biblioteki.", 6),
-    ("kryzys", "Kryzys III wieku", "pojęcia", "W latach 235–284 rządziło ponad 20 cesarzy, najazdy, zarazy i inflacja niszczyły kraj. Dioklecjan i Konstantyn próbowali to naprawić.", 7),
-    ("inflacja", "Inflacja", "pojęcia", "Gdy cesarze dodawali do denara coraz mniej srebra, moneta traciła wartość, a ceny rosły. Dioklecjan próbował ustalić ceny maksymalne (301 n.e.) – bez skutku.", 7),
-    ("tetrarchia", "Tetrarchia", "pojęcia", "Rządy czterech: dwóch augustów i dwóch cezarów (od 293 r.). Łatwiej było bronić długich granic.", 7),
-    ("chrzescijanie", "Chrześcijaństwo w Rzymie", "pojęcia", "Najpierw prześladowane (Neron, Decjusz, Dioklecjan), od 313 r. tolerowane, a od 380 r. religia państwowa.", 7),
-    ("konstantynopol", "Konstantynopol", "miejsca", "Dawne Bizancjum nad Bosforem, poświęcone przez Konstantyna w 330 r. Stolica cesarstwa wschodniego do 1453 r. Dziś Stambuł.", 7),
-    ("wedrowka", "Wielka wędrówka ludów", "pojęcia", "Od ok. 375 r. Hunowie zepchnęli Gotów, a za nimi ruszyli Wandalowie, Swebowie, Burgundowie, Frankowie... Plemiona osiedlały się w cesarstwie.", 8),
-    ("podzial", "Podział cesarstwa (395)", "pojęcia", "Po śmierci Teodozjusza cesarstwo podzielili jego synowie: Arkadiusz dostał Wschód, a Honoriusz – Zachód.", 8),
-    ("upadek", "Dlaczego Rzym upadł?", "pojęcia", "Historycy podają wiele przyczyn naraz: najazdy, kryzys gospodarczy i inflacja, wojny domowe, ogromne granice, zależność od najemników, słabnące państwo. Nie było jednej przyczyny!", 8),
-    ("bizancjum", "Cesarstwo bizantyjskie", "pojęcia", "Wschodnia część imperium przetrwała ponad 1000 lat dłużej – do zdobycia Konstantynopola przez Turków w 1453 r.", 8),
-    ("dziedzictwo", "Dziedzictwo Rzymu", "pojęcia", "Alfabet, kalendarz, prawo, łacina w nauce i medycynie, drogi, łuki, kopuły, słowa jak „senat”, „republika”, „kandydat”, „akwarium”. Rzym żyje w nas!", 8),
-    ("kalisz", "Rzym a ziemie polskie", "miejsca", "Rzymskie monety, naczynia i ozdoby znajdujemy w wielu miejscach Polski – przywozili je kupcy szlakiem bursztynowym. Ziemie polskie nie należały do imperium.", 8),
+    ("aleksandria", "Aleksandria", "miejsca", "Stolica Egiptu Ptolemeuszy, założona przez Aleksandra Wielkiego (331 p.n.e.). Słynęła z Biblioteki i latarni Faros – jednego z siedmiu cudów świata.", 5),
+    ("akcjum", "Akcjum", "wojsko", "Bitwa morska (2 września 31 p.n.e.) u wybrzeży Grecji. Flota Oktawiana pod wodzą Agryppy pokonała Antoniusza i Kleopatrę. Kleopatra odpłynęła z bitwy, a Antoniusz za nią.", 5),
+    ("ptolemeusze", "Ptolemeusze", "ludy", "Grecka dynastia rządząca Egiptem od śmierci Aleksandra Wielkiego (323 p.n.e.) do Kleopatry VII. Władcy przyjęli tytuł faraonów.", 5),
+    ("cesarstwo", "Pryncypat", "pojęcia", "Ustrój stworzony przez Augusta: pozornie republika z senatem, naprawdę – władza jednego człowieka, „pierwszego obywatela” (princepsa).", 6),
+    ("pax", "Pax Romana", "pojęcia", "Ok. 200 lat względnego pokoju od Augusta. Kwitł handel, budowano drogi i miasta od Brytanii po Syrię.", 6),
+    ("teutoburg", "Las Teutoburski", "wojsko", "W 9 n.e. Germanie Arminiusza wciągnęli 3 legiony Warusa w zasadzkę w lasach i bagnach. Rzym zrezygnował z podboju Germanii – granicą został Ren.", 6),
+    ("bursztyn", "Szlak bursztynowy", "miejsca", "Szlak z Akwilei nad Bałtyk. Rzymscy kupcy kupowali bursztyn. Ptolemeusz (II w.) wymienił osadę Calisia – wiele osób utożsamia ją z Kaliszem.", 6),
+    ("akwedukt", "Akwedukt", "wynalazki", "Kanał na łukach doprowadzający wodę z gór. Woda płynęła siłą grawitacji, dzięki niewielkiemu spadkowi. Rzym miał 11 akweduktów.", 6),
+    ("forum", "Forum", "miejsca", "Główny plac miasta: targ, sądy, świątynie, kuria senatu. Każde rzymskie miasto miało swoje forum.", 6),
+    ("koloseum", "Koloseum", "miejsca", "Amfiteatr Flawiuszów, otwarty w 80 n.e. przez Tytusa. Mieścił ok. 50 tysięcy widzów. Nad widownią rozpinano płócienny dach – velarium.", 7),
+    ("gladiatorzy", "Gladiatorzy", "pojęcia", "Zawodowi wojownicy areny – często niewolnicy lub jeńcy. Walczyli w różnych strojach: myrmillo, retiarius (z siecią i trójzębem), tracki.", 7),
+    ("pompeje", "Pompeje", "miejsca", "Miasto zasypane popiołem Wezuwiusza w 79 n.e. Dzięki temu przetrwały domy, malowidła, a nawet chleb w piecach.", 7),
+    ("dacja", "Dacja", "miejsca", "Kraina nad Dunajem (dziś Rumunia). Trajan podbił ją w 106 n.e. i zdobył złoto Daków. Król Decebal wolał umrzeć niż się poddać.", 7),
+    ("panteon", "Panteon", "miejsca", "Świątynia wszystkich bogów, przebudowana za Hadriana (ok. 125 n.e.). Kopuła ma 43 m średnicy i okrągły otwór – oculus.", 7),
+    ("termy", "Termy", "miejsca", "Publiczne łaźnie: zimna (frigidarium), letnia (tepidarium) i gorąca (caldarium) kąpiel, siłownia, ogrody i biblioteki.", 7),
+    ("kryzys", "Kryzys III wieku", "pojęcia", "W latach 235–284 rządziło ponad 20 cesarzy, najazdy, zarazy i inflacja niszczyły kraj. Dioklecjan i Konstantyn próbowali to naprawić.", 8),
+    ("inflacja", "Inflacja", "pojęcia", "Gdy cesarze dodawali do denara coraz mniej srebra, moneta traciła wartość, a ceny rosły. Dioklecjan próbował ustalić ceny maksymalne (301 n.e.) – bez skutku.", 8),
+    ("tetrarchia", "Tetrarchia", "pojęcia", "Rządy czterech: dwóch augustów i dwóch cezarów (od 293 r.). Łatwiej było bronić długich granic.", 8),
+    ("chrzescijanie", "Chrześcijaństwo w Rzymie", "pojęcia", "Najpierw prześladowane (Neron, Decjusz, Dioklecjan), od 313 r. tolerowane, a od 380 r. religia państwowa.", 8),
+    ("konstantynopol", "Konstantynopol", "miejsca", "Dawne Bizancjum nad Bosforem, poświęcone przez Konstantyna w 330 r. Stolica cesarstwa wschodniego do 1453 r. Dziś Stambuł.", 8),
+    ("wedrowka", "Wielka wędrówka ludów", "pojęcia", "Od ok. 375 r. Hunowie zepchnęli Gotów, a za nimi ruszyli Wandalowie, Swebowie, Burgundowie, Frankowie... Plemiona osiedlały się w cesarstwie.", 9),
+    ("podzial", "Podział cesarstwa (395)", "pojęcia", "Po śmierci Teodozjusza cesarstwo podzielili jego synowie: Arkadiusz dostał Wschód, a Honoriusz – Zachód.", 9),
+    ("upadek", "Dlaczego Rzym upadł?", "pojęcia", "Historycy podają wiele przyczyn naraz: najazdy, kryzys gospodarczy i inflacja, wojny domowe, ogromne granice, zależność od najemników, słabnące państwo. Nie było jednej przyczyny!", 9),
+    ("bizancjum", "Cesarstwo bizantyjskie", "pojęcia", "Wschodnia część imperium przetrwała ponad 1000 lat dłużej – do zdobycia Konstantynopola przez Turków w 1453 r.", 9),
+    ("dziedzictwo", "Dziedzictwo Rzymu", "pojęcia", "Alfabet, kalendarz, prawo, łacina w nauce i medycynie, drogi, łuki, kopuły, słowa jak „senat”, „republika”, „kandydat”, „akwarium”. Rzym żyje w nas!", 9),
+    ("kalisz", "Rzym a ziemie polskie", "miejsca", "Rzymskie monety, naczynia i ozdoby znajdujemy w wielu miejscach Polski – przywozili je kupcy szlakiem bursztynowym. Ziemie polskie nie należały do imperium.", 9),
 ]
 
 # ------------------------------------------------------------------------------------------------ wydarzenia (dylematy)
@@ -571,56 +598,70 @@ WYDARZENIA = {
                            {"tekst": "Karać surowo wszystkie plemiona", "efekt": {"denary": 5, "chwala": -2, "wrog": 2}, "historia": True},
                        ],
                        "komentarz": "Cezar stosował jedno i drugie: łaskę wobec sojuszników i okrucieństwo wobec opornych. Wojna galijska kosztowała życie setek tysięcy ludzi."},
-    "marmur": {"tytul": "Miasto z marmuru", "rok": "ok. 20 p.n.e.", "rozdzial": 5,
+    "testament": {"tytul": "Testament Antoniusza", "rok": "32 p.n.e.", "rozdzial": 5,
+                  "opis": "Oktawian zdobył testament Marka Antoniusza przechowywany u westalek. Antoniusz chce być pochowany w Aleksandrii, a ziemie Rzymu zapisać dzieciom Kleopatry. Odczytać go w senacie?",
+                  "opcje": [
+                      {"tekst": "Odczytać testament w senacie i wypowiedzieć wojnę Kleopatrze", "efekt": {"chwala": 3, "denary": 3}, "historia": True},
+                      {"tekst": "Uszanować tajemnicę testamentu i szukać porozumienia", "efekt": {"chwala": 1, "wrog": 2}, "historia": False},
+                  ],
+                  "komentarz": "Oktawian odczytał testament – choć był to dokument powierzony westalkom. Wojnę wypowiedziano Kleopatrze, nie Antoniuszowi, żeby nie wyglądała na kolejną wojnę domową Rzymian."},
+    "egipt_prowincja": {"tytul": "Co z Egiptem?", "rok": "30 p.n.e.", "rozdzial": 5,
+                        "opis": "Antoniusz i Kleopatra nie żyją. Bogaty Egipt i jego zboże są w rękach Oktawiana. Jak nim rządzić?",
+                        "opcje": [
+                            {"tekst": "Uczynić Egipt prowincją pod osobistą władzą princepsa – senatorom wstęp wzbroniony", "efekt": {"zboze": 6, "denary": 4}, "historia": True},
+                            {"tekst": "Oddać Egipt pod władzę senatu jak inne prowincje", "efekt": {"chwala": 2, "zboze": 2}, "historia": False},
+                        ],
+                        "komentarz": "Egipt stał się osobistą domeną Oktawiana, rządzoną przez prefekta z rodu ekwitów. Senatorowie nie mogli tam nawet wjechać bez zgody princepsa – kto miał zboże Egiptu, ten miał władzę nad Rzymem."},
+    "marmur": {"tytul": "Miasto z marmuru", "rok": "ok. 20 p.n.e.", "rozdzial": 6,
                "opis": "August chce odbudować Rzym: świątynie, fora, teatry. To kosztuje, ale daje pracę i chwałę.",
                "opcje": [
                    {"tekst": "Budować z rozmachem – za pieniądze z łupów Egiptu", "efekt": {"denary": -6, "kamien": 6, "chwala": 5}, "historia": True},
                    {"tekst": "Oszczędzać na wojsko", "efekt": {"denary": 4, "karta": "legionisci"}, "historia": False},
                ],
                "komentarz": "August chwalił się, że „zastał Rzym ceglany, a zostawił marmurowy”. Pieniądze pochodziły m.in. ze skarbca Egiptu."},
-    "warus": {"tytul": "Klęska Warusa", "rok": "9 n.e.", "rozdzial": 5,
+    "warus": {"tytul": "Klęska Warusa", "rok": "9 n.e.", "rozdzial": 6,
               "opis": "Germanie Arminiusza zniszczyli trzy legiony w Lesie Teutoburskim. Co dalej z Germanią?",
               "opcje": [
                   {"tekst": "Uczynić Ren stałą granicą i umocnić ją", "efekt": {"kamien": -3, "chwala": 2, "obrona": 1}, "historia": True},
                   {"tekst": "Wysłać nowe legiony i podbić Germanię", "efekt": {"denary": -6, "zboze": -4, "chwala": 1}, "historia": False},
               ],
               "komentarz": "Germanik przeprowadził jeszcze wyprawy odwetowe (14–16 n.e.), ale Rzym zrezygnował z podboju. Granicą imperium stały się Ren i Dunaj."},
-    "igrzyska": {"tytul": "100 dni igrzysk", "rok": "80 n.e.", "rozdzial": 6,
+    "igrzyska": {"tytul": "100 dni igrzysk", "rok": "80 n.e.", "rozdzial": 7,
                  "opis": "Cesarz Tytus otwiera Koloseum. Lud czeka na wielkie igrzyska.",
                  "opcje": [
                      {"tekst": "Urządzić 100 dni igrzysk i rozdać zboże – „chleba i igrzysk”", "efekt": {"zboze": -6, "denary": -4, "chwala": 6}, "historia": True},
                      {"tekst": "Krótkie igrzyska, a pieniądze na akwedukty", "efekt": {"kamien": 4, "chwala": 2}, "historia": False},
                  ],
                  "komentarz": "Tytus urządził w 80 n.e. igrzyska trwające 100 dni. Cesarze kupowali poparcie ludu darmowym zbożem i rozrywką."},
-    "zaraza": {"tytul": "Zaraza Antoninów", "rok": "165 n.e.", "rozdzial": 6,
+    "zaraza": {"tytul": "Zaraza Antoninów", "rok": "165 n.e.", "rozdzial": 7,
                "opis": "Żołnierze wracający ze Wschodu przynieśli groźną chorobę. Umierają tysiące.",
                "opcje": [
                    {"tekst": "Zamknąć termy i ograniczyć zgromadzenia", "efekt": {"chwala": -2, "ludnosc": -2}, "historia": False},
                    {"tekst": "Działać jak dawniej – nic nie zmieniać", "efekt": {"ludnosc": -6}, "historia": True},
                ],
                "komentarz": "Zaraza Antoninów (prawdopodobnie ospa) zabiła miliony ludzi. Starożytni nie znali bakterii ani wirusów – ale już Rzymianie zauważali, że choroba szerzy się w tłumie."},
-    "moneta": {"tytul": "Pusty skarbiec", "rok": "III w. n.e.", "rozdzial": 7,
+    "moneta": {"tytul": "Pusty skarbiec", "rok": "III w. n.e.", "rozdzial": 8,
                "opis": "Żołnierze żądają żołdu, a w skarbcu brak srebra. Doradca proponuje: dodajmy do denarów więcej miedzi, będzie więcej monet!",
                "opcje": [
                    {"tekst": "Psuć monetę – wybić więcej denarów z tej samej ilości srebra", "efekt": {"denary": 12, "inflacja": 1}, "historia": True},
                    {"tekst": "Podnieść podatki i ciąć wydatki", "efekt": {"denary": 4, "chwala": -3}, "historia": False},
                ],
                "komentarz": "W III w. denar zawierał już tylko kilka procent srebra. Ceny rosły – to inflacja. Dopiero złoty solidus Konstantyna dał stabilny pieniądz. LEKCJA: więcej pieniędzy nie znaczy więcej bogactwa!"},
-    "edykt": {"tytul": "Wolność wyznania?", "rok": "313 n.e.", "rozdzial": 7,
+    "edykt": {"tytul": "Wolność wyznania?", "rok": "313 n.e.", "rozdzial": 8,
               "opis": "Chrześcijanie byli prześladowani, ale jest ich coraz więcej – także w wojsku i urzędach.",
               "opcje": [
                   {"tekst": "Ogłosić tolerancję dla wszystkich religii (edykt mediolański)", "efekt": {"chwala": 5}, "historia": True},
                   {"tekst": "Kontynuować prześladowania", "efekt": {"chwala": -3, "ludnosc": -3}, "historia": False},
               ],
               "komentarz": "W 313 r. Konstantyn i Licyniusz ogłosili w Mediolanie wolność wyznania. Chrześcijaństwo stało się z czasem religią cesarstwa."},
-    "goci": {"tytul": "Goci nad Dunajem", "rok": "376 n.e.", "rozdzial": 8,
+    "goci": {"tytul": "Goci nad Dunajem", "rok": "376 n.e.", "rozdzial": 9,
              "opis": "Uciekający przed Hunami Goci proszą o pozwolenie na osiedlenie się w cesarstwie.",
              "opcje": [
                  {"tekst": "Przyjąć ich i dobrze traktować – będą żołnierzami", "efekt": {"zboze": -5, "karta": "federaci_goccy", "chwala": 2}, "historia": False},
                  {"tekst": "Przyjąć, ale głodzić i wyzyskiwać", "efekt": {"denary": 4, "wrog": 3}, "historia": True},
              ],
              "komentarz": "Rzymscy urzędnicy źle traktowali Gotów – sprzedawali im żywność po lichwiarskich cenach. Goci zbuntowali się i w 378 r. pod Adrianopolem zabili cesarza Walensa."},
-    "podzial": {"tytul": "Testament Teodozjusza", "rok": "395 n.e.", "rozdzial": 8,
+    "podzial": {"tytul": "Testament Teodozjusza", "rok": "395 n.e.", "rozdzial": 9,
                 "opis": "Cesarz Teodozjusz umiera. Ma dwóch synów. Jak rządzić ogromnym państwem?",
                 "opcje": [
                     {"tekst": "Podzielić cesarstwo między synów: Wschód i Zachód", "efekt": {"chwala": 1, "denary": 2}, "historia": True},
@@ -667,10 +708,22 @@ RODY = [
     {"id": "fabiusze", "nazwa": "Fabiusze", "kolor": "e0a722", "haslo": "Ród Fabiusza Zwlekającego"},
 ]
 
+# limit_tur: po przekroczeniu (tury rozdziału + zapas) rozdział jest przegrany; sprytny: wróg dobiera kartę
+# przeciw twojej ręce i zamienia kartę zakrytą, gdy mu się to opłaca; utrzymanie: mnożnik zboża dla wojska;
+# zagon_plus: dodatkowa siła zagonów; opis – w menu wyboru trudności
 TRUDNOSCI = [
-    {"nazwa": "Łatwy (10–11 lat)", "wrog": 0.75, "zasoby": 1.4, "ukryta": 0, "podpowiedzi": 1, "zagony": 1.5},
-    {"nazwa": "Normalny", "wrog": 1.0, "zasoby": 1.0, "ukryta": 1, "podpowiedzi": 0, "zagony": 1.0},
-    {"nazwa": "Trudny (13–14 lat)", "wrog": 1.25, "zasoby": 0.8, "ukryta": 1, "podpowiedzi": 0, "zagony": 0.75},
+    {"nazwa": "Łatwy (10–11 lat)", "wrog": 0.75, "zasoby": 1.4, "ukryta": 0, "podpowiedzi": 1, "zagony": 1.5,
+     "limit_tur": -1, "sprytny": False, "utrzymanie": 1.0, "zagon_plus": 0,
+     "opis": "Więcej surowców, słabszy wróg, podpowiedzi w pytaniach."},
+    {"nazwa": "Normalny", "wrog": 1.0, "zasoby": 1.0, "ukryta": 1, "podpowiedzi": 0, "zagony": 1.0,
+     "limit_tur": -1, "sprytny": False, "utrzymanie": 1.0, "zagon_plus": 0,
+     "opis": "Wróg ma kartę zakrytą, zagony co kilka tur."},
+    {"nazwa": "Trudny (13–14 lat)", "wrog": 1.25, "zasoby": 0.8, "ukryta": 1, "podpowiedzi": 0, "zagony": 0.75,
+     "limit_tur": 8, "sprytny": False, "utrzymanie": 1.25, "zagon_plus": 1,
+     "opis": "Silniejszy wróg i częstsze zagony. Limit tur: kto nie zdąży w czasie rozdziału + 8 tur, przegrywa."},
+    {"nazwa": "Legendarny (dla mistrzów)", "wrog": 1.45, "zasoby": 0.65, "ukryta": 1, "podpowiedzi": 0, "zagony": 0.6,
+     "limit_tur": 0, "sprytny": True, "utrzymanie": 1.5, "zagon_plus": 2,
+     "opis": "Wróg myśli: dobiera karty przeciw twojej ręce. Drogie wojsko, groźne zagony, ścisły limit tur."},
 ]
 
 # ================================================================================================ mapy
@@ -785,6 +838,24 @@ def mapa_galia():
     m.linia([(0, 13), (6, 13), (12, 15), (18, 14), (23, 16)], "~", 1)
     m.plama(21, 21, 2, "b", tylko=".l")
     m.czysc(8, 18, 1)
+    return m.wynik()
+
+
+def mapa_aleksandria():
+    """Aleksandria i zachodnia delta Nilu: morze na północy, jezioro Mareotis na południu, kanopskie ramię Nilu
+    na wschodzie, pustynia na zachodzie."""
+    m = Mapa(30)
+    m.morze(lambda x, y: y < 4 + (1 if x > 15 else 0) - (1 if 6 < x < 11 else 0))
+    m.plama(6, 19, 3.2, "m", tylko=".")                       # jezioro Mareotis
+    m.plama(10, 21, 2.5, "m", tylko=".")
+    m.linia([(23, 22), (20, 17), (18, 12), (19, 8), (17, 5)], "~", 2)   # kanopskie ramię Nilu
+    m.plama(21, 14, 2.0, "b", tylko=".")                      # bagna delty
+    m.plama(2, 10, 3.5, "p", tylko=".")                       # pustynia libijska
+    m.plama(1, 15, 2.5, "p", tylko=".")
+    m.rozrzuc("o", 34, ".")                                   # gaje palm i oliwek
+    m.linia([(2, 7), (8, 7), (14, 8), (19, 8)], "d", 1, tylko=".o")     # droga kanopska
+    m.linia([(11, 4), (11, 8), (12, 14)], "d", 1, tylko=".o")
+    m.czysc(12, 10, 1)
     return m.wynik()
 
 
@@ -994,6 +1065,47 @@ ROZDZIALY = [
                           "podpisy": ["Republika panuje już nad większością wybrzeży Morza Śródziemnego."]},
     },
     {
+        "id": "akcjum", "tytul": "Ostatnia królowa Egiptu", "lata": "41–30 p.n.e.", "miejsce": "Aleksandria i delta Nilu",
+        "epoka": "republika", "mapa": mapa_aleksandria(), "tury": 30,
+        "start": [[12, 10], [16, 13], [6, 12], [13, 17]],
+        "zasoby": {"zboze": 16, "drewno": 12, "kamien": 8, "denary": 12},
+        "talia": ["legionisci", "legionisci", "legionisci", "lucznicy", "ekwici", "marynarze", "welici"],
+        "techy_start": ["manipul", "reforma_mariusza", "kalendarz_julianski"],
+        "podpisy": [[8, 1, "Morze Śródziemne"], [7, 19, "Jezioro Mareotis"], [20, 16, "Kanopskie ramię Nilu"],
+                    [2, 11, "Pustynia libijska"], [11, 8, "Aleksandria"]],
+        "zabytki": [[10, 4, "faros", "Latarnia Faros", "Latarnia morska na wyspie Faros (III w. p.n.e.), wysoka na ponad 100 m – jeden z siedmiu cudów świata starożytnego."]],
+        "obozy": [[20, 20, "egipcjanin", "Obóz Antoniusza i Kleopatry"]],
+        "postacie_obozu": ["kleopatra", "antoniusz"],
+        "zagony": {"od": 7, "co": 5, "sila": 6, "model": "egipcjanin", "nazwa": "Oddział egipski"},
+        "znajdzki": [[3, 13, "amfora"], [15, 15, "moneta"]],
+        "cele": [
+            {"typ": "buduj", "co": "port", "ile": 2, "opis": "Zbuduj porty dla floty Agryppy (2)"},
+            {"typ": "tech", "co": "corvus"},
+            {"typ": "buduj", "co": "koszary", "ile": 2},
+            {"typ": "zasob", "co": "zboze", "ile": 30, "opis": "Zboże z Egiptu dla Rzymu (30)"},
+            {"typ": "bitwa"},
+        ],
+        "wydarzenia": ["testament", "egipt_prowincja"],
+        "bitwa": {"nazwa": "Bitwa pod Akcjum", "rok": "2 września 31 p.n.e.", "teren": "rzeka", "morale": 30,
+                  "wrog": ["legiony_antoniusza", "legiony_antoniusza", "egipscy_wlocznicy", "egipscy_wlocznicy",
+                           "lucznicy_nubijscy", "lucznicy_nubijscy", "jazda_galacka", "marynarze_kleopatry"],
+                  "frakcja": "egipt", "dowodca": "oktawian", "premia": {"piechota": 1, "strzelcy": 1},
+                  "taktyki": ["liburny", "ucieczka", "triplex"],
+                  "opis": "U wybrzeży Grecji, pod przylądkiem Akcjum, stają naprzeciw siebie dwie floty: Oktawiana, którą dowodzi Marek Agryppa, oraz Marka Antoniusza i Kleopatry. Ciężkie galery Antoniusza przeciw zwrotnym liburnom Agryppy.",
+                  "po": "W środku bitwy okręty Kleopatry odpłynęły, a Antoniusz ruszył za nią. Rok później Oktawian wkroczył do Aleksandrii. Antoniusz i Kleopatra odebrali sobie życie, a Egipt stał się rzymską prowincją – spichlerzem imperium."},
+        "wstep": [
+            "Po śmierci Cezara władzę dzielą Oktawian na zachodzie i Marek Antoniusz na wschodzie.",
+            "Antoniusz związał się z Kleopatrą VII, ostatnią królową Egiptu z dynastii Ptolemeuszy. Razem mają flotę i skarby Egiptu.",
+            "W Rzymie Oktawian przekonuje, że Antoniusz chce oddać ziemie Rzymu dzieciom Kleopatry. Wybucha wojna.",
+            "Zbuduj porty dla floty Agryppy, przygotuj legiony i zboże – a potem zmierz się z Antoniuszem i Kleopatrą pod Akcjum!",
+        ],
+        "koniec": "W 30 p.n.e. Egipt stał się prowincją Rzymu, a Oktawian – jedynym panem państwa. Trzy lata później senat nadał mu tytuł Augusta. Tak kończy się republika, a zaczyna cesarstwo.",
+        "mapa_imperium": {"rok": "31–30 p.n.e.", "od": "-100", "do": "-1", "miasta": ["Rzym", "Brundyzjum", "Akcjum", "Aleksandria", "Antiochia"],
+                          "trasa": [["Brundyzjum", "Akcjum", "morzem", "Oktawian i Agryppa przeprawiają flotę z Italii do Grecji..."],
+                                    ["Akcjum", "Aleksandria", "morzem", "...pod Akcjum pokonują Antoniusza i Kleopatrę, którzy uciekają do Aleksandrii."]],
+                          "podpisy": ["W 30 p.n.e. Egipt staje się prowincją Rzymu. Całe wybrzeże Morza Śródziemnego jest rzymskie."]},
+    },
+    {
         "id": "pax", "tytul": "Pax Romana", "lata": "27 p.n.e. – 14 n.e.", "miejsce": "Rzym Augusta",
         "epoka": "cesarstwo", "mapa": mapa_rzym_augusta(), "tury": 30,
         "start": [[12, 13], [16, 17], [17, 4], [3, 10]],
@@ -1027,8 +1139,7 @@ ROZDZIALY = [
         ],
         "koniec": "August zmarł w 14 n.e. Jego następcami byli Tyberiusz, Kaligula, Klaudiusz i Neron. Pax Romana trwał – handel kwitł od Brytanii po Egipt.",
         "mapa_imperium": {"rok": "31 p.n.e. – 14 n.e.", "od": "-100", "do": "-1", "miasta": ["Rzym", "Akcjum", "Aleksandria", "Las Teutoburski", "Jerozolima", "Kalisia"],
-                          "trasa": [["Rzym", "Akcjum", "morzem", "Oktawian pokonuje flotę Antoniusza i Kleopatry pod Akcjum (31 p.n.e.)..."],
-                                    ["Akcjum", "Aleksandria", "morzem", "...a w 30 p.n.e. zajmuje Egipt – spichlerz imperium."]],
+                          "trasa": [["Rzym", "Las Teutoburski", "ladem", "Legiony ruszają nad Ren, ale w 9 n.e. Germanie Arminiusza niszczą trzy legiony Warusa."]],
                           "podpisy": ["Za Augusta Morze Śródziemne staje się „Mare Nostrum” – naszym morzem.",
                                       "Szlakiem bursztynowym kupcy docierają aż nad Bałtyk, przez ziemie dzisiejszej Polski."]},
     },
@@ -1157,7 +1268,7 @@ FINAL = ("Germański wódz Odoaker zdejmuje z tronu Romulusa Augustulusa i odsy�
          "Historia Rzymu zaczęła się od Romulusa – i symbolicznie kończy się na Romulusie. Na Wschodzie cesarstwo "
          "bizantyjskie trwa jeszcze prawie tysiąc lat, do 1453 roku.")
 
-DOWODCY = {"romulus": "Romulus", "cyncynat": "Kamillus i Cyncynat", "scypion": "Scypion Afrykański", "cezar": "Juliusz Cezar",
+DOWODCY = {"oktawian": "Oktawian i Agryppa", "romulus": "Romulus", "cyncynat": "Kamillus i Cyncynat", "scypion": "Scypion Afrykański", "cezar": "Juliusz Cezar",
            "august": "Germanik (za Augusta)", "trajan": "Trajan", "konstantyn": "Konstantyn", "aecjusz": "Flawiusz Aecjusz"}
 
 # Rady kronikarza (podpowiedzi Damiana)

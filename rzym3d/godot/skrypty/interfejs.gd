@@ -218,6 +218,7 @@ func pokaz_ekran() -> void:
 		"koniec": _ekran_koniec_rozdzialu()
 		"koniec_mp": _zbuduj_hud(); _ekran_koniec_mp()
 		"final": _ekran_final()
+		"porazka": _zbuduj_hud(); _ekran_porazki()
 		"lobby": _ekran_lobby()
 		"przekazanie": _zbuduj_hud(); _ekran_przekazania()
 	if toasty.get_parent() == null:
@@ -235,7 +236,7 @@ func _ekran_tytul() -> void:
 	vb.add_child(_cien_tekstu(_label("KRONIKI DAMIANA ŚCISŁA · CZĘŚĆ III", 18, Color(0.85, 0.7, 1.0))))
 	vb.add_child(_cien_tekstu(_label("ROMAN EMPIRE", 64, C_ZLOTY), 14))
 	vb.add_child(_cien_tekstu(_label("od narodzin przez rozkwit aż po upadek", 26, C_JASNY), 10))
-	vb.add_child(_cien_tekstu(_label("753 p.n.e. – 476 n.e. · 8 rozdziałów · strategia turowa 3D", 17, C_JASNY)))
+	vb.add_child(_cien_tekstu(_label("753 p.n.e. – 476 n.e. · %d rozdziałów · strategia turowa 3D" % g.D.rozdzialy.size(), 17, C_JASNY)))
 	var sp := Control.new()
 	sp.custom_minimum_size = Vector2(0, 22)
 	vb.add_child(sp)
@@ -263,14 +264,14 @@ func _ekran_tytul() -> void:
 
 
 func _okno_trudnosci() -> void:
-	var vb := _okno("Nowa kampania", Vector2(560, 360))
-	vb.add_child(_zawin(_label("Poprowadź Rzym przez 12 wieków – od chat na Palatynie po upadek Zachodu. Wybierz poziom trudności:", 17), 520))
+	var vb := _okno("Nowa kampania", Vector2(700, 520))
+	vb.add_child(_zawin(_label("Poprowadź Rzym przez 12 wieków – od chat na Palatynie po upadek Zachodu. Wybierz poziom trudności:", 17), 660))
 	for i in g.D.trudnosci.size():
 		var tr: Dictionary = g.D.trudnosci[i]
 		vb.add_child(_btn(tr.nazwa, func():
 			zamknij_okno()
 			g.nowa_kampania(i), "", 19))
-	vb.add_child(_label("Łatwy: więcej surowców, słabszy wróg, podpowiedzi w pytaniach.", 14, C_SZARY))
+		vb.add_child(_zawin(_label(tr.get("opis", ""), 14, C_CZERW if i >= 2 else C_SZARY), 660))
 
 
 func _okno_rozdzialow() -> void:
@@ -785,6 +786,10 @@ func odswiez() -> void:
 	zas_l.mieszkancy.add_theme_color_override("font_color", C_JASNY if w.eff >= 1.0 else Color("ff8a70"))
 	zas_l.chwala.text = "Chwała %d" % int(gr.chwala)
 	tura_l.text = "Tura %d/%d" % [int(g.S.tura), int(g.R.tury)]
+	var lim: int = g.limit_tur()
+	if lim > 0:
+		tura_l.text += " · limit %d" % lim
+		tura_l.add_theme_color_override("font_color", Color("ff8a70") if int(g.S.tura) > lim - 4 else C_ZLOTY)
 	epoka_l.text = "%s · %s" % [g.D.epoki[g.R.epoka].nazwa, g.R.lata]
 	tytul_rozdz.text = "%s. %s" % [RZYMSKIE[int(g.S.rozdzial) + 1], g.R.tytul]
 	if gr.inflacja > 0:
@@ -1387,7 +1392,8 @@ func _okno_ksiegi() -> void:
 	v2.add_theme_constant_override("separation", 8)
 	sc2.add_child(v2)
 	var od := {"damian": 1, "romulus": 1, "cyncynat": 2, "brennus": 2, "hannibal": 3, "scypion": 3, "cezar": 4,
-		"wercyngetoryks": 4, "august": 5, "trajan": 6, "konstantyn": 7, "attyla": 8, "odoaker": 8, "romulus_augustulus": 8}
+		"wercyngetoryks": 4, "kleopatra": 5, "antoniusz": 5, "august": 6, "trajan": 7, "konstantyn": 8, "attyla": 9,
+		"odoaker": 9, "romulus_augustulus": 9}
 	for id in g.D.postacie:
 		var ps: Dictionary = g.D.postacie[id]
 		var pc := PanelContainer.new()
@@ -1563,6 +1569,20 @@ func _ekran_koniec_mp() -> void:
 		g.pokaz_tytul(), "", 18))
 
 
+func _ekran_porazki() -> void:
+	var vb := _okno("Kronika przerwana", Vector2(680, 360))
+	vb.get_child(0).get_child(1).visible = false
+	vb.add_child(_zawin(_label("Czas minął – na tym poziomie trudności rozdział trzeba ukończyć do tury %d. Senat odwołał cię z urzędu, a kronikarz Damian zamknął księgę… na razie." % g.limit_tur(), 18), 640))
+	vb.add_child(_zawin(_label("Rada kronikarza: wcześniej buduj koszary i pola, odkrywaj potrzebne technologie i nie odkładaj bitwy na koniec.", 15, C_FIOLET), 640))
+	var hb := HBoxContainer.new()
+	hb.add_theme_constant_override("separation", 12)
+	vb.add_child(hb)
+	hb.add_child(_btn("Spróbuj ponownie", func():
+		zamknij_okno(false)
+		g.rozpocznij_rozdzial(int(g.S.rozdzial), [{"imie": "Damian", "rod": 0}], "kampania", int(g.S.trudnosc)), "", 19))
+	hb.add_child(_btn("Menu główne", func(): g.pokaz_tytul(), "", 17))
+
+
 func _ekran_final() -> void:
 	ekran = _pelny(Color("140d0b"))
 	_tlo_obraz(ekran, "res://ui/tlo_tytul.png", 0.72)
@@ -1587,7 +1607,7 @@ func _ekran_final() -> void:
 	for id in g.K.wyniki:
 		suma += int(g.K.wyniki[id].chwala)
 		gw += int(g.K.wyniki[id].gwiazdki)
-	vb.add_child(_cien_tekstu(_label("Twoja kronika: %d/8 rozdziałów · chwała łącznie %d · gwiazdki %d/24" % [g.K.ukonczone.size(), suma, gw], 22, C_ZLOTY), 8))
+	vb.add_child(_cien_tekstu(_label("Twoja kronika: %d/%d rozdziałów · chwała łącznie %d · gwiazdki %d/%d" % [g.K.ukonczone.size(), g.D.rozdzialy.size(), suma, gw, g.D.rozdzialy.size() * 3], 22, C_ZLOTY), 8))
 	vb.add_child(_cien_tekstu(_label(_tytul_honorowy(suma), 26, Color(0.85, 0.7, 1.0)), 8))
 	var dol := HBoxContainer.new()
 	vb.add_child(dol)

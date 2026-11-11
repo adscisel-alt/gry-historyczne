@@ -1075,7 +1075,7 @@ func _wyslij_zagon(dodatkowa_sila := 0) -> void:
 	var o: Array = R.obozy[int(S.nr_zagonu) % R.obozy.size()]
 	S.nr_zagonu = int(S.nr_zagonu) + 1
 	var tr: Dictionary = D.trudnosci[int(S.trudnosc)]
-	var sila := int(round((float(R.zagony.sila) + int(S.tura) / 10 + dodatkowa_sila) * tr.wrog))
+	var sila := int(round((float(R.zagony.sila) + int(S.tura) / 10 + dodatkowa_sila + int(tr.get("zagon_plus", 0))) * tr.wrog))
 	var x: int = int(o[0])
 	var y: int = int(o[1]) + 2
 	if teren(x, y) in ["", "m", "g"]:
@@ -1247,7 +1247,8 @@ func produkcja(p: int) -> Dictionary:
 		w[z] = int(floor(surowe[z] * w.eff + 0.001))
 	w.chwala += (1 if ma_tech(p, "prawo12") else 0) + (1 if ma_tech(p, "prawo_rzymskie") else 0)
 	var baza := BAZA_TALII + (2 if ma_tech(p, "reforma_mariusza") else 0)
-	w.jedzenie = int(ceil(w.mieszkancy / 5.0)) + maxi(0, gr(p).talia.size() - baza)
+	var utrz: float = float(D.trudnosci[int(S.get("trudnosc", 1))].get("utrzymanie", 1.0))
+	w.jedzenie = int(ceil(w.mieszkancy / 5.0)) + int(ceil(maxi(0, gr(p).talia.size() - baza) * utrz))
 	return w
 
 
@@ -1348,6 +1349,13 @@ func akcja_koniec_tury() -> void:
 	if nast == 0:
 		_nowa_runda()
 	S.aktywny = nast
+	if S.koniec and S.get("porazka", false):
+		po_akcji()
+		scena = "porazka"
+		dzwiek("rog")
+		if tryb == "":
+			ui.pokaz_ekran()
+		return
 	if S.koniec:
 		po_akcji()
 		_pokaz_koniec()
@@ -1368,8 +1376,15 @@ func _nowa_runda() -> void:
 	if S.tryb != "kampania":
 		if int(S.zwyciezca) >= 0 or int(S.tura) > int(R.tury):
 			S.koniec = true
-	elif int(S.tura) > int(R.tury) + 10:
-		pass
+	elif limit_tur() > 0 and int(S.tura) > limit_tur():
+		S.koniec = true
+		S["porazka"] = true
+
+
+func limit_tur() -> int:
+	## Ostatnia dozwolona tura rozdziału w kampanii (Trudny, Legendarny); -1 – bez limitu.
+	var z := int(D.trudnosci[int(S.get("trudnosc", 1))].get("limit_tur", -1))
+	return -1 if z < 0 or S.get("tryb", "") != "kampania" else int(R.tury) + z
 
 
 func _po_rozpoczeciu_tury() -> void:
@@ -2107,6 +2122,14 @@ void fragment() {
 		_mat_terenu.set_shader_parameter("jasnosc_bruzdy", 1.5 if RenderingServer.get_rendering_device() == null else 1.0)
 	# klimat epoki: późne cesarstwo ma bardziej suchą, płową trawę i więcej wydeptanej ziemi
 	var sucho: bool = R.get("epoka", "") == "schylek"
+	if R.get("id", "") in ["akcjum", "zama"]:
+		# Egipt i Afryka: spalona słońcem, piaszczysta trawa i dużo gołej ziemi
+		_mat_terenu.set_shader_parameter("trawa_jasna", Color(0.72, 0.66, 0.38))
+		_mat_terenu.set_shader_parameter("trawa_ciemna", Color(0.52, 0.52, 0.28))
+		_mat_terenu.set_shader_parameter("trawa_zolta", Color(0.82, 0.72, 0.46))
+		_mat_terenu.set_shader_parameter("ile_ziemi", 0.58)
+		return _mat_terenu
+	_mat_terenu.set_shader_parameter("trawa_zolta", Color(0.70, 0.66, 0.36))
 	_mat_terenu.set_shader_parameter("trawa_jasna", Color(0.58, 0.64, 0.33) if sucho else Color(0.5, 0.68, 0.31))
 	_mat_terenu.set_shader_parameter("trawa_ciemna", Color(0.4, 0.5, 0.24) if sucho else Color(0.34, 0.53, 0.22))
 	_mat_terenu.set_shader_parameter("ile_ziemi", 0.66 if sucho else 0.72)
@@ -2321,7 +2344,7 @@ func _quad(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, d: Vector3, kol:
 
 
 const JASNOSC_DEKORU_GL := 1.0   # dobierane porównaniem zrzutów Forward+ i GL Compatibility
-const DRZEWA := ["dab", "pinia", "cyprys", "oliwka", "krzak"]
+const DRZEWA := ["dab", "pinia", "cyprys", "oliwka", "krzak", "palma"]
 
 
 var _warianty_cache := {}
@@ -2555,6 +2578,8 @@ func _dekoracje() -> void:
 	var rodzaje := ["pinia", "oliwka", "pinia", "oliwka", "cyprys", "pinia", "oliwka", "krzak"]
 	if R.id == "zama":
 		rodzaje = ["oliwka", "oliwka", "pinia", "krzak"]
+	elif R.id == "akcjum":
+		rodzaje = ["palma", "palma", "palma", "oliwka", "krzak"]
 	elif R.id in ["alezja", "upadek", "dacja"]:
 		rodzaje = ["dab", "dab", "dab", "pinia", "dab", "krzak"]
 	for y in N:
@@ -2574,7 +2599,8 @@ func _dekoracje() -> void:
 				"o":
 					for k in 2:
 						var off := Vector3(r.randf_range(-0.55, 0.55), 0, r.randf_range(-0.55, 0.55))
-						_dodaj(drzewa, _wariant("oliwka", r), Transform3D(Basis(Vector3.UP, r.randf() * TAU) * r.randf_range(0.75, 0.95), _na_ziemi(baza + off)))
+						var gat := "palma" if R.id == "akcjum" and k == 0 else "oliwka"
+						_dodaj(drzewa, _wariant(gat, r), Transform3D(Basis(Vector3.UP, r.randf() * TAU) * r.randf_range(0.75, 0.95), _na_ziemi(baza + off)))
 				"g":
 					_dodaj(drzewa, "gora", Transform3D(Basis(Vector3.UP, r.randf() * TAU) * r.randf_range(0.9, 1.2), baza))
 				"w":
@@ -2636,7 +2662,7 @@ func _dekoracje() -> void:
 		dekor_wezel.add_child(l)
 	# obozy wroga
 	for o in R.obozy:
-		var n := instancja("oboz_kartaginy" if o[2] == "kartaginczyk" else "oboz_barbarzyncow")
+		var n := instancja("oboz_kartaginy" if o[2] in ["kartaginczyk", "egipcjanin"] else "oboz_barbarzyncow")
 		n.position = pozycja(o[0], o[1])
 		_cien_kontaktowy(n, 1.3, 0.45)
 		dekor_wezel.add_child(n)
@@ -2649,6 +2675,20 @@ func _dekoracje() -> void:
 		var l := etykieta(o[3], 56, Color(1, 0.55, 0.45))
 		l.position = n.position + Vector3(0, 3.4, 0)
 		dekor_wezel.add_child(l)
+		# postacie historyczne strony przeciwnej przy obozie (np. Kleopatra i Antoniusz)
+		var k_ := 0
+		for kto in R.get("postacie_obozu", []):
+			var ph := instancja(kto)
+			ph.position = _na_ziemi(n.position + Vector3(-1.1 + k_ * 0.9, 0, 1.3))
+			ph.rotation.y = 0.3 - k_ * 0.5
+			ph.scale = Vector3.ONE * SKALA_BOHATERA
+			_cien_kontaktowy(ph, 0.6, 0.5)
+			dekor_wezel.add_child(ph)
+			_postacie.append(ph)
+			var pl := etykieta(D.postacie[kto].imie, 44, Color(1, 0.8, 0.5))
+			pl.position = ph.position + Vector3(0, 2.0, 0)
+			dekor_wezel.add_child(pl)
+			k_ += 1
 	# kronikarz Damian i dowódca przy siedzibie pierwszego gracza – bohaterowie: większa skala,
 	# ciepła poświata sylwetki, kolorowy krąg na ziemi i wyraźna animacja spoczynku
 	var s0: Array = R.start[0]
@@ -2658,12 +2698,13 @@ func _dekoracje() -> void:
 	dam.set_meta("postac", "damian")
 	_bohater(dam, "Damian (kronikarz)", Color(0.78, 0.55, 1.0))
 	var dow: String = R.bitwa.dowodca
-	if dow in ["cyncynat", "romulus", "scypion", "cezar", "august", "trajan", "konstantyn"]:
-		var h := instancja(dow)
+	if dow in ["cyncynat", "romulus", "scypion", "cezar", "august", "trajan", "konstantyn", "oktawian"]:
+		var model_dow := "august" if dow == "oktawian" else dow
+		var h := instancja(model_dow)
 		h.position = _na_ziemi(pozycja(s0[0], s0[1]) + Vector3(1.5, 0, 1.4))
 		h.rotation.y = -0.4
 		h.set_meta("postac", dow)
-		_bohater(h, D.postacie[dow].imie, Color(1.0, 0.82, 0.4))
+		_bohater(h, D.dowodcy[dow] if dow == "oktawian" else D.postacie[dow].imie, Color(1.0, 0.82, 0.4))
 	# statki na morzu
 	var morze := []
 	for y in N:
@@ -4114,6 +4155,13 @@ func samotest() -> void:
 	ustaw_stan(odczyt)
 	akcja_koniec_tury()
 	ok = _ok(int(S.aktywny) == 1, "po wczytaniu aktywny gracz 1") and ok
+	# limit tur na poziomie Legendarnym: przekroczenie kończy rozdział porażką
+	rozpocznij_rozdzial(0, [{"imie": "T", "rod": 0}], "kampania", 3)
+	for i in int(R.tury) + 2:
+		akcja_koniec_tury()
+		if S.koniec:
+			break
+	ok = _ok(S.get("porazka", false), "limit tur: porażka na poziomie Legendarnym") and ok
 	# bitwa – pełna symulacja zasad
 	var wynik_b = await bitwa.test_zasad()
 	ok = _ok(wynik_b, "zasady bitwy") and ok
@@ -4197,6 +4245,20 @@ func zrzuty_szybkie(kat: String) -> void:
 	ustaw_glebie(22.0)
 	await get_tree().create_timer(1.5).timeout
 	await _zrzut(kat, "b_bok")
+	# Egipt: obóz Antoniusza i Kleopatry oraz latarnia Faros
+	rozpocznij_rozdzial(4, [{"imie": "Damian", "rod": 0}], "kampania", 1)
+	scena = "galeria"
+	ui.pokaz_ekran()
+	kamera.position = Vector3(17.0 * T, 4.5, 24.5 * T)
+	kamera.look_at(Vector3(20.0 * T, 1.0, 20.5 * T))
+	ustaw_glebie(9.0)
+	await get_tree().create_timer(1.5).timeout
+	await _zrzut(kat, "c_kleopatra")
+	kamera.position = Vector3(13.0 * T, 6.0, 11.0 * T)
+	kamera.look_at(Vector3(10.5 * T, 2.0, 4.5 * T))
+	ustaw_glebie(15.0)
+	await get_tree().create_timer(1.5).timeout
+	await _zrzut(kat, "d_faros")
 	get_tree().quit()
 
 
@@ -4216,7 +4278,7 @@ func zrzuty(kat: String) -> void:
 	ui.pokaz_ekran()
 	await get_tree().create_timer(2.0).timeout
 	await _zrzut(kat, "03_wstep")
-	for ri in [0, 4, 6]:
+	for ri in [0, 4, 5, 7]:
 		rozpocznij_rozdzial(ri, [{"imie": "Damian", "rod": 0}], "kampania", 1)
 		gr(0).zasoby = {"zboze": 200, "drewno": 200, "kamien": 200, "denary": 200}
 		var plan := ["pole", "pole", "tartak", "kamieniolom", "targ", "swiatynia", "mury", "koszary", "domus", "chata", "chata", "winnica", "akwedukt", "termy", "amfiteatr", "bazylika", "insula"]
@@ -4342,7 +4404,7 @@ func zrzuty(kat: String) -> void:
 	await get_tree().create_timer(1.5).timeout
 	await _zrzut(kat, "23_wzgorza")
 	# ożywione budynki z bliska: dwie klatki, żeby widać było ruch (budynki stawiane bezpośrednio wokół siedziby)
-	rozpocznij_rozdzial(4, [{"imie": "Damian", "rod": 0}], "kampania", 1)
+	rozpocznij_rozdzial(5, [{"imie": "Damian", "rod": 0}], "kampania", 1)
 	var s0 := Vector2i(int(R.start[0][0]), int(R.start[0][1]))
 	var plan := ["tartak", "targ", "koszary", "kamieniolom", "pole", "swiatynia", "mury", "termy", "insula", "winnica", "kuria", "chata", "rusztowanie"]
 	var k := 0

@@ -151,10 +151,27 @@ func nowa_runda() -> void:
 	_dobierz()
 	karta_wroga = _wrog_dobiera()
 	ukryta = ""
-	if int(g.D.trudnosci[int(g.S.get("trudnosc", 1))].ukryta) > 0 and runda > 1:
+	var tr: Dictionary = g.D.trudnosci[int(g.S.get("trudnosc", 1))]
+	if tr.get("sprytny", false):
+		# sprytny wróg: z dwóch dobranych kart odsłania tę, która bije więcej kart w twojej ręce
+		var druga := _wrog_dobiera()
+		if _ile_bije(druga) > _ile_bije(karta_wroga):
+			wodrzut.append(karta_wroga)
+			karta_wroga = druga
+		else:
+			wodrzut.append(druga)
+	if int(tr.ukryta) > 0 and runda > 1:
 		ukryta = _wrog_dobiera()
 	mody = {}
 	faza = "wybor"
+
+
+func _ile_bije(karta: String) -> int:
+	var n := 0
+	for k in reka:
+		if bije(karta, k):
+			n += 1
+	return n
 
 
 func uzyj_taktyki(id: String) -> void:
@@ -181,7 +198,12 @@ func zagraj(i: int) -> void:
 	reka.remove_at(i)
 	odrzut.append(moja)
 	var wroga := karta_wroga
-	if ukryta != "" and randf() < 0.5:
+	var sprytny: bool = g.D.trudnosci[int(g.S.get("trudnosc", 1))].get("sprytny", false)
+	var zamiana := randf() < 0.5
+	if sprytny and ukryta != "":
+		# sprytny wróg zamienia kartę tylko wtedy, gdy zakryta wypada lepiej przeciw twojej
+		zamiana = rozstrzygnij(moja, ukryta).E - rozstrzygnij(moja, ukryta).P > rozstrzygnij(moja, karta_wroga).E - rozstrzygnij(moja, karta_wroga).P
+	if ukryta != "" and zamiana:
 		wodrzut.append(karta_wroga)
 		wroga = ukryta
 		log.append("Wróg zamienił kartę! Wystawia: %s" % g.D.karty[wroga].nazwa)
@@ -266,6 +288,18 @@ func test_zasad() -> bool:
 			print("TEST_BLAD: bitwa %s nie skończyła się" % b.nazwa)
 			ok = false
 		print("TEST: bitwa %s – %s po %d rundach (morale %d:%d)" % [b.nazwa, "wygrana" if wygrana else "przegrana", runda, p_hp, e_hp])
+	# poziom Legendarny: sprytny wróg, rozdział egipski
+	g.S = g.nowy_stan(4, [{"imie": "T", "rod": 0}], "kampania", 3)
+	g.R = g.D.rozdzialy[4]
+	przygotuj(0)
+	po_pytaniu(true)
+	var rr := 0
+	while faza != "koniec" and rr < 200:
+		rr += 1
+		await zagraj(0)
+	print("TEST: Legendarny – bitwa %s – %s po %d rundach" % [b.nazwa, "wygrana" if wygrana else "przegrana", runda])
+	if faza != "koniec":
+		ok = false
 	# przewaga typu
 	g.S = ostatni
 	g.R = g.D.rozdzialy[int(g.S.rozdzial)]
