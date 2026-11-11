@@ -123,6 +123,11 @@ func _ready() -> void:
 		await get_tree().process_frame
 		await samotest()
 		return
+	if "--zrzuty-szybkie" in args:
+		tryb = "zrzuty"
+		await get_tree().process_frame
+		await zrzuty_szybkie(args[args.find("--zrzuty-szybkie") + 1])
+		return
 	if tryb == "zrzuty":
 		var i := args.find("--zrzuty")
 		var kat: String = args[i + 1] if i + 1 < args.size() else "user://zrzuty"
@@ -346,7 +351,7 @@ func _ustaw_klimat(epoka: String) -> void:
 	# GL Compatibility (przeglądarka) liczy światło w zakresie LDR i nie ma SSAO – scena wychodzi
 	# jaśniejsza, więc obniżamy ekspozycję i światło otoczenia, żeby wyglądała jak w Forward+.
 	if RenderingServer.get_rendering_device() == null:
-		srodowisko.tonemap_exposure = 0.78
+		srodowisko.tonemap_exposure = 0.66
 		srodowisko.ambient_light_energy = n[5] * 0.75
 	else:
 		srodowisko.tonemap_exposure = 0.95
@@ -379,6 +384,7 @@ func _cien_kontaktowy(rodzic: Node3D, promien: float, sila := 0.45) -> void:
 	mi.material_override = m
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	mi.position.y = 0.015
+	mi.name = "cien_kontaktowy"
 	rodzic.add_child(mi)
 
 
@@ -2205,6 +2211,7 @@ func _quad(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, d: Vector3, kol:
 		st.add_vertex(v)
 
 
+const JASNOSC_DEKORU_GL := 1.0   # dobierane porównaniem zrzutów Forward+ i GL Compatibility
 const DRZEWA := ["dab", "pinia", "cyprys", "oliwka", "krzak"]
 
 
@@ -2240,6 +2247,32 @@ func _na_ziemi(p: Vector3) -> Vector3:
 	return Vector3(p.x, teren_h(p.x, p.z), p.z)
 
 
+var _gl_siatki := {}
+
+
+func _kolory_dla_gl(m: Mesh) -> Mesh:
+	## Renderer GL Compatibility (przeglądarka) dekoduje kolory wierzchołków z glTF jeszcze raz jak sRGB,
+	## przez co drzewa i skały wychodzą ciemniejsze i bardziej nasycone niż w Forward+. Kodujemy je więc
+	## odwrotnie (liniowe → sRGB), żeby po dekodowaniu wróciły do właściwych wartości.
+	if m == null or not (m is ArrayMesh):
+		return m
+	if _gl_siatki.has(m):
+		return _gl_siatki[m]
+	var nowa := ArrayMesh.new()
+	for i in m.get_surface_count():
+		var a: Array = m.surface_get_arrays(i)
+		var k = a[Mesh.ARRAY_COLOR]
+		if k is PackedColorArray and k.size() > 0:
+			var kk: PackedColorArray = k
+			for j in kk.size():
+				kk[j] = kk[j].linear_to_srgb()
+			a[Mesh.ARRAY_COLOR] = kk
+		nowa.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, a)
+		nowa.surface_set_material(i, m.surface_get_material(i))
+	_gl_siatki[m] = nowa
+	return nowa
+
+
 func _model_bazowy(model: String) -> String:
 	var i := model.rfind("_")
 	if i > 0 and model.substr(i + 1).is_valid_int() and model.left(i) in DRZEWA:
@@ -2258,13 +2291,20 @@ func _rozsiej(model: String, transformy: Array) -> void:
 	# drzewa: każdy egzemplarz dostaje własny odcień (cieplejszy/chłodniejszy, jaśniejszy/ciemniejszy);
 	# kolor instancji mnoży się z gradientem z vertex colors modelu
 	var odcienie := []
+	var korekta := JASNOSC_DEKORU_GL if RenderingServer.get_rendering_device() == null else 1.0
 	if _model_bazowy(model) in DRZEWA:
 		var r := RandomNumberGenerator.new()
 		r.seed = model.hash() + int(S.get("rozdzial", 0))
 		for i in transformy.size():
 			var o := r.randf_range(-1.0, 1.0)            # -1 chłodniej/sino, +1 cieplej/żółtawo
 			var j := r.randf_range(0.84, 1.12)           # jasność
-			odcienie.append(Color(j * (1.0 + 0.11 * o), j * (1.0 + 0.03 * o), j * (1.0 - 0.14 * o)))
+			odcienie.append(Color(j * (1.0 + 0.11 * o), j * (1.0 + 0.03 * o), j * (1.0 - 0.14 * o)) * korekta)
+	elif korekta != 1.0 and model != "gora":
+		for i in transformy.size():
+			odcienie.append(Color(korekta, korekta, korekta))
+	if RenderingServer.get_rendering_device() == null:
+		for s in siatki:
+			s[0] = _kolory_dla_gl(s[0])
 	for s in siatki:
 		var mm := MultiMesh.new()
 		mm.transform_format = MultiMesh.TRANSFORM_3D
@@ -3177,20 +3217,29 @@ func _bohater(n: Node3D, imie: String, kolor: Color) -> void:
 	n.set_meta("baza_tr", n.transform)
 	_cien_kontaktowy(n, 0.75, 0.55)
 	# krąg w kolorze bohatera pod stopami
+	# płaski kwad z teksturą pierścienia (gradient radialny) – okrągły pod każdym kątem kamery
 	var krag := MeshInstance3D.new()
-	var tm := TorusMesh.new()
-	tm.inner_radius = 0.5
-	tm.outer_radius = 0.6
-	tm.rings = 24
-	tm.ring_segments = 4
-	krag.mesh = tm
-	krag.scale = Vector3(1, 0.05, 1)
-	krag.position = n.position + Vector3(0, 0.03, 0)
+	var pm := PlaneMesh.new()
+	pm.size = Vector2(1.35, 1.35)
+	krag.mesh = pm
+	krag.position = n.position + Vector3(0, 0.035, 0)
+	krag.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var gr_ := Gradient.new()
+	gr_.set_color(0, Color(1, 1, 1, 0))
+	gr_.set_offset(1, 1.0)
+	gr_.set_color(1, Color(1, 1, 1, 0))
+	for p_ in [[0.66, 0.0], [0.74, 0.18], [0.8, 1.0], [0.9, 1.0], [0.96, 0.0]]:
+		gr_.add_point(p_[0], Color(1, 1, 1, p_[1]))
+	var gt := GradientTexture2D.new()
+	gt.gradient = gr_
+	gt.fill = GradientTexture2D.FILL_RADIAL
+	gt.fill_from = Vector2(0.5, 0.5)
+	gt.fill_to = Vector2(1.0, 0.5)
+	gt.width = 128
+	gt.height = 128
 	var km := StandardMaterial3D.new()
-	km.albedo_color = Color(kolor, 0.85)
-	km.emission_enabled = true
-	km.emission = kolor
-	km.emission_energy_multiplier = 0.6
+	km.albedo_texture = gt
+	km.albedo_color = Color(kolor, 0.9)
 	km.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	km.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	krag.material_override = km
@@ -3211,7 +3260,8 @@ void fragment() {
 	m.shader = sh
 	m.set_shader_parameter("kolor", kolor)
 	for c in n.find_children("*", "MeshInstance3D", true, false):
-		(c as MeshInstance3D).material_overlay = m
+		if not String(c.name).begins_with("cien_kontaktowy"):      # poświata tylko na postaci, nie na cieniu
+			(c as MeshInstance3D).material_overlay = m
 	dekor_wezel.add_child(n)
 	_postacie.append(n)
 	var l := etykieta(imie, 52, kolor.lightened(0.35))
@@ -3238,7 +3288,7 @@ func _idle_bohatera(n: Node3D, d: Dictionary) -> void:
 	var krag = n.get_meta("krag", null)
 	if krag and is_instance_valid(krag):
 		var s := 1.0 + 0.06 * sin(t * 2.2 + f0)
-		(krag as Node3D).scale = Vector3(s, 0.05, s)
+		(krag as Node3D).scale = Vector3(s, 1.0, s)
 
 
 func _krok(n: Node, faza: float, amp: float) -> void:
@@ -3564,6 +3614,30 @@ func _zrzut(kat: String, nazwa: String) -> void:
 	var img := get_viewport().get_texture().get_image()
 	img.save_png(kat.path_join(nazwa + ".png"))
 	print("ZRZUT: ", nazwa)
+
+
+func zrzuty_szybkie(kat: String) -> void:
+	## Dwa ujęcia Palatynu (z góry i z boku) – szybkie porównanie rendererów.
+	DirAccess.make_dir_recursive_absolute(kat)
+	tryb = ""
+	muzyka_on = false
+	lektor_on = false
+	rozpocznij_rozdzial(0, [{"imie": "Damian", "rod": 0}], "kampania", 1)
+	ui.zamknij_wszystko()
+	scena = "gra"
+	ui.pokaz_ekran()
+	_kamera_na_siedzibe(0)
+	kamera.position = cel_kam + Vector3(0, 30, 20)
+	await get_tree().create_timer(1.5).timeout
+	await _zrzut(kat, "a_gora")
+	scena = "galeria"
+	ui.pokaz_ekran()
+	kamera.position = Vector3(10.5 * T, 6.5, 22.5 * T)
+	kamera.look_at(Vector3(14.0 * T, 0.6, 12.5 * T))
+	ustaw_glebie(22.0)
+	await get_tree().create_timer(1.5).timeout
+	await _zrzut(kat, "b_bok")
+	get_tree().quit()
 
 
 func zrzuty(kat: String) -> void:
