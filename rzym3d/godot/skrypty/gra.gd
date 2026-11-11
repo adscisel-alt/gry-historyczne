@@ -1678,6 +1678,7 @@ func zbuduj_swiat() -> void:
 	_animowane = []
 	_animuj_nowe = false
 	_zbuduj_teren()
+	_sciezki_od_nowa()
 	_dekoracje()
 	odswiez_swiat()
 	_animuj_nowe = true
@@ -2000,6 +2001,8 @@ uniform vec3 ziemia : source_color = vec3(0.45, 0.35, 0.22);
 uniform vec3 sciezka : source_color = vec3(0.62, 0.53, 0.37);
 uniform float ile_ziemi = 0.62;     // próg plam ziemi (mniej = więcej ziemi)
 uniform float ile_sciezek = 1.0;
+uniform sampler2D sciezki : filter_linear, repeat_disable;       // maska sieci ścieżek (liczona w grze)
+uniform vec2 rozmiar_mapy = vec2(48.0, 48.0);
 
 varying vec3 swiat;
 varying vec3 normalna;
@@ -2024,11 +2027,13 @@ void fragment() {
 	// plamy ziemi
 	float plama = smoothstep(ile_ziemi - sucho * 0.12, ile_ziemi - sucho * 0.12 + 0.06, n2 * 0.75 + n1 * 0.25 + (d - 0.5) * 0.12);
 	vec3 kolor = mix(trawa, ziemia * (0.85 + 0.25 * d2), plama * 0.85);
-	// ścieżki: wąskie „grzbiety” szumu, wydeptane i poszarpane
-	float g = abs(texture(szum, p * 0.016 + vec2(0.13, 0.52)).r - 0.5);
-	float gdzie = smoothstep(0.5, 0.6, texture(szum, p * 0.009 + vec2(0.61, 0.27)).r);   // ścieżki tylko w części mapy
-	float sc = (1.0 - smoothstep(0.006, 0.014 + (d - 0.5) * 0.006, g)) * gdzie * ile_sciezek;
-	kolor = mix(kolor, sciezka * (0.88 + 0.2 * d2), sc * 0.85);
+	// ścieżki z sieci wyznaczonej w grze (siedziba → rzeka, zabytki, budynki), brzegi poszarpane szumem;
+	// wokół wydeptanego pasa trawa jest przerzedzona
+	float sc_m = texture(sciezki, p / rozmiar_mapy).r;
+	float sc = smoothstep(0.3, 0.62, sc_m + (d - 0.5) * 0.3 + (d2 - 0.5) * 0.12) * ile_sciezek;
+	float pobocze = smoothstep(0.05, 0.3, sc_m) * (1.0 - sc);
+	kolor = mix(kolor, mix(kolor, ziemia, 0.45), pobocze * 0.6);
+	kolor = mix(kolor, sciezka * (0.88 + 0.2 * d2), sc * 0.9);
 	// typ terenu z wierzchołków (drogi, plaże, wzgórza…) – granica poszarpana szumem
 	vec3 typ = pow(COLOR.rgb, vec3(2.2)) * (0.9 + 0.18 * d2);
 	float waga = smoothstep(0.32, 0.68, COLOR.a + (n2 - 0.5) * 0.5 + (d - 0.5) * 0.2);
@@ -2560,6 +2565,7 @@ func odswiez_swiat() -> void:
 		_znajdzki_wezly[klucz] = n
 	_rysuj_granice()
 	odswiez_siatke_budowy()
+	_sciezki_dorysuj()
 
 
 func _prostokat_na_terenie(st: SurfaceTool, xa: float, za: float, xb: float, zb: float, kol: Color, unies: float) -> void:
@@ -2579,6 +2585,225 @@ func _prostokat_na_terenie(st: SurfaceTool, xa: float, za: float, xb: float, zb:
 			var h := func(px: float, pz: float) -> float:
 				return maxf(teren_h(px, pz), POZIOM_WODY) + unies
 			_quad(st, Vector3(x0, h.call(x0, z0), z0), Vector3(x1, h.call(x1, z0), z0), Vector3(x1, h.call(x1, z1), z1), Vector3(x0, h.call(x0, z1), z1), kol, Vector3.UP)
+
+
+# ----------------------------------------------------------------- sieć ścieżek
+# Ścieżki nie są szumem: wyznacza je Dijkstra na siatce terenu (0,5 m). Koszt rośnie na stokach i na
+# wzgórzach, woda i góry są nieprzekraczalne – ścieżki same biegną dolinami między wzgórzami. Na start:
+# siedziba → brzeg rzeki/morza, siedziba → zabytki (np. Grota Luperkal), siedziba → w stronę obozu wroga,
+# siedziby graczy między sobą. Każdy nowy budynek dostaje odnogę do najbliższej ścieżki. Sieć jest
+# rysowana do tekstury `_sc_img` czytanej przez shader terenu.
+const SC_ROZ := 512
+var _sc_img: Image
+var _sc_tex: ImageTexture
+var _sc_siec := PackedByteArray()
+var _sc_polaczone := {}
+
+
+func _sc_kom(x: int, y: int) -> int:
+	## Komórka siatki w środku pola (x, y).
+	var g := N * RES + 1
+	return (y * RES + RES / 2) * g + x * RES + RES / 2
+
+
+func _sciezki_od_nowa() -> void:
+	var t0 := Time.get_ticks_msec()
+	var g := N * RES + 1
+	_sc_img = Image.create(SC_ROZ, SC_ROZ, false, Image.FORMAT_L8)
+	_sc_img.fill(Color(0, 0, 0))
+	_sc_siec = PackedByteArray()
+	_sc_siec.resize(g * g)
+	_sc_polaczone = {}
+	var siedziby := []
+	for i in S.gracze.size():
+		var st_: Array = R.start[i]
+		siedziby.append(_sc_kom(int(st_[0]), int(st_[1])))
+	for k in siedziby.size():
+		var s0: int = siedziby[k]
+		_sc_siec[s0] = 1
+		_sc_rysuj(_sc_szukaj(s0, "brzeg", -1, 70), 1.0)                       # do wody
+		for z in R.zabytki:                                                     # do zabytków w pobliżu
+			var cel := _sc_kom(int(z[0]), int(z[1]))
+			if absi(int(z[0]) - int(R.start[k][0])) + absi(int(z[1]) - int(R.start[k][1])) <= 14:
+				_sc_rysuj(_sc_szukaj(s0, "punkt", cel, 90), 0.9)
+		if not R.obozy.is_empty():                                              # szlak w stronę obozu wroga
+			var o: Array = R.obozy[0]
+			var x := int(lerpf(float(R.start[k][0]), float(o[0]), 0.7))
+			var y := int(lerpf(float(R.start[k][1]), float(o[1]), 0.7))
+			_sc_rysuj(_sc_szukaj(s0, "punkt", _sc_kom(x, y), 90), 0.75)
+		if k > 0:                                                               # między siedzibami graczy
+			_sc_rysuj(_sc_szukaj(s0, "punkt", siedziby[0], 140), 1.0)
+	_sciezki_dorysuj(true)
+	if OS.is_debug_build() or tryb != "":
+		print("SCIEZKI: %d ms" % (Time.get_ticks_msec() - t0))
+
+
+func _sciezki_dorysuj(wymus := false) -> void:
+	## Odnogi do budynków, które jeszcze nie są połączone z siecią (także w budowie).
+	if _sc_img == null or S.is_empty():
+		return
+	var zmiana := wymus
+	for b in S.budynki:
+		var klucz := "%d,%d" % [int(b.x), int(b.y)]
+		if _sc_polaczone.has(klucz):
+			continue
+		_sc_polaczone[klucz] = true
+		var c := _sc_kom(int(b.x), int(b.y))
+		if _sc_siec[c] == 1:
+			continue
+		var szer := 0.8 if b.typ in ["targ", "swiatynia", "kuria", "termy", "amfiteatr", "port"] else 0.6
+		_sc_rysuj(_sc_szukaj(c, "siec", -1, 40), szer)
+		zmiana = true
+	if zmiana:
+		if _sc_tex == null:
+			_sc_tex = ImageTexture.create_from_image(_sc_img)
+		else:
+			_sc_tex.set_image(_sc_img)
+		if _mat_terenu:
+			_mat_terenu.set_shader_parameter("sciezki", _sc_tex)
+			_mat_terenu.set_shader_parameter("rozmiar_mapy", Vector2(N * T, N * T))
+
+
+func _sc_szukaj(start: int, cel: String, punkt: int, zasieg: int) -> PackedInt32Array:
+	## Dijkstra na siatce (8 sąsiadów). cel: "brzeg" (płycizna), "siec" (istniejąca ścieżka), "punkt".
+	var g := N * RES + 1
+	var sx := start % g
+	var sy := start / g
+	var koszt := {start: 0.0}
+	var skad := {}
+	var kk := PackedFloat64Array([0.0])            # kopiec binarny: koszty (64 bity – jak słownik kosztów)
+	var kc := PackedInt32Array([start])            # kopiec binarny: komórki
+	var znaleziony := -1
+	var kroki := 0
+	while kk.size() > 0 and kroki < 60000:
+		kroki += 1
+		var ek := kk[0]
+		var c: int = kc[0]
+		var ost := kk.size() - 1
+		kk[0] = kk[ost]
+		kc[0] = kc[ost]
+		kk.resize(ost)
+		kc.resize(ost)
+		var i := 0
+		while true:                                 # przesiewanie w dół
+			var l := 2 * i + 1
+			if l >= kk.size():
+				break
+			var m := l
+			if l + 1 < kk.size() and kk[l + 1] < kk[l]:
+				m = l + 1
+			if kk[m] >= kk[i]:
+				break
+			var tk := kk[i]
+			kk[i] = kk[m]
+			kk[m] = tk
+			var tc := kc[i]
+			kc[i] = kc[m]
+			kc[m] = tc
+			i = m
+		if ek > koszt.get(c, INF):
+			continue
+		if c != start:
+			if (cel == "siec" and _sc_siec[c] == 1) or (cel == "punkt" and c == punkt) \
+					or (cel == "brzeg" and _w_siatka[c] > 0.28):
+				znaleziony = c
+				break
+		var cx := c % g
+		var cy := c / g
+		for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1), Vector2i(1, 1), Vector2i(-1, 1), Vector2i(1, -1), Vector2i(-1, -1)]:
+			var nx: int = cx + d.x
+			var ny: int = cy + d.y
+			if nx < 0 or ny < 0 or nx >= g or ny >= g or absi(nx - sx) > zasieg or absi(ny - sy) > zasieg:
+				continue
+			var n := ny * g + nx
+			if _w_siatka[n] > 0.36 and not (cel == "brzeg" and _w_siatka[n] <= 0.5):
+				continue                                # woda
+			if teren(nx / RES, ny / RES) == "g":
+				continue                                # góry
+			var dh := absf(_h_siatka[n] - _h_siatka[c])
+			var dl := 1.414 if d.x != 0 and d.y != 0 else 1.0
+			var k: float = dl * (1.0 + 14.0 * dh + 0.8 * maxf(_h_siatka[n], 0.0))
+			if teren(nx / RES, ny / RES) in ["l", "b"]:
+				k *= 1.6                                # przez las i bagno niechętnie
+			if _sc_siec[n] == 1:
+				k *= 0.5                                # chętnie po istniejących ścieżkach
+			var nk: float = koszt[c] + k
+			if nk < koszt.get(n, INF):
+				koszt[n] = nk
+				skad[n] = c
+				kk.append(nk)                       # przesiewanie w górę
+				kc.append(n)
+				var j := kk.size() - 1
+				while j > 0:
+					var rodz := (j - 1) / 2
+					if kk[rodz] <= kk[j]:
+						break
+					var tk := kk[j]
+					kk[j] = kk[rodz]
+					kk[rodz] = tk
+					var tc := kc[j]
+					kc[j] = kc[rodz]
+					kc[rodz] = tc
+					j = rodz
+	var wynik := PackedInt32Array()
+	if znaleziony < 0:
+		return wynik
+	var c := znaleziony
+	while c != start:
+		wynik.append(c)
+		c = skad[c]
+	wynik.append(start)
+	wynik.reverse()
+	return wynik
+
+
+func _sc_rysuj(sciezka: PackedInt32Array, szer: float) -> void:
+	## Wygładzona (Chaikin) i lekko wijąca się linia wbita do maski; komórki trafiają do sieci.
+	if sciezka.size() < 2:
+		return
+	var g := N * RES + 1
+	var pts := []
+	for c in sciezka:
+		_sc_siec[c] = 1
+		pts.append(Vector2(float(c % g) / RES * T, float(c / g) / RES * T))
+	for _it in 3:                                   # Chaikin: zaokrąglenie załamań siatki
+		var nowe := [pts[0]]
+		for i in pts.size() - 1:
+			var a: Vector2 = pts[i]
+			var b: Vector2 = pts[i + 1]
+			nowe.append(a.lerp(b, 0.25))
+			nowe.append(a.lerp(b, 0.75))
+		nowe.append(pts[pts.size() - 1])
+		pts = nowe
+	var skala := SC_ROZ / (N * T)
+	var r := maxf(1.2, szer * 0.5 * skala)
+	var dlug := 0.0
+	for i in pts.size() - 1:
+		var a: Vector2 = pts[i]
+		var b: Vector2 = pts[i + 1]
+		var odc := a.distance_to(b)
+		var kroki := maxi(1, int(odc * skala / 0.8))
+		var nrm := (b - a).orthogonal().normalized()
+		for k in kroki:
+			var p := a.lerp(b, float(k) / kroki)
+			dlug += odc / kroki
+			p += nrm * sin(dlug * 0.9) * 0.12                # łagodne wicie się ścieżki
+			_sc_stempel(p * skala, r * (0.9 + 0.2 * sin(dlug * 2.3)))
+
+
+func _sc_stempel(srodek: Vector2, r: float) -> void:
+	var x0 := maxi(0, int(srodek.x - r - 1))
+	var x1 := mini(SC_ROZ - 1, int(srodek.x + r + 1))
+	var y0 := maxi(0, int(srodek.y - r - 1))
+	var y1 := mini(SC_ROZ - 1, int(srodek.y + r + 1))
+	for y in range(y0, y1 + 1):
+		for x in range(x0, x1 + 1):
+			var d := Vector2(x + 0.5, y + 0.5).distance_to(srodek)
+			var v := clampf(1.0 - (d - r * 0.55) / (r * 0.6), 0.0, 1.0)
+			if v > 0.0:
+				var stara := _sc_img.get_pixel(x, y).r
+				if v > stara:
+					_sc_img.set_pixel(x, y, Color(v, v, v))
 
 
 func _rysuj_granice() -> void:

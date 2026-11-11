@@ -123,10 +123,17 @@ osobne węzły z modeli Blendera o nazwach `anim_obrot_*`, `anim_kolys_*`, `anim
 ## Teren
 
 Plansza nie jest już szachownicą kolorowych pól. Wierzch terenu rysuje shader (`_material_terenu()` w `gra.gd`):
-jedna tekstura trawy w dwóch odcieniach z drobnymi „źdźbłami”, rzadkie plamy ziemi i wydeptane ścieżki,
-mieszane szumem (tekstury szumu generowane w grze, więc działa i w przeglądarce). Typy terenu – drogi, plaże,
+jedna tekstura trawy w dwóch odcieniach z drobnymi „źdźbłami” i rzadkie plamy ziemi, mieszane szumem
+(tekstury szumu generowane w grze, więc działa i w przeglądarce). Typy terenu – drogi, plaże,
 wzgórza, bagna, lasy, gaje oliwne – wtapiają się miękko: kolor i udział trawy liczone są w narożnikach pól jako
 średnia sąsiadów, a granicę dodatkowo szarpie szum. W późnym cesarstwie trawa jest bardziej sucha i płowa.
+
+**Ścieżki prowadzą dokądś.** Sieć wyznacza algorytm Dijkstry na siatce terenu (0,5 m): stoki i szczyty wzgórz
+są kosztowne, woda i góry nieprzekraczalne, lasy i bagna omijane, a istniejące ścieżki chętnie wykorzystywane – więc
+drogi same biegną dolinami między wzgórzami. Na start powstają ścieżki od siedziby do brzegu rzeki lub morza,
+do pobliskich zabytków (np. Groty Luperkal), w stronę obozu wroga i między siedzibami graczy. Każdy nowy budynek
+(już w chwili rozpoczęcia budowy) dostaje odnogę do najbliższej ścieżki. Trasy są wygładzane (Chaikin), lekko
+się wiją, a wokół wydeptanego pasa trawa jest przerzedzona (`_sciezki_od_nowa()`, `_sciezki_dorysuj()` w `gra.gd`).
 
 **Siatka pól pojawia się tylko w trybie budowy** – jako półprzezroczysta nakładka, w której pola, na których
 można postawić wybrany budynek, świecą na zielono.
