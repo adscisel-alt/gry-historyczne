@@ -828,7 +828,7 @@ def m_oliwka(x=0, y=0, s=1.0, ziarno=7):
         d = r.uniform(0.42, 0.62)
         bryly.append((0.08 + math.cos(kat) * d, math.sin(kat) * d, 0.92 + r.uniform(-0.08, 0.12), r.uniform(0.22, 0.32), (1.25, 1.15, 0.7)))
     k = _bryly_korony(bryly, voxel=0.075, szum=0.08, skala_szumu=0.22, cel_scian=260, ziarno=ziarno)
-    _koloruj(k, (50, 66, 46), (112, 132, 92), ziarno=ziarno)
+    _koloruj(k, (62, 92, 50), (140, 166, 104), ziarno=ziarno)
     # owoce
     for (dx, dy, dz) in [(0.25, -0.45, 0.85), (-0.3, -0.35, 0.82), (0.5, -0.15, 0.95)]:
         kula(dx, dy, dz, 0.035, (60, 70, 50), seg=5, ringi=3)
@@ -883,7 +883,7 @@ def m_skala_0(ziarno=21):
         a = r.uniform(0, 6.28)
         bryly.append((math.cos(a) * 0.45, math.sin(a) * 0.4, 0.2, r.uniform(0.25, 0.38), (1.1, 1.0, 0.8)))
     k = _bryly_korony(bryly, voxel=0.07, szum=0.09, skala_szumu=0.25, cel_scian=160, ziarno=ziarno)
-    _koloruj(k, (78, 74, 68), (150, 144, 132), z0=0.0, ziarno=ziarno)
+    _koloruj(k, (104, 92, 76), (150, 150, 112), z0=0.0, ziarno=ziarno)
 
 
 def m_skala_1(ziarno=23):
@@ -892,7 +892,7 @@ def m_skala_1(ziarno=23):
     bryly = [(0, 0.1, 0.55, 0.5, (0.95, 0.85, 1.25)), (0.42, -0.2, 0.3, 0.38, (1, 1, 0.8)),
              (-0.42, -0.22, 0.2, r.uniform(0.25, 0.32), (1.2, 1, 0.7))]
     k = _bryly_korony(bryly, voxel=0.07, szum=0.1, skala_szumu=0.22, cel_scian=180, ziarno=ziarno)
-    _koloruj(k, (74, 70, 64), (146, 140, 128), z0=0.0, ziarno=ziarno)
+    _koloruj(k, (100, 88, 72), (146, 148, 108), z0=0.0, ziarno=ziarno)
     kp = _bryly_korony([(-0.25, -0.45, 0.05, 0.18, (1.5, 1, 0.5))], voxel=0.05, szum=0.04, cel_scian=60, ziarno=ziarno)
     _koloruj(kp, (60, 100, 50), (110, 150, 70), z0=0.0, ziarno=ziarno)
 

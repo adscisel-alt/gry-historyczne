@@ -128,6 +128,13 @@ jedna tekstura trawy w dwóch odcieniach z drobnymi „źdźbłami” i rzadkie 
 wzgórza, bagna, lasy, gaje oliwne – wtapiają się miękko: kolor i udział trawy liczone są w narożnikach pól jako
 średnia sąsiadów, a granicę dodatkowo szarpie szum. W późnym cesarstwie trawa jest bardziej sucha i płowa.
 
+**Trawa, cienie, głębia, granica osady.** Drobny wzór trawy ma niski kontrast i dwie skale (bez widocznego
+powtarzania), a wielkoskalowy szum maluje plamy suchszej, żółtawej trawy. Na łąkach i wzgórzach rosną rzadkie kępki
+trawy 3D (MultiMesh, bez wody, ścieżek, stromych stoków i pól z budynkami). Cienie są jaśniejsze, a po mapie powoli
+przesuwają się miękkie cienie chmur. Chłodna mgła odległościowa i delikatna winieta zamykają kadr. Granica osady
+to nie płaska linia, tylko bruzda pomerium (zaorana ziemia z wałem – jak bruzda Romulusa wokół Palatynu) i niski
+płotek z palików i żerdzi po wewnętrznej stronie (w grze wieloosobowej w odcieniu rodu).
+
 **Ścieżki prowadzą dokądś.** Sieć wyznacza algorytm Dijkstry na siatce terenu (0,5 m): stoki i szczyty wzgórz
 są kosztowne, woda i góry nieprzekraczalne, lasy i bagna omijane, a istniejące ścieżki chętnie wykorzystywane – więc
 drogi same biegną dolinami między wzgórzami. Na start powstają ścieżki od siedziby do brzegu rzeki lub morza,

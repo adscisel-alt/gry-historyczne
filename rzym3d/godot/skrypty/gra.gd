@@ -11,7 +11,7 @@ const ZAPIS := "user://rzym_zapis.json"
 const ZAPIS_KAMPANII := "user://rzym_kampania.json"
 const WERSJA := 1
 const BAZA_TALII := 6
-const SKALA_POSTACI := 0.75
+const SKALA_POSTACI := 0.6
 const POLE_BITWY := Vector3(0, 0, -400)
 
 var D := {}                         # dane.json
@@ -205,6 +205,7 @@ func _otoczenie() -> void:
 	slonce.light_angular_distance = 1.6      # miękkie półcienie (PCSS w Forward+)
 	slonce.shadow_enabled = true
 	slonce.shadow_blur = 1.6                 # rozmycie krawędzi cieni (także w przeglądarce)
+	slonce.shadow_opacity = 0.68             # jaśniejsze cienie – nie przyciemniają mapy
 	slonce.shadow_bias = 0.04
 	slonce.shadow_normal_bias = 1.2
 	slonce.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS
@@ -224,6 +225,7 @@ func _otoczenie() -> void:
 	# w przeglądarce (GL Compatibility) Godot nie ma DOF – zastępuje go shader tilt-shift na ekranie
 	if RenderingServer.get_rendering_device() == null:
 		_tilt_shift_ekranowy()
+	_winieta()
 	ustaw_glebie(odl)
 	swiat = Node3D.new()
 	add_child(swiat)
@@ -254,6 +256,34 @@ func _otoczenie() -> void:
 const MGLA_KOLOR := Color(0.62, 0.71, 0.84)
 var atrybuty_kamery: CameraAttributesPractical
 var tilt_shift: ColorRect
+
+
+var winieta: ColorRect
+
+
+func _winieta() -> void:
+	## Delikatna, ciepła winieta zamykająca kadr (pod interfejsem).
+	var w := CanvasLayer.new()
+	w.layer = 0
+	add_child(w)
+	winieta = ColorRect.new()
+	winieta.set_anchors_preset(Control.PRESET_FULL_RECT)
+	winieta.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var sh := Shader.new()
+	sh.code = """shader_type canvas_item;
+uniform float sila = 0.38;
+void fragment() {
+	vec2 q = UV - 0.5;
+	q.x *= SCREEN_PIXEL_SIZE.y / SCREEN_PIXEL_SIZE.x * 0.75;
+	float v = smoothstep(0.32, 0.78, length(q));
+	COLOR = vec4(0.08, 0.06, 0.08, v * sila);
+}
+"""
+	var m := ShaderMaterial.new()
+	m.shader = sh
+	winieta.material = m
+	winieta.visible = false
+	w.add_child(winieta)
 
 
 func _tilt_shift_ekranowy() -> void:
@@ -297,7 +327,7 @@ func ustaw_glebie(ogniskowa: float, srodek_ekranu := 0.5, bitwa_profil := false)
 	## Głębia sceny zależna od odległości kamery od punktu, na który patrzy:
 	## mgła zaczyna się tuż za nim, a ostrość obejmuje pas wokół niego (efekt makiety).
 	## Profil bitwy ma szerszy pas ostrości (całe szyki) i dalszą mgłę.
-	var mgla_od := 0.75
+	var mgla_od := 0.8
 	var mgla_do := 2.6
 	var ostr_dal := 1.08
 	var przejscie_dal := 0.6
@@ -313,12 +343,14 @@ func ustaw_glebie(ogniskowa: float, srodek_ekranu := 0.5, bitwa_profil := false)
 	srodowisko.fog_depth_begin = ogniskowa * mgla_od
 	srodowisko.fog_depth_end = ogniskowa * mgla_do
 	# GL Compatibility (przeglądarka) liczy mgłę mocniej – słabsza gęstość
-	srodowisko.fog_density = 0.45 if RenderingServer.get_rendering_device() == null else 0.7
+	srodowisko.fog_density = 0.5 if RenderingServer.get_rendering_device() == null else 0.75
 	if atrybuty_kamery:
 		atrybuty_kamery.dof_blur_far_distance = ogniskowa * ostr_dal
 		atrybuty_kamery.dof_blur_far_transition = ogniskowa * przejscie_dal
 		atrybuty_kamery.dof_blur_near_distance = ogniskowa * ostr_blisko
 		atrybuty_kamery.dof_blur_near_transition = ogniskowa * przejscie_blisko
+	if winieta:
+		winieta.visible = scena in ["gra", "bitwa", "przekazanie", "koniec_mp", "galeria"]
 	if tilt_shift:
 		tilt_shift.visible = scena in ["gra", "bitwa", "przekazanie", "koniec_mp"]
 		var m := tilt_shift.material as ShaderMaterial
@@ -1679,7 +1711,9 @@ func zbuduj_swiat() -> void:
 	_animuj_nowe = false
 	_zbuduj_teren()
 	_sciezki_od_nowa()
+	_trzciny_pozycje = []
 	_dekoracje()
+	_maski_wody()
 	odswiez_swiat()
 	_animuj_nowe = true
 
@@ -2003,6 +2037,10 @@ uniform float ile_ziemi = 0.62;     // próg plam ziemi (mniej = więcej ziemi)
 uniform float ile_sciezek = 1.0;
 uniform sampler2D sciezki : filter_linear, repeat_disable;       // maska sieci ścieżek (liczona w grze)
 uniform vec2 rozmiar_mapy = vec2(48.0, 48.0);
+uniform sampler2D granica : filter_linear, repeat_disable;       // maska bruzdy granicy osady (pomerium)
+uniform vec3 trawa_zolta : source_color = vec3(0.70, 0.66, 0.36);  // plamy suchszej, żółtawej trawy
+uniform float chmury_sila = 0.13;
+uniform float jasnosc_bruzdy = 1.0;                                   // wędrujące cienie chmur
 
 varying vec3 swiat;
 varying vec3 normalna;
@@ -2018,12 +2056,16 @@ void fragment() {
 	float n2 = texture(szum, p * 0.055 + vec2(0.37, 0.71)).r;
 	float d = texture(szum_drobny, p * 0.45).r;
 	float d2 = texture(szum_drobny, p * 1.7 + vec2(0.2, 0.6)).r;
-	// trawa: dwa odcienie mieszane dużym szumem + drobne źdźbła
-	vec3 trawa = mix(trawa_ciemna, trawa_jasna, smoothstep(0.3, 0.72, n1 + (d - 0.5) * 0.25));
+	// trawa: dwa odcienie mieszane dużym szumem; drobny wzór o niskim kontraście (dwie skale, bez powtórzeń)
+	float drob = mix(d2, texture(szum_drobny, p * 0.63 + vec2(0.71, 0.13)).r, 0.5);
+	vec3 trawa = mix(trawa_ciemna, trawa_jasna, smoothstep(0.25, 0.78, n1 + (d - 0.5) * 0.12));
+	// wielkoskalowe plamy suchszej, żółtawej trawy
+	float zolto = smoothstep(0.52, 0.7, texture(szum, p * 0.0065 + vec2(0.43, 0.19)).r + (n2 - 0.5) * 0.15);
+	trawa = mix(trawa, trawa_zolta, zolto * 0.55);
 	// szczyty wzgórz suchsze: płowa trawa i więcej gołej ziemi, poszarpane szumem
 	float sucho = smoothstep(0.5, 1.6, swiat.y + (n2 - 0.5) * 0.45);
-	trawa = mix(trawa, trawa_sucha * (0.9 + 0.2 * d2), sucho * 0.85);
-	trawa *= 0.88 + 0.22 * d2;
+	trawa = mix(trawa, trawa_sucha * (0.95 + 0.1 * drob), sucho * 0.85);
+	trawa *= 0.95 + 0.1 * drob;
 	// plamy ziemi
 	float plama = smoothstep(ile_ziemi - sucho * 0.12, ile_ziemi - sucho * 0.12 + 0.06, n2 * 0.75 + n1 * 0.25 + (d - 0.5) * 0.12);
 	vec3 kolor = mix(trawa, ziemia * (0.85 + 0.25 * d2), plama * 0.85);
@@ -2044,7 +2086,17 @@ void fragment() {
 	vec3 skala = mix(vec3(0.36, 0.31, 0.26), vec3(0.62, 0.55, 0.44), warstwy * 0.7 + d2 * 0.3);
 	float stok = (1.0 - smoothstep(0.82, 0.97, normalna.y)) * (1.0 - stromo);
 	wynik = mix(wynik, mix(wynik, ziemia, 0.35), stok * 0.6);
-	ALBEDO = mix(wynik, skala, stromo);
+	wynik = mix(wynik, skala, stromo);
+	// bruzda pomerium wzdłuż granicy osady: zaorana, ciemniejsza ziemia z wałem
+	float br = texture(granica, p / rozmiar_mapy).r;
+	float bruzda = smoothstep(0.35, 0.75, br + (d - 0.5) * 0.25);
+	float wal = smoothstep(0.05, 0.35, br) * (1.0 - bruzda);
+	wynik = mix(wynik, mix(wynik, ziemia, 0.5), wal * 0.5);
+	wynik = mix(wynik, ziemia * (0.48 + 0.12 * sin(p.x * 9.0 + p.y * 7.0)) * jasnosc_bruzdy, bruzda * 0.9);
+	// wędrujące cienie chmur: miękkie, jasne, powoli przesuwające się
+	float ch = texture(szum, p * 0.0045 + TIME * vec2(0.0016, 0.0009)).r;
+	wynik *= 1.0 - chmury_sila * smoothstep(0.5, 0.75, ch);
+	ALBEDO = wynik;
 	ROUGHNESS = 0.95;
 }
 """
@@ -2052,6 +2104,7 @@ void fragment() {
 		_mat_terenu.shader = sh
 		_mat_terenu.set_shader_parameter("szum", _szum_tekstura(31, 0.012, 512))
 		_mat_terenu.set_shader_parameter("szum_drobny", _szum_tekstura(57, 0.05))
+		_mat_terenu.set_shader_parameter("jasnosc_bruzdy", 1.5 if RenderingServer.get_rendering_device() == null else 1.0)
 	# klimat epoki: późne cesarstwo ma bardziej suchą, płową trawę i więcej wydeptanej ziemi
 	var sucho: bool = R.get("epoka", "") == "schylek"
 	_mat_terenu.set_shader_parameter("trawa_jasna", Color(0.58, 0.64, 0.33) if sucho else Color(0.5, 0.68, 0.31))
@@ -2129,7 +2182,14 @@ uniform vec2 przeplyw = vec2(0.018, 0.03);
 uniform float sila_fal = 0.4;
 uniform float pas_piany = 0.16;
 uniform float jasnosc = 1.0;
-uniform float glebia_wymuszona = -1.0;   // >= 0: stała głębokość (woda w budynkach)        // Forward+ oświetla wodę mocniej niż GL Compatibility
+uniform float glebia_wymuszona = -1.0;   // >= 0: stała głębokość (woda w budynkach)
+uniform vec3 kolor_zenitu : source_color = vec3(0.35, 0.55, 0.85);
+uniform vec3 kier_slonca = vec3(0.4, 0.6, 0.5);                 // kierunek do słońca (świat)
+uniform vec3 kolor_slonca : source_color = vec3(1.0, 0.9, 0.7);
+uniform sampler2D maska_wody : filter_linear, repeat_disable;  // rozmyta maska wody – linia brzegu w 0,47
+uniform sampler2D maska_trzcin : filter_linear, repeat_disable; // piana wokół kęp trzciny
+uniform vec2 rozmiar_mapy = vec2(48.0, 48.0);
+uniform float piana_brzegu = 1.0;       // 0 dla wody w budynkach
 
 varying vec3 swiat;
 
@@ -2146,13 +2206,22 @@ void fragment() {
 	// dwie normal mapy przewijane w różnych kierunkach i skalach = fale
 	vec3 na = texture(fale_a, uv * 0.085 + TIME * przeplyw).rgb;
 	vec3 nb = texture(fale_b, uv * 0.13 + vec2(-TIME * przeplyw.y, TIME * przeplyw.x) * 0.8).rgb;
-	NORMAL_MAP = normalize(na + nb - 1.0) * 0.5 + 0.5;
+	vec3 nm = normalize(na + nb - 1.0);
+	NORMAL_MAP = nm * 0.5 + 0.5;
 	NORMAL_MAP_DEPTH = sila_fal;
+	// normalna fali w świecie (lustro jest poziome): do odblasku słońca i odbicia nieba w obu rendererach
+	vec3 nw = normalize(vec3((nm.x * 2.0 - 1.0) * 0.35, 1.0, (nm.y * 2.0 - 1.0) * 0.35));
+	vec3 v = normalize(CAMERA_POSITION_WORLD - swiat);
 	// kolor: płycizna turkusowa, głębia granatowa
 	vec3 woda = mix(kolor_plytki, kolor_glebi, smoothstep(0.05, 0.85, g));
-	// fresnel: pod małym kątem woda odbija niebo
-	float fres = pow(1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0), 4.0);
-	woda = mix(woda, kolor_nieba, clamp(fres * 0.6, 0.0, 0.5));
+	// odbicie nieba: horyzont pod małym kątem, zenit przy fali odbijającej w górę
+	float fres = pow(1.0 - clamp(dot(nw, v), 0.0, 1.0), 3.0);
+	vec3 r = reflect(-v, nw);
+	vec3 niebo = mix(kolor_nieba, kolor_zenitu, smoothstep(0.1, 0.7, r.y));
+	woda = mix(woda, niebo, clamp(0.04 + fres * 0.5, 0.0, 0.45));
+	// odblask słońca: wąski, migoczący na grzbietach fal
+	vec3 hv = normalize(normalize(kier_slonca) + v);
+	float odblask = pow(max(dot(nw, hv), 0.0), 260.0) * 3.5 + pow(max(dot(nw, hv), 0.0), 40.0) * 0.12;
 	// piana przy brzegu: pas płytkiej wody poszarpany szumem, pulsujący jak fala przyboju
 	float s = texture(szum, uv * 0.42 + vec2(TIME * 0.025, -TIME * 0.018)).r;
 	float s2 = texture(szum, uv * 0.9 - vec2(TIME * 0.04, TIME * 0.03)).r;
@@ -2160,12 +2229,22 @@ void fragment() {
 	float przybuj = 0.5 + 0.5 * sin(TIME * 1.6 - g * 40.0 + s * 4.0);
 	float piana = clamp(pas * smoothstep(0.35, 0.65, s2 * 0.6 + przybuj * 0.5), 0.0, 1.0);
 	piana = max(piana, (1.0 - smoothstep(0.0, pas_piany * 0.45, g)) * 0.85);
+	// piana po obu brzegach: wzdłuż izolinii brzegu z maski wody (niezależnie od nachylenia dna)
+	vec2 mu = swiat.xz / rozmiar_mapy;
+	float wm = texture(maska_wody, mu).r;
+	float linia = 1.0 - smoothstep(0.0, 0.045, abs(wm - 0.47 - (s - 0.5) * 0.05));
+	piana = max(piana, linia * smoothstep(0.35, 0.65, s2 * 0.7 + przybuj * 0.4) * 0.75 * piana_brzegu);
+	// piana wokół trzcin
+	float tr = texture(maska_trzcin, mu).r * piana_brzegu;
+	piana = max(piana, smoothstep(0.35, 0.8, tr + (s2 - 0.5) * 0.4) * 0.6);
+	piana *= 1.0 - smoothstep(0.85, 1.0, g);
 	ALBEDO = mix(woda * jasnosc, kolor_piany, piana);
+	EMISSION = kolor_slonca * odblask * (1.0 - piana);
 	// przezroczystość zależna od głębokości: przy brzegu widać dno
 	ALPHA = clamp(mix(0.38, 0.94, smoothstep(0.0, 0.7, g)) + piana * 0.6 + fres * 0.15, 0.0, 1.0);
-	ROUGHNESS = mix(0.2, 0.7, piana);
+	ROUGHNESS = mix(0.12, 0.7, piana);
 	METALLIC = 0.0;
-	SPECULAR = 0.28;
+	SPECULAR = 0.45;
 }
 """
 	woda_mat = ShaderMaterial.new()
@@ -2203,10 +2282,35 @@ func _normal_mapa(ziarno: int, czestotliwosc: float) -> NoiseTexture2D:
 	return t
 
 
+var _trzciny_pozycje := []
+
+
+func _maski_wody() -> void:
+	## Maska wody (brzeg) i maska trzcin dla shadera wody.
+	if woda_mat == null:
+		return
+	var g := N * RES + 1
+	var img := Image.create(g, g, false, Image.FORMAT_RF)
+	for j in g:
+		for i in g:
+			img.set_pixel(i, j, Color(_w_siatka[j * g + i], 0, 0))
+	woda_mat.set_shader_parameter("maska_wody", ImageTexture.create_from_image(img))
+	var tr := Image.create(SC_ROZ, SC_ROZ, false, Image.FORMAT_L8)
+	tr.fill(Color(0, 0, 0))
+	var skala := SC_ROZ / (N * T)
+	for p in _trzciny_pozycje:
+		_sc_stempel_na(tr, Vector2(p.x, p.z) * skala, 0.32 * skala)
+	woda_mat.set_shader_parameter("maska_trzcin", ImageTexture.create_from_image(tr))
+	woda_mat.set_shader_parameter("rozmiar_mapy", Vector2(N * T, N * T))
+	woda_mat.set_shader_parameter("kier_slonca", slonce.global_transform.basis.z.normalized())
+	woda_mat.set_shader_parameter("kolor_slonca", slonce.light_color)
+
+
 func _kolory_wody() -> void:
 	## Odbicie nieba w kolorze horyzontu epoki (zmierzch późnego cesarstwa zabarwia wodę).
 	if woda_mat and niebo_mat:
 		woda_mat.set_shader_parameter("kolor_nieba", niebo_mat.sky_horizon_color.lerp(niebo_mat.sky_top_color, 0.35))
+		woda_mat.set_shader_parameter("kolor_zenitu", niebo_mat.sky_top_color)
 
 
 func _quad(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, d: Vector3, kol: Color, n: Vector3) -> void:
@@ -2278,6 +2382,109 @@ func _kolory_dla_gl(m: Mesh) -> Mesh:
 	return nowa
 
 
+# ----------------------------------------------------------------- kępki trawy 3D
+var _kepki_mm: MultiMesh
+var _kepki_pola := {}          # Vector2i pola -> [indeksy instancji]
+var _kepki_tr := []
+var _kepki_ukryte := {}
+
+
+func _siatka_kepki() -> Mesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var r := RandomNumberGenerator.new()
+	r.seed = 3
+	for i in 7:                                    # źdźbła rozchodzące się z kępki
+		var a := i * TAU / 7.0 + r.randf_range(-0.3, 0.3)
+		var kier := Vector3(cos(a), 0, sin(a))
+		var bok := Vector3(-kier.z, 0, kier.x) * 0.025
+		var h := r.randf_range(0.16, 0.28)
+		var czub := kier * r.randf_range(0.06, 0.12) + Vector3(0, h, 0)
+		var dol := Color(0.27, 0.38, 0.14)
+		var gora := Color(0.47, 0.6, 0.24).lerp(Color(0.62, 0.6, 0.3), r.randf() * 0.5)
+		for v in [[-bok, dol], [bok, dol], [czub, gora]]:
+			st.set_color(v[1])
+			st.set_normal(Vector3.UP)
+			st.add_vertex(v[0])
+	var m := st.commit()
+	var mat := StandardMaterial3D.new()
+	mat.vertex_color_use_as_albedo = true
+	mat.vertex_color_is_srgb = RenderingServer.get_rendering_device() != null
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	# źdźbła bez cieniowania: dwustronne trójkąty miały odwróconą normalną od tyłu i wychodziły czarne;
+	# kolory dobrane do oświetlonej trawy terenu
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.roughness = 1.0
+	m.surface_set_material(0, mat)
+	return m
+
+
+func _kepki_trawy() -> void:
+	## Rzadkie kępki trawy 3D na łąkach i wzgórzach (bez wody, ścieżek, stromych stoków), MultiMesh.
+	_kepki_pola = {}
+	_kepki_tr = []
+	_kepki_ukryte = {}
+	var r := RandomNumberGenerator.new()
+	r.seed = 4321 + int(S.rozdzial)
+	var g := N * RES + 1
+	var trs := []
+	var kols := []
+	for y in N:
+		for x in N:
+			var c := teren(x, y)
+			if not c in [".", "o", "w", "l"]:
+				continue
+			for k in (4 if c != "l" else 2):
+				var px := (x + r.randf()) * T
+				var pz := (y + r.randf()) * T
+				var gi := clampi(int(round(px / T * RES)), 0, g - 1)
+				var gj := clampi(int(round(pz / T * RES)), 0, g - 1)
+				if _w_siatka[gj * g + gi] > 0.12:
+					continue
+				if _sc_img and _sc_img.get_pixel(clampi(int(px / (N * T) * SC_ROZ), 0, SC_ROZ - 1), clampi(int(pz / (N * T) * SC_ROZ), 0, SC_ROZ - 1)).r > 0.15:
+					continue
+				var h := teren_h(px, pz)
+				if absf(teren_h(px + 0.3, pz) - h) > 0.12 or absf(teren_h(px, pz + 0.3) - h) > 0.12:
+					continue                                # stromy stok – bez trawy
+				var s_ := r.randf_range(1.0, 1.7)
+				trs.append(Transform3D(Basis(Vector3.UP, r.randf() * TAU).scaled(Vector3(s_, s_ * r.randf_range(0.8, 1.3), s_)), Vector3(px, h - 0.01, pz)))
+				var sucha := smoothstep(0.5, 1.6, h)
+				kols.append(Color(1, 1, 1).lerp(Color(1.15, 1.0, 0.7), sucha) * r.randf_range(0.85, 1.12))
+				var pole := Vector2i(x, y)
+				if not _kepki_pola.has(pole):
+					_kepki_pola[pole] = []
+				_kepki_pola[pole].append(trs.size() - 1)
+	if trs.is_empty():
+		return
+	_kepki_mm = MultiMesh.new()
+	_kepki_mm.transform_format = MultiMesh.TRANSFORM_3D
+	_kepki_mm.use_colors = true
+	_kepki_mm.mesh = _siatka_kepki()
+	_kepki_mm.instance_count = trs.size()
+	for i in trs.size():
+		_kepki_mm.set_instance_transform(i, trs[i])
+		_kepki_mm.set_instance_color(i, kols[i])
+	_kepki_tr = trs
+	var mmi := MultiMeshInstance3D.new()
+	mmi.multimesh = _kepki_mm
+	mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	dekor_wezel.add_child(mmi)
+
+
+func _kepki_pod_budynkami() -> void:
+	## Kępki na polach z budynkami są chowane (skala 0), żeby nie przebijały podłóg.
+	if _kepki_mm == null:
+		return
+	for b in S.budynki:
+		var pole := Vector2i(int(b.x), int(b.y))
+		if _kepki_ukryte.has(pole) or not _kepki_pola.has(pole):
+			continue
+		_kepki_ukryte[pole] = true
+		for i in _kepki_pola[pole]:
+			var tr: Transform3D = _kepki_tr[i]
+			_kepki_mm.set_instance_transform(i, Transform3D(Basis.from_scale(Vector3.ZERO), tr.origin))
+
+
 func _model_bazowy(model: String) -> String:
 	var i := model.rfind("_")
 	if i > 0 and model.substr(i + 1).is_valid_int() and model.left(i) in DRZEWA:
@@ -2302,8 +2509,10 @@ func _rozsiej(model: String, transformy: Array) -> void:
 		r.seed = model.hash() + int(S.get("rozdzial", 0))
 		for i in transformy.size():
 			var o := r.randf_range(-1.0, 1.0)            # -1 chłodniej/sino, +1 cieplej/żółtawo
-			var j := r.randf_range(0.84, 1.12)           # jasność
-			odcienie.append(Color(j * (1.0 + 0.11 * o), j * (1.0 + 0.03 * o), j * (1.0 - 0.14 * o)) * korekta)
+			var j := r.randf_range(0.8, 1.15)            # jasność
+			var nas := r.randf_range(-0.12, 0.12)        # nasycenie
+			var k := Color(j * (1.0 + 0.18 * o - nas), j * (1.0 + 0.05 * o + nas * 0.5), j * (1.0 - 0.22 * o - nas))
+			odcienie.append(k * korekta)
 	elif korekta != 1.0 and model != "gora":
 		for i in transformy.size():
 			odcienie.append(Color(korekta, korekta, korekta))
@@ -2343,7 +2552,7 @@ func _dekoracje() -> void:
 	var drzewa := {"gora": []}
 	# skład lasu: Lacjum – pinie o parasolowatych koronach, cyprysy i oliwki (bez drzew liściastych);
 	# Afryka – oliwki i pinie; Galia, Dacja, północ – dęby
-	var rodzaje := ["pinia", "pinia", "cyprys", "oliwka", "cyprys", "pinia", "krzak"]
+	var rodzaje := ["pinia", "oliwka", "pinia", "oliwka", "cyprys", "pinia", "oliwka", "krzak"]
 	if R.id == "zama":
 		rodzaje = ["oliwka", "oliwka", "pinia", "krzak"]
 	elif R.id in ["alezja", "upadek", "dacja"]:
@@ -2387,6 +2596,8 @@ func _dekoracje() -> void:
 							var wzdl := Vector3(k.y, 0, k.x) * r.randf_range(-0.75, 0.75)
 							var poz := Vector3((x + 0.5) * T, 0, (y + 0.5) * T) + Vector3(k.x, 0, k.y) * (T * 0.5 + r.randf_range(-0.1, 0.35)) + wzdl
 							poz.y = maxf(teren_h(poz.x, poz.z), POZIOM_WODY - 0.3)
+							if poz.y < POZIOM_WODY:
+								_trzciny_pozycje.append(poz)
 							_dodaj(drzewa, _wariant("trzcina", r), Transform3D(Basis(Vector3.UP, r.randf() * TAU) * r.randf_range(0.6, 0.95), poz))
 			# urwiska skalne na krawędziach wzgórz
 			if c == "w":
@@ -2406,6 +2617,7 @@ func _dekoracje() -> void:
 						_dodaj(drzewa, _wariant("klif", r), Transform3D(bas, srodek + Vector3(k.y, 0, k.x) * r.randf_range(-0.25, 0.25)))
 	for m in drzewa:
 		_rozsiej(m, drzewa[m])
+	_kepki_trawy()
 	_przytnij_cache_wariantow()
 	# podpisy geograficzne
 	for p in R.podpisy:
@@ -2485,14 +2697,17 @@ func odswiez_swiat() -> void:
 		var n := Node3D.new()
 		n.position = pozycja(int(b.x), int(b.y))
 		var model := instancja(b.typ if b.gotowy else "rusztowanie")
+		if b.typ == "chata" and b.gotowy:
+			model.scale = Vector3.ONE * SKALA_CHATY      # chata z Palatynu była większa niż na makiecie pola
 		n.add_child(model)
 		_ozyw_model(model)
 		if _animuj_nowe and tryb == "" and scena == "gra":
 			# nowy budynek wyrasta z ziemi, rusztowanie „wskakuje” na plac budowy
 			var tw := model.create_tween()
 			if b.gotowy:
-				model.scale = Vector3(1, 0.02, 1)
-				tw.tween_property(model, "scale", Vector3.ONE, 0.8).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+				var docel := model.scale
+				model.scale = Vector3(docel.x, 0.02, docel.z)
+				tw.tween_property(model, "scale", docel, 0.8).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 			else:
 				model.scale = Vector3.ONE * 0.3
 				tw.tween_property(model, "scale", Vector3.ONE, 0.6).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
@@ -2566,6 +2781,7 @@ func odswiez_swiat() -> void:
 	_rysuj_granice()
 	odswiez_siatke_budowy()
 	_sciezki_dorysuj()
+	_kepki_pod_budynkami()
 
 
 func _prostokat_na_terenie(st: SurfaceTool, xa: float, za: float, xb: float, zb: float, kol: Color, unies: float) -> void:
@@ -2806,47 +3022,164 @@ func _sc_stempel(srodek: Vector2, r: float) -> void:
 					_sc_img.set_pixel(x, y, Color(v, v, v))
 
 
-func _rysuj_granice() -> void:
+# ----------------------------------------------------------------- granica osady: bruzda pomerium i płotek
+# Zamiast płaskiej linii interfejsu: wzdłuż granicy biegnie bruzda (zaorana ziemia z wałem – jak bruzda,
+# którą według legendy Romulus wytyczył pługiem wokół Palatynu) rysowana do maski czytanej przez shader
+# terenu, a po wewnętrznej stronie stoi niski płotek z palików i żerdzi (MultiMesh). W grze wieloosobowej
+# paliki mają odcień rodu.
+var _gr_img: Image
+var _gr_tex: ImageTexture
+var _palik_mesh: Mesh
+var _zerdz_mesh: Mesh
+
+
+func _siatka_palika() -> Mesh:
+	if _palik_mesh:
+		return _palik_mesh
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var g := 0.09
-	var jest := false
+	var w := 0.035
+	var h := 0.42
+	var dol := Color(0.36, 0.25, 0.15)
+	var gora := Color(0.62, 0.47, 0.3)
+	var rogi := [Vector3(-w, 0, -w), Vector3(w, 0, -w), Vector3(w, 0, w), Vector3(-w, 0, w)]
+	var czubek := Vector3(0, h + 0.07, 0)
+	for i in 4:
+		var a: Vector3 = rogi[i]
+		var b: Vector3 = rogi[(i + 1) % 4]
+		var ag := a + Vector3(0, h, 0)
+		var bg := b + Vector3(0, h, 0)
+		for v in [[a, dol], [b, dol], [bg, gora], [a, dol], [bg, gora], [ag, gora]]:
+			st.set_color(v[1])
+			st.add_vertex(v[0])
+		for v in [[ag, gora], [bg, gora], [czubek, gora.lightened(0.15)]]:
+			st.set_color(v[1])
+			st.add_vertex(v[0])
+	st.generate_normals()
+	_palik_mesh = st.commit()
+	var m := StandardMaterial3D.new()
+	m.vertex_color_use_as_albedo = true
+	m.vertex_color_is_srgb = RenderingServer.get_rendering_device() != null
+	m.roughness = 0.9
+	_palik_mesh.surface_set_material(0, m)
+	var bm := BoxMesh.new()
+	bm.size = Vector3(1.0, 0.025, 0.025)
+	var mz := StandardMaterial3D.new()
+	mz.albedo_color = Color(0.5, 0.37, 0.23)
+	mz.roughness = 0.9
+	bm.material = mz
+	_zerdz_mesh = bm
+	return _palik_mesh
+
+
+func _rysuj_granice() -> void:
+	granice_wezel.mesh = null
+	for c in granice_wezel.get_children():
+		c.queue_free()
+	if _gr_img == null:
+		_gr_img = Image.create(SC_ROZ, SC_ROZ, false, Image.FORMAT_L8)
+	_gr_img.fill(Color(0, 0, 0))
+	var skala := SC_ROZ / (N * T)
+	var paliki := []          # [Transform3D, Color]
+	var zerdzie := []
+	var r := RandomNumberGenerator.new()
+	r.seed = 99
 	for y in N:
 		for x in N:
 			var p := wlasc(x, y)
 			if p < 0:
 				continue
-			var kol := Color(D.rody[int(gr(p).rod)].kolor).lightened(0.25)
-			if S.tryb == "kampania":
-				kol = Color(1, 0.85, 0.3)
-			var h := maxf(wysokosc(x, y), 0.0) + 0.06
+			var kol := Color(0.62, 0.47, 0.3) if S.tryb == "kampania" else Color(D.rody[int(gr(p).rod)].kolor)
 			var x0 := x * T
 			var z0 := y * T
 			for kier in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
 				if wlasc(x + kier.x, y + kier.y) == p:
 					continue
-				jest = true
-				var a: Vector3
-				var b: Vector3
+				# krawędź pola i kierunek do środka terytorium
+				var a: Vector2
+				var b: Vector2
 				if kier == Vector2i(1, 0):
-					a = Vector3(x0 + T - g, h, z0); b = Vector3(x0 + T, h, z0 + T)
+					a = Vector2(x0 + T, z0); b = Vector2(x0 + T, z0 + T)
 				elif kier == Vector2i(-1, 0):
-					a = Vector3(x0, h, z0); b = Vector3(x0 + g, h, z0 + T)
+					a = Vector2(x0, z0); b = Vector2(x0, z0 + T)
 				elif kier == Vector2i(0, 1):
-					a = Vector3(x0, h, z0 + T - g); b = Vector3(x0 + T, h, z0 + T)
+					a = Vector2(x0, z0 + T); b = Vector2(x0 + T, z0 + T)
 				else:
-					a = Vector3(x0, h, z0); b = Vector3(x0 + T, h, z0 + g)
-				_prostokat_na_terenie(st, a.x, a.z, b.x, b.z, kol, 0.06)
-	if not jest:
-		granice_wezel.mesh = null
+					a = Vector2(x0, z0); b = Vector2(x0 + T, z0)
+				var wew := -Vector2(kier.x, kier.y)
+				# bruzda 0,25 m w głąb, płotek 0,55 m w głąb
+				var k := 0
+				while k <= 20:
+					var t_ := k / 20.0
+					var q := a.lerp(b, t_) + wew * 0.25
+					_sc_stempel_na(_gr_img, q * skala, 0.2 * skala + 0.6)
+					k += 1
+				var n_pal := 5
+				var poprz := Vector3.ZERO
+				for i in n_pal:
+					var t_ := (i + 0.5) / n_pal
+					var q := a.lerp(b, t_) + wew * 0.55
+					var h := teren_h(q.x, q.y)
+					if h < POZIOM_WODY + 0.04:
+						poprz = Vector3.ZERO
+						continue
+					var poz := Vector3(q.x, h - 0.03, q.y)
+					var bas := Basis(Vector3.UP, r.randf() * TAU) * Basis(Vector3.RIGHT, r.randf_range(-0.08, 0.08)) * Basis.from_scale(Vector3.ONE * r.randf_range(0.85, 1.15))
+					paliki.append([Transform3D(bas, poz), kol])
+					if poprz != Vector3.ZERO:                   # żerdź między sąsiednimi palikami
+						var sr := (poprz + poz) / 2.0 + Vector3(0, 0.27, 0)
+						var dl := poprz.distance_to(poz)
+						var kier3 := (poz - poprz).normalized()
+						var x_ := kier3
+						var z_ := x_.cross(Vector3.UP).normalized()
+						var y_ := z_.cross(x_).normalized()
+						zerdzie.append(Transform3D(Basis(x_ * dl, y_, z_), sr))
+					poprz = poz
+	if _gr_tex == null:
+		_gr_tex = ImageTexture.create_from_image(_gr_img)
+	else:
+		_gr_tex.set_image(_gr_img)
+	if _mat_terenu:
+		_mat_terenu.set_shader_parameter("granica", _gr_tex)
+	if paliki.is_empty():
 		return
-	granice_wezel.mesh = st.commit()
-	var m := StandardMaterial3D.new()
-	m.vertex_color_use_as_albedo = true
-	m.vertex_color_is_srgb = true
-	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	m.cull_mode = BaseMaterial3D.CULL_DISABLED
-	granice_wezel.material_override = m
+	var mesh := _siatka_palika()
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.use_colors = S.tryb != "kampania"
+	mm.mesh = mesh
+	mm.instance_count = paliki.size()
+	for i in paliki.size():
+		mm.set_instance_transform(i, paliki[i][0])
+		if mm.use_colors:
+			mm.set_instance_color(i, Color(1, 1, 1).lerp(paliki[i][1], 0.55))
+	var mmi := MultiMeshInstance3D.new()
+	mmi.multimesh = mm
+	granice_wezel.add_child(mmi)
+	if not zerdzie.is_empty():
+		var mz := MultiMesh.new()
+		mz.transform_format = MultiMesh.TRANSFORM_3D
+		mz.mesh = _zerdz_mesh
+		mz.instance_count = zerdzie.size()
+		for i in zerdzie.size():
+			mz.set_instance_transform(i, zerdzie[i])
+		var mzi := MultiMeshInstance3D.new()
+		mzi.multimesh = mz
+		mzi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		granice_wezel.add_child(mzi)
+
+
+func _sc_stempel_na(img: Image, srodek: Vector2, r: float) -> void:
+	var x0 := maxi(0, int(srodek.x - r - 1))
+	var x1 := mini(SC_ROZ - 1, int(srodek.x + r + 1))
+	var y0 := maxi(0, int(srodek.y - r - 1))
+	var y1 := mini(SC_ROZ - 1, int(srodek.y + r + 1))
+	for y in range(y0, y1 + 1):
+		for x in range(x0, x1 + 1):
+			var d := Vector2(x + 0.5, y + 0.5).distance_to(srodek)
+			var v := clampf(1.0 - (d - r * 0.5) / (r * 0.6), 0.0, 1.0)
+			if v > img.get_pixel(x, y).r:
+				img.set_pixel(x, y, Color(v, v, v))
 
 
 func _pyl(poz: Vector3) -> void:
@@ -2957,6 +3290,7 @@ func _ozyw_model(model: Node) -> void:
 				_mat_wody_budynku = _material_wody().duplicate()
 				_mat_wody_budynku.set_shader_parameter("glebia_wymuszona", 0.35)
 				_mat_wody_budynku.set_shader_parameter("pas_piany", 0.0)
+				_mat_wody_budynku.set_shader_parameter("piana_brzegu", 0.0)
 			(n as MeshInstance3D).material_override = _mat_wody_budynku
 		elif rodzaj == "ogien" and _ile_swiatel() < MAKS_SWIATEL:
 			var sw := OmniLight3D.new()
@@ -3432,7 +3766,8 @@ func lot_strzaly(rodzic: Node3D, skad: Vector3, dokad: Vector3, czas := 0.45, wb
 	return _pocisk(rodzic, skad, dokad, czas, "strzala", 1.4, wbij)
 
 
-const SKALA_BOHATERA := 1.05
+const SKALA_BOHATERA := 0.82
+const SKALA_CHATY := 1.3
 var _mat_poswiaty: ShaderMaterial
 
 
