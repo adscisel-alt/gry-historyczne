@@ -397,8 +397,37 @@ def polacz(obiekty, nazwa, pivot):
     bpy.context.scene.cursor.location = pivot
     bpy.ops.object.origin_set(type="ORIGIN_CURSOR")
     bpy.ops.object.shade_flat()
+    at = o.data.attributes.get("gladki")
+    if at is not None:                                  # części oznaczone gladki() – cieniowanie gładkie
+        for i, poly in enumerate(o.data.polygons):
+            if at.data[i].value:
+                poly.use_smooth = True
     o.select_set(False)
     return o
+
+
+def gladki(o):
+    """Oznacza obiekt do gładkiego cieniowania (twarz, kaptur, fałdy) – przetrwa łączenie w polacz()."""
+    me = o.data
+    at = me.attributes.get("gladki") or me.attributes.new("gladki", "BOOLEAN", "FACE")
+    for d in at.data:
+        d.value = True
+    return o
+
+
+def faldy(o, n=7, amp=0.06, z_od=-1.0):
+    """Pionowe fałdy szaty: promień wierzchołków moduluje sinus kąta (rośnie ku dołowi)."""
+    me = o.data
+    zs = [v.co.z for v in me.vertices]
+    zmin, zmax = min(zs), max(zs)
+    for v in me.vertices:
+        a = math.atan2(v.co.y, v.co.x)
+        t = 1.0 - (v.co.z - zmin) / max(zmax - zmin, 1e-4)
+        if v.co.z < z_od and z_od > -0.99:
+            continue
+        f = 1.0 + amp * t * (math.sin(a * n) + 0.4 * math.sin(a * n * 2 + 1.3))
+        v.co.x *= f
+        v.co.y *= f
 
 
 def zapisz_glb(nazwa):
@@ -2066,7 +2095,7 @@ DOMYSLNE = dict(skora=SKORA, wlosy=(70, 50, 36), fryzura="krotkie", broda=None, 
 POSTACIE = {
     # Damian Ścisły — kronikarz serii, fioletowy płaszcz z kapturem, księga
     "damian": dict(stroj="kaptur", kaptur=FIOLET, tunika=KREM, spodnie=(86, 64, 52), buty=(70, 46, 30),
-                   wlosy=(120, 80, 44), bron="ksiega", skora=SKORA_J, pioro=True),
+                   wlosy=(120, 80, 44), bron="ksiega", skora=SKORA_J, pioro=True, realny=True),
     # Romulus (legenda) — wojownik-założyciel: brązowy hełm, napierśnik, włócznia
     "romulus": dict(tunika=(150, 56, 40), zbroja="miesniowa", zbroja_kol=BRAZ, plaszcz=(120, 40, 30),
                     helm="brazowy", helm_kol=BRAZ, grzebien=CZERWIEN, broda="krotka", wlosy=(80, 54, 36),
@@ -2091,6 +2120,12 @@ POSTACIE = {
                            torkwes=True, plaszcz=(54, 110, 64), bron="miecz", tarcza="owalna",
                            tarcza_kol=(60, 110, 64), tarcza_detal=BRAZ),
     # Oktawian August — pierwszy cesarz: toga z purpurą, wieniec, berło z orłem
+    # Kleopatra VII — ostatnia królowa Egiptu: lniana suknia ze złotym pasem, diadem, czarne włosy
+    "kleopatra": dict(stroj="toga", toga=(242, 236, 220), toga_pas=ZLOTO, diadem=True, fryzura="dlugie",
+                      wlosy=(18, 14, 14), skora=(222, 178, 134), bron="berlo", torkwes=True, plaszcz=(40, 70, 140)),
+    # Marek Antoniusz — wódz w napierśniku, z purpurowym płaszczem i krótką brodą
+    "antoniusz": dict(tunika=CZERWIEN, zbroja="miesniowa", zbroja_kol=ZLOTO, plaszcz=PURPURA, broda="krotka",
+                      wlosy=(60, 40, 30), fryzura="loki", bron="miecz"),
     "august": dict(stroj="toga", toga_pas=PURPURA, wieniec=(150, 170, 60), fryzura="loki", wlosy=(120, 84, 50),
                    bron="berlo", skora=SKORA_J),
     # Trajan — cesarz-żołnierz: napierśnik, purpurowy płaszcz, wieniec
@@ -2134,6 +2169,12 @@ JEDNOSTKI_PIESZE = {
     "german": dict(stroj="spodnie", tunika=(120, 96, 64), spodnie=(96, 86, 66), zbroja="futro",
                    zbroja_kol=FUTRO_J, wlosy=(206, 160, 92), fryzura="wezel", broda="krotka", buty=(80, 56, 36),
                    tarcza="okragla", tarcza_kol=(70, 104, 64), tarcza_detal=(200, 60, 40), bron="wlocznia"),
+    # Egipt Ptolemeuszy: włócznik (machimos) w lnianym pancerzu z owalną tarczą i łucznik nubijski
+    "egipcjanin": dict(skora=SKORA_C, wlosy=(26, 22, 20), tunika=(238, 232, 214), zbroja="lniana",
+                       zbroja_kol=(232, 214, 160), plaszcz=(40, 70, 130), tarcza="owalna", tarcza_kol=(212, 170, 70),
+                       tarcza_detal=(40, 80, 150), bron="wlocznia", torkwes=True, opaska=False),
+    "nubijczyk": dict(skora=(112, 72, 50), wlosy=(24, 18, 16), tunika=(226, 206, 150), lewa="luk", bron="strzala",
+                      kolczan=True, torkwes=True),
     "got": dict(stroj="spodnie", tunika=(60, 86, 130), spodnie=(84, 74, 60), zbroja="kolczuga", helm="stozkowy",
                 plaszcz=(140, 40, 34), wlosy=(176, 124, 64), fryzura="dlugie", broda="dluga", buty=(70, 50, 34),
                 tarcza="okragla", tarcza_kol=(150, 40, 36), tarcza_detal=(236, 228, 206), bron="miecz"),
@@ -2250,6 +2291,17 @@ def przedmiot_prawy(p, hx, hy, hz):
     elif t == "strzala":
         walec((hx, hy + 0.05, hz - 0.15), (hx, hy - 0.1, hz + 0.45), 0.008, DREWNO_J, v=4)
         stozek(hx, hy - 0.11, hz + 0.45, 0.02, 0, 0.05, STAL, v=4)
+    elif t == "ksiega" and p.get("realny"):
+        r = (0.25, 0, 0)
+        box(hx, hy - 0.02, hz - 0.12, 0.23, 0.075, 0.3, (96, 36, 48), rot=r)                  # okładka
+        box(hx + 0.004, hy - 0.024, hz - 0.115, 0.215, 0.064, 0.282, (236, 226, 196), rot=r)   # karty
+        for zz in (-0.25, -0.01):
+            for xx in (-0.1, 0.1):
+                box(hx + xx, hy - 0.06, hz + zz * 0.95, 0.03, 0.01, 0.03, ZLOTO, rot=r, metal=0.6)   # okucia rogów
+        box(hx, hy - 0.062, hz - 0.12, 0.07, 0.008, 0.08, ZLOTO, rot=r, metal=0.6)          # medalion
+        kula(hx, hy - 0.068, hz - 0.12, 0.016, (150, 40, 60), seg=8, ringi=5, szorstkosc=0.2)
+        box(hx + 0.12, hy - 0.02, hz - 0.12, 0.03, 0.06, 0.03, BRAZ, rot=r, metal=0.5)        # zapięcie
+        walec((hx - 0.02, hy - 0.06, hz + 0.02), (hx - 0.03, hy - 0.08, hz - 0.2), 0.004, (160, 30, 40), v=4)  # zakładka
     elif t == "ksiega":
         box(hx, hy - 0.02, hz - 0.12, 0.22, 0.07, 0.28, (110, 40, 60), rot=(0.25, 0, 0))
         box(hx, hy - 0.03, hz - 0.115, 0.205, 0.075, 0.25, KREM, rot=(0.25, 0, 0))
@@ -2276,6 +2328,114 @@ def przedmiot_prawy(p, hx, hy, hz):
     elif t == "motyka":
         cyl(hx, hy, 0.15, 0.018, 1.05, DREWNO_J, v=6)
         box(hx, hy - 0.08, 0.06, 0.12, 0.18, 0.02, STAL_C, rot=(0.9, 0, 0))
+
+
+# ----------------------------------------------------------------- realistyczna postać (kronikarz Damian)
+def _mix(a, b, t):
+    return tuple(int(x + (y - x) * t) for x, y in zip(a, b))
+
+
+def _szata_kronikarza(p, ox, oy):
+    """Wełniany płaszcz z fałdami, spodnia tunika, pas ze sznura z węzłem, sakiewka, kałamarz z rogu,
+    torba na ramieniu ze zwojem."""
+    kol = p["kaptur"]
+    ciemny = _mix(kol, (20, 10, 30), 0.35)
+    jasny = _mix(kol, (255, 255, 255), 0.12)
+    # płaszcz: stożek z fałdami, rozcięty z przodu (widać tunikę)
+    plaszcz = stozek(ox, oy, 0.05, 0.34, 0.2, 1.16, kol, v=28)
+    faldy(plaszcz, n=9, amp=0.09)
+    gladki(plaszcz)
+    tun = stozek(ox, oy - 0.05, 0.05, 0.29, 0.15, 1.08, p["tunika"], v=20)     # tunika pod spodem (w rozcięciu)
+    gladki(tun)
+    for s_ in (-1, 1):                                                       # poły płaszcza z obszyciem
+        b = box(ox + s_ * 0.09, oy - 0.27, 0.08, 0.05, 0.04, 1.0, jasny, rot=(-0.095, 0, s_ * 0.15))
+        gladki(b)
+        box(ox + s_ * 0.115, oy - 0.29, 0.08, 0.012, 0.02, 1.0, ZLOTO, rot=(-0.095, 0, s_ * 0.15), metal=0.4)
+    for z in (0.12, 0.2):                                                    # brzeg płaszcza
+        torus(ox, oy, z, 0.31 - z * 0.15, 0.012, ciemny, seg=28, mseg=4)
+    # pas ze sznura, węzeł i zwisające końce
+    torus(ox, oy, 0.8, 0.215, 0.022, (176, 150, 104), seg=24, mseg=6)
+    kula(ox + 0.07, oy - 0.21, 0.8, 0.035, (176, 150, 104), seg=8, ringi=6)
+    for dx, dl in ((0.06, 0.32), (0.09, 0.26)):
+        walec((ox + dx, oy - 0.215, 0.79), (ox + dx + 0.02, oy - 0.24, 0.79 - dl), 0.012, (176, 150, 104), v=5)
+        kula(ox + dx + 0.02, oy - 0.24, 0.79 - dl, 0.018, (150, 124, 84), seg=6, ringi=4)
+    # sakiewka i kałamarz z rogu przy pasie
+    kula(ox - 0.17, oy - 0.13, 0.69, 0.06, (120, 80, 50), seg=10, ringi=7, skala=(1, 0.75, 1.2))
+    torus(ox - 0.17, oy - 0.13, 0.75, 0.035, 0.008, (90, 60, 36), seg=10, mseg=3)
+    walec((ox - 0.2, oy - 0.02, 0.76), (ox - 0.24, oy + 0.02, 0.6), 0.03, (220, 200, 160), v=8, r2=0.015)
+    cyl(ox - 0.2, oy - 0.02, 0.76, 0.034, 0.025, CZARNY, v=8)
+    # torba na ramieniu (pas przez pierś) ze zwojem
+    belka((ox - 0.17, oy - 0.08, 1.17), (ox + 0.2, oy - 0.1, 0.62), 0.05, 0.02, (110, 72, 42))
+    box(ox + 0.25, oy + 0.02, 0.5, 0.1, 0.24, 0.22, (124, 84, 50))
+    box(ox + 0.25, oy + 0.02, 0.66, 0.11, 0.25, 0.05, (104, 68, 40), rot=(0.25, 0, 0))
+    walec_lezacy(ox + 0.25, oy + 0.02, 0.76, 0.03, 0.2, KREM, os_="y", v=8)
+    for k in (-1, 1):
+        cyl(ox + 0.25, oy + 0.02 + k * 0.1, 0.74, 0.04, 0.012, (150, 110, 60), v=8, rot=(math.pi / 2, 0, 0))
+    # zapinka płaszcza pod szyją
+    kula(ox, oy - 0.2, 1.16, 0.04, ZLOTO, seg=10, ringi=6, metal=0.6)
+    kula(ox, oy - 0.235, 1.16, 0.02, (120, 40, 140), seg=6, ringi=4, szorstkosc=0.2)
+
+
+def _glowa_realna(p, ox, oy):
+    """Twarz o łagodnych bryłach: czaszka, żuchwa, kości policzkowe, oczy (białko, tęczówka, źrenica, powieka),
+    nos z grzbietem i nozdrzami, dwubarwne usta, brwi, kilkudniowy zarost, kosmyki spod kaptura i kaptur
+    z obszyciem okalającym twarz."""
+    sk = p["skora"]
+    wl = p["wlosy"]
+    cien = _mix(sk, (120, 70, 60), 0.25)
+    z = 1.43
+    gladki(cyl(ox, oy, 1.2, 0.07, 0.13, sk, v=12))                                         # szyja
+    gladki(kula(ox, oy, z, 0.165, sk, seg=24, ringi=16, skala=(0.92, 0.98, 1.12)))      # czaszka
+    gladki(kula(ox, oy - 0.045, z - 0.085, 0.12, sk, seg=18, ringi=12, skala=(0.95, 0.85, 0.8)))  # żuchwa
+    for s_ in (-1, 1):
+        gladki(kula(ox + s_ * 0.075, oy - 0.12, z - 0.02, 0.05, sk, seg=12, ringi=8, skala=(1, 0.7, 0.8)))  # policzki
+    # zarost na brodzie i policzkach
+    gladki(kula(ox, oy - 0.05, z - 0.1, 0.123, _mix(sk, wl, 0.32), seg=18, ringi=12, skala=(0.96, 0.86, 0.72)))
+    # oczy
+    for s_ in (-1, 1):
+        x = ox + s_ * 0.058
+        gladki(kula(x, oy - 0.135, z + 0.015, 0.028, (244, 240, 232), seg=12, ringi=8, skala=(1.1, 0.6, 0.8)))
+        gladki(kula(x, oy - 0.152, z + 0.014, 0.0145, (80, 110, 74), seg=10, ringi=6, skala=(1, 0.5, 1)))
+        kula(x, oy - 0.159, z + 0.014, 0.0072, CZARNY, seg=8, ringi=5, skala=(1, 0.5, 1))
+        kula(x + 0.004, oy - 0.162, z + 0.02, 0.003, (255, 255, 255), seg=5, ringi=3, emisja=1.5)   # błysk
+        gladki(kula(x, oy - 0.128, z + 0.03, 0.031, sk, seg=12, ringi=8, skala=(1.15, 0.55, 0.45)))  # powieka
+        b = belka((x - s_ * 0.03, oy - 0.15, z + 0.058), (x + s_ * 0.035, oy - 0.142, z + 0.05), 0.018, 0.014,
+                  _mix(wl, (0, 0, 0), 0.25))                                                       # brew
+        gladki(b)
+        gladki(kula(ox + s_ * 0.155, oy + 0.0, z, 0.035, sk, seg=10, ringi=8, skala=(0.45, 0.9, 1.35)))  # ucho
+    # nos: grzbiet, czubek, skrzydełka
+    gladki(walec((ox, oy - 0.15, z + 0.035), (ox, oy - 0.185, z - 0.035), 0.022, sk, v=10, r2=0.026))
+    gladki(kula(ox, oy - 0.183, z - 0.04, 0.026, sk, seg=12, ringi=8))
+    for s_ in (-1, 1):
+        gladki(kula(ox + s_ * 0.022, oy - 0.17, z - 0.045, 0.016, cien, seg=8, ringi=6))
+    # usta
+    gladki(kula(ox, oy - 0.16, z - 0.085, 0.034, (172, 92, 84), seg=12, ringi=8, skala=(1.3, 0.45, 0.32)))
+    gladki(kula(ox, oy - 0.158, z - 0.1, 0.03, (190, 108, 98), seg=12, ringi=8, skala=(1.2, 0.5, 0.4)))
+    # kosmyki włosów spod kaptura
+    gladki(kula(ox, oy - 0.07, z + 0.11, 0.14, wl, seg=18, ringi=10, skala=(1.0, 0.75, 0.42)))   # grzywka
+    for k in range(5):
+        x = ox - 0.08 + k * 0.04
+        gladki(kula(x, oy - 0.13, z + 0.085 - 0.006 * abs(k - 2), 0.03, wl, seg=8, ringi=6, skala=(0.8, 0.6, 1.2)))
+    # kaptur: obszerny, okalający twarz, z obszyciem i opadający na plecy
+    kol = p["kaptur"]
+    ciemny = _mix(kol, (20, 10, 30), 0.45)
+    gladki(kula(ox, oy + 0.11, z + 0.03, 0.185, ciemny, seg=20, ringi=14, skala=(1.0, 0.9, 1.08)))  # cień w kapturze
+    kap = kula(ox, oy + 0.1, z + 0.04, 0.235, kol, seg=28, ringi=18, skala=(1.0, 1.0, 1.08))
+    # otwór na twarz: usuwamy ściany z przodu kaptura w obrębie elipsy
+    bm = bmesh.new()
+    bm.from_mesh(kap.data)
+    usun = [f for f in bm.faces if all(v.co.y < -0.06 and (v.co.x / 0.16) ** 2 + ((v.co.z + 0.03) / 0.17) ** 2 < 1.0
+                                      for v in f.verts)]
+    bmesh.ops.delete(bm, geom=usun, context="FACES")
+    bm.to_mesh(kap.data)
+    bm.free()
+    gladki(kap)
+    obs = torus(ox, oy - 0.1, z + 0.0, 0.17, 0.024, _mix(kol, (255, 255, 255), 0.18), rot=(math.pi / 2, 0, 0),
+                seg=24, mseg=6)
+    obs.scale = (0.98, 1.0, 1.22)
+    gladki(obs)
+    gladki(walec((ox, oy + 0.28, z + 0.06), (ox, oy + 0.36, z - 0.2), 0.09, kol, v=12, r2=0.03))      # szpic
+    gladki(kula(ox, oy + 0.1, 1.17, 0.24, kol, seg=20, ringi=12, skala=(1.1, 0.75, 0.42)))             # kołnierz
 
 
 def m_postac(p, ox=0.0, oy=0.0, czesci=False, siedzi=False):
@@ -2326,6 +2486,8 @@ def m_postac(p, ox=0.0, oy=0.0, czesci=False, siedzi=False):
                 0.58, p["toga_pas"], rot=(0, th, 0))
         box(ox - 0.12, oy + 0.0, 1.05, 0.2, 0.44, 0.2, p["toga"], rot=(0.0, 0.0, 0.0))   # fałd na lewym ramieniu
         kula(ox - 0.17, oy, 1.18, 0.12, p["toga"], seg=8, ringi=5, skala=(1, 1.6, 0.8))
+    elif st == "kaptur" and p.get("realny"):
+        _szata_kronikarza(p, ox, oy)
     elif st == "kaptur":
         kol = p["kaptur"]
         stozek(ox, oy, 0.06, 0.33, 0.21, 1.17, kol, v=12)
@@ -2417,8 +2579,15 @@ def m_postac(p, ox=0.0, oy=0.0, czesci=False, siedzi=False):
             lokiec = (ox - 0.31, oy - 0.1, 0.98)
             dlon = (ox - 0.32, oy - 0.3, 0.92)
         with Grupa("reka_p" if prawa else "reka_l", bark, czesci):
-            walec(bark, lokiec, 0.07, rekaw_kol, v=6)
-            walec(lokiec, dlon, 0.06, sk if rekaw_krotki else rekaw_kol, v=6)
+            if p.get("realny"):                                              # szerokie, miękkie rękawy płaszcza
+                gladki(kula(*bark, 0.09, rekaw_kol, seg=14, ringi=10))
+                gladki(walec(bark, lokiec, 0.085, rekaw_kol, v=14, r2=0.09))
+                gladki(walec(lokiec, Vector(lokiec).lerp(Vector(dlon), 0.8), 0.09, rekaw_kol, v=14, r2=0.075))
+                torus(*Vector(lokiec).lerp(Vector(dlon), 0.8), 0.072, 0.012, _mix(rekaw_kol, (255, 255, 255), 0.18),
+                      seg=16, mseg=4, rot=(Vector(dlon) - Vector(lokiec)).to_track_quat("Z", "Y").to_euler())
+            else:
+                walec(bark, lokiec, 0.07, rekaw_kol, v=6)
+                walec(lokiec, dlon, 0.06, sk if rekaw_krotki else rekaw_kol, v=6)
             if not rekaw_krotki and st in ("kaftan",):
                 walec(Vector(lokiec).lerp(Vector(dlon), 0.75), dlon, 0.066, FUTRO_J, v=6)
             kula(*dlon, 0.06, sk, seg=6, ringi=4)
@@ -2442,7 +2611,11 @@ def m_postac(p, ox=0.0, oy=0.0, czesci=False, siedzi=False):
                     walec(dlon, (dlon[0] + 0.03, dlon[1] - 0.08, dlon[2] + 0.22), 0.012, BIEL, v=4)
                     box(dlon[0] + 0.02, dlon[1] - 0.06, dlon[2] + 0.16, 0.012, 0.05, 0.12, BIEL, rot=(-0.35, 0, 0))
     # ---------------------------------------------------------- głowa
-    with Grupa("glowa", (ox, oy, 1.24), czesci):
+    if p.get("realny"):
+        with Grupa("glowa", (ox, oy, 1.24), czesci):
+            _glowa_realna(p, ox, oy)
+    with Grupa("glowa", (ox, oy, 1.24), czesci and not p.get("realny")):
+      if not p.get("realny"):
         wl = p["wlosy"]
         cyl(ox, oy, 1.22, 0.075, 0.1, sk, v=8)
         kula(ox, oy, 1.43, 0.18, sk, seg=12, ringi=8, skala=(1, 0.95, 1.05))
@@ -2895,9 +3068,18 @@ def karta(nazwa):
 
 
 def portret(nazwa):
-    przygotuj_render(256, 256, True, 48)
-    swiat((226, 222, 214), 0.9)
-    slonce(rot=(0.95, 0.15, -0.45), energia=3.4)
+    przygotuj_render(256, 256, True, 64)
+    swiat((226, 222, 214), 0.75)
+    slonce(rot=(0.95, 0.15, -0.45), energia=3.0)
+    sw = bpy.data.lights.new("kontur", "AREA")                # światło konturowe zza postaci
+    sw.energy = 120
+    sw.size = 1.5
+    sw.color = (1.0, 0.9, 0.75)
+    ob = bpy.data.objects.new("kontur", sw)
+    ob.location = (-0.9, 1.6, 2.2)
+    ob.rotation_euler = Vector((0.0, 0.0, 1.4) ) - Vector(ob.location)
+    ob.rotation_euler = (Vector((0.0, 0.0, 1.4)) - Vector(ob.location)).to_track_quat("-Z", "Y").to_euler()
+    bpy.context.collection.objects.link(ob)
     kamera((0.42, -2.3, 1.5), (0.0, 0.0, 1.38), obiektyw=88)
     renderuj(os.path.join(UI, "portret_%s.png" % nazwa))
 
@@ -3025,24 +3207,83 @@ def ikona():
 
 
 # ================================================================= MAIN
+def m_faros():
+    """Latarnia Faros w Aleksandrii (skala makiety ≤ 5 m): kwadratowa podstawa, ośmioboczne piętro, okrągła
+    latarnia z ogniem i posągiem na szczycie, na kamiennym molo."""
+    box(0, 0, 0, 1.8, 1.8, 0.12, KAMIEN)
+    box(0, 0, 0.12, 1.3, 1.3, 0.25, TRAWERTYN_C)
+    for s_ in (-1, 1):
+        box(s_ * 0.55, 0, 0.37, 0.12, 1.2, 0.1, TRAWERTYN)                       # blanki tarasu
+        box(0, s_ * 0.55, 0.37, 1.2, 0.12, 0.1, TRAWERTYN)
+    stozek(0, 0, 0.37, 0.52, 0.42, 1.9, TRAWERTYN, v=4, rot=(0, 0, math.pi / 4))   # wieża (kwadratowa)
+    for z in (0.8, 1.3, 1.8):
+        for k in range(4):
+            a = k * math.pi / 2
+            box(0.43 * math.cos(a) * (1 - (z - 0.37) * 0.05), 0.43 * math.sin(a) * (1 - (z - 0.37) * 0.05), z,
+                0.08 if k % 2 else 0.02, 0.02 if k % 2 else 0.08, 0.16, OKNO)
+    box(0, 0, 2.27, 0.92, 0.92, 0.08, MARMUR)
+    cyl(0, 0, 2.35, 0.3, 1.0, MARMUR, v=8)                                       # piętro ośmioboczne
+    cyl(0, 0, 3.35, 0.34, 0.06, MARMUR_C, v=8)
+    cyl(0, 0, 3.41, 0.2, 0.6, TRAWERTYN, v=12)                                   # latarnia
+    for k in range(8):
+        a = k * math.pi / 4
+        cyl(0.2 * math.cos(a), 0.2 * math.sin(a), 3.41, 0.025, 0.55, MARMUR, v=5)
+    with Grupa("anim_ogien_faros", (0, 0, 3.5)):
+        stozek(0, 0, 3.45, 0.14, 0.0, 0.4, (255, 150, 40), v=6, emisja=3.5)
+        stozek(0.03, 0.02, 3.45, 0.08, 0.0, 0.28, (255, 220, 90), v=5, emisja=4.5)
+    cyl(0, 0, 4.01, 0.22, 0.05, MARMUR_C, v=12)
+    cyl(0, 0, 4.06, 0.05, 0.4, BRAZ, v=6, metal=0.5)                              # posąg Posejdona (zarys)
+    kula(0, 0, 4.5, 0.07, BRAZ, seg=8, ringi=5, metal=0.5)
+    walec((0.05, 0, 4.3), (0.18, 0, 4.62), 0.012, BRAZ, v=4, metal=0.5)
+
+
+def m_palma(ziarno=51):
+    """Palma daktylowa: lekko wygięty pień z łuskami i pióropusz liści."""
+    r = _random.Random(ziarno)
+    h = r.uniform(1.8, 2.4)
+    lean = r.uniform(0.15, 0.35)
+    pts = [(lean * (k / 6) ** 2, 0, h * k / 6) for k in range(7)]
+    pien = _pien(pts, 0.08, 0.055, poszerzenie=1.4, v=7)
+    _koloruj(pien, (110, 84, 56), (150, 120, 82), ziarno=ziarno)
+    szczyt = pts[-1]
+    liscie = []
+    for j in range(9):
+        a = j * 2 * math.pi / 9 + r.uniform(-0.2, 0.2)
+        d = r.uniform(0.7, 0.95)
+        kon_ = (szczyt[0] + d * math.cos(a), szczyt[1] + d * math.sin(a), szczyt[2] - r.uniform(0.25, 0.45))
+        sr = ((szczyt[0] + kon_[0]) / 2, (szczyt[1] + kon_[1]) / 2, szczyt[2] + 0.12)
+        liscie.append(belka(szczyt, sr, 0.16, 0.012, ZIELEN))
+        liscie.append(belka(sr, kon_, 0.11, 0.012, ZIELEN))
+    bpy.ops.object.select_all(action="DESELECT")
+    for o in liscie:
+        o.select_set(True)
+    bpy.context.view_layer.objects.active = liscie[0]
+    bpy.ops.object.transform_apply(location=False, rotation=True, scale=True)
+    bpy.ops.object.join()
+    k = bpy.context.view_layer.objects.active
+    _koloruj(k, (50, 96, 42), (110, 158, 70), ziarno=ziarno)
+    kula(szczyt[0], 0, szczyt[2] - 0.05, 0.09, (150, 100, 50), seg=6, ringi=4)       # daktyle
+
+
 TEREN_WARIANTY = {"cyprys": (m_cyprys, 5), "pinia": (m_pinia, 3), "oliwka": (m_oliwka, 7), "dab": (m_dab, 11),
                   "krzak": (m_krzak, 13), "skala_0": (m_skala_0, 21), "skala_1": (m_skala_1, 23),
-                  "trzcina": (m_trzcina, 41), "klif": (m_klif, 31)}
+                  "trzcina": (m_trzcina, 41), "klif": (m_klif, 31), "palma": (m_palma, 51)}
 ILE_WARIANTOW = 4
 BEZ_WYPALANIA = ("rusztowanie",)
 TEREN = {"cyprys": m_cyprys, "pinia": m_pinia, "oliwka": m_oliwka, "dab": m_dab, "krzak": m_krzak,
          "skala_0": m_skala_0, "skala_1": m_skala_1, "trzcina": m_trzcina, "gora": m_gora, "wzgorze": m_wzgorze,
-         "klif": m_klif}
+         "klif": m_klif, "palma": m_palma}
 BUDYNKI = {"chata": m_chata, "domus": m_domus, "insula": m_insula, "pole": m_pole, "winnica": m_winnica,
            "tartak": m_tartak, "kamieniolom": m_kamieniolom, "targ": m_targ, "swiatynia": m_swiatynia,
            "koszary": m_koszary, "mury": m_mury, "port": m_port, "akwedukt": m_akwedukt, "termy": m_termy,
            "amfiteatr": m_amfiteatr, "kuria": m_kuria, "bazylika": m_bazylika, "rusztowanie": m_rusztowanie}
 ZABYTKI = {"wilczyca": m_wilczyca, "kapitol": m_kapitol, "koloseum": m_koloseum, "panteon": m_panteon,
-           "luk_triumfalny": m_luk_triumfalny, "kolumna_trajana": m_kolumna_trajana, "ruiny": m_ruiny}
+           "luk_triumfalny": m_luk_triumfalny, "kolumna_trajana": m_kolumna_trajana, "ruiny": m_ruiny,
+           "faros": m_faros}
 OBOZY = {"oboz_barbarzyncow": m_oboz_barbarzyncow, "oboz_kartaginy": m_oboz_kartaginy}
 INNE = {"galera": m_galera, "sztandar": m_sztandar, "znacznik": m_znacznik, "ognisko": m_ognisko}
 JEDNOSTKI = ["legionista", "welita", "lucznik", "ekwita", "pretorianin", "balista", "galijczyk", "kartaginczyk",
-             "slon", "german", "hun", "got"]
+             "slon", "german", "hun", "got", "egipcjanin", "nubijczyk"]
 JEDNOSTKI_BRYLY = {"ekwita": m_ekwita, "hun": m_hun, "slon": m_slon, "balista": m_balista}
 
 

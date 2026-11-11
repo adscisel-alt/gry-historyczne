@@ -15,7 +15,7 @@ Gra działa **w przeglądarce** (eksport HTML5) i jako **`RomanEmpire3D.exe`** n
 
 ![Tytuł](zrzuty/01_tytul.png)
 ![Mapa imperium](zrzuty/02_mapa_imperium.png)
-![Rzym Augusta](zrzuty/04_rozdzial_5_pax.png)
+![Rzym Augusta](zrzuty/04_rozdzial_6_pax.png)
 ![Bitwa](zrzuty/13_bitwa_starcie.png)
 ![Gra wieloosobowa](zrzuty/14_wieloosobowa.png)
 
@@ -95,6 +95,11 @@ osobne węzły z modeli Blendera o nazwach `anim_obrot_*`, `anim_kolys_*`, `anim
 ![Ożywiona dzielnica](zrzuty/19_budynki_a.png)
 
 ## Modele i teren (Blender)
+
+- **Realistyczny Damian**: wygładzona głowa z żuchwą, kośćmi policzkowymi, zarostem, oczami (twardówka, tęczówka,
+  źrenica, odblask, powieki), brwiami, uszami, nosem i ustami; grzywka spod kaptura otwartego z przodu, obszyty brzeg;
+  płaszcz z fałdami, tunika, pas ze sznurem i węzłem, sakwa, kałamarz z rogu, torba ze zwojem, zapinka; księga
+  z okuciami, medalionem i zakładką. Portret renderowany 64 próbkami z dodatkowym światłem konturowym.
 
 - **Wzgórza jako rzeźba terenu**: Palatyn, Awentyn, Eskwilin i pozostałe wzgórza to skośne, trawiaste stoki
   (heightmapa `wys_punkt()` w `gra.gd`) o zaokrąglonych szczytach. Każde wzgórze ma własną wysokość (większe są wyższe)
@@ -189,10 +194,25 @@ Woda ma własny shader (`_material_wody()` w `gra.gd`), działający tak samo w 
 | II | 509–390 p.n.e. | Republika | Gęsi Kapitolu | Prawo XII tablic, targ, świątynia, mury · obrona Kapitolu przed Galami Brennusa |
 | III | 264–202 p.n.e. | Republika | Hannibal u bram | port, corvus, legion manipularny, zapasy · bitwa pod Zamą (słonie!) |
 | IV | 58–49 p.n.e. | Republika | Kości zostały rzucone | wały, koszary, kalendarz juliański · oblężenie Alezji |
-| V | 27 p.n.e.–14 n.e. | Cesarstwo | Pax Romana | beton, świątynie, akwedukt, „miasto z marmuru” · obrona Renu po klęsce Warusa |
-| VI | 80–117 n.e. | Cesarstwo | Rozkwit imperium | testudo, amfiteatr, hypokaustum · zdobycie Sarmizegetusy (Dacja) |
-| VII | 284–330 n.e. | Późne cesarstwo | Pod tym znakiem zwyciężysz | tetrarchia, solidus (koniec inflacji), edykt mediolański, bazylika · Most Mulwijski |
-| VIII | 376–476 n.e. | Późne cesarstwo | Zmierzch Zachodu | federaci, limes, mury · Pola Katalaunijskie; finał: rok 476 i dziedzictwo Rzymu |
+| V | 41–30 p.n.e. | Republika | Ostatnia królowa Egiptu (Aleksandria) | porty, corvus, koszary, zboże; obóz Antoniusza i Kleopatry, latarnia Faros, palmy · bitwa pod Akcjum (Oktawian i Agryppa vs egipscy włócznicy, łucznicy nubijscy, legiony Antoniusza) |
+| VI | 27 p.n.e.–14 n.e. | Cesarstwo | Pax Romana | beton, świątynie, akwedukt, „miasto z marmuru” · obrona Renu po klęsce Warusa |
+| VII | 80–117 n.e. | Cesarstwo | Rozkwit imperium | testudo, amfiteatr, hypokaustum · zdobycie Sarmizegetusy (Dacja) |
+| VIII | 284–330 n.e. | Późne cesarstwo | Pod tym znakiem zwyciężysz | tetrarchia, solidus (koniec inflacji), edykt mediolański, bazylika · Most Mulwijski |
+| IX | 376–476 n.e. | Późne cesarstwo | Zmierzch Zachodu | federaci, limes, mury · Pola Katalaunijskie; finał: rok 476 i dziedzictwo Rzymu |
+
+## Poziomy trudności
+
+| Poziom | Co się zmienia |
+|---|---|
+| Łatwy | więcej zasobów, słabszy wróg |
+| Normalny | zasady podstawowe |
+| Trudny | limit 8 tur na rozdział, droższe utrzymanie (×1,25), silniejsze zagony |
+| **Legendarny** | wróg ×1,45, mniej zasobów, częstsze i silniejsze zagony, utrzymanie ×1,5, **sprytny wróg w bitwach** (dobiera 2 karty i wybiera tę, która bije więcej twoich; podmienia kartę zakrytą) |
+
+Po przekroczeniu limitu tur pojawia się ekran porażki z możliwością ponowienia rozdziału.
+
+![Obóz Antoniusza i Kleopatry](zrzuty/egipt_kleopatra.png)
+![Latarnia Faros](zrzuty/egipt_faros.png)
 
 ## Mechaniki
 
@@ -202,15 +222,15 @@ Woda ma własny shader (`_material_wody()` w `gra.gd`), działający tak samo w 
 - **Mieszkańcy** obsługują budynki – gdy ich brakuje, produkcja spada; mieszkańcy i wojsko jedzą zboże.
 - **20 technologii** z zagadkami i ciekawostkami (alfabet, Cloaca Maxima, Prawo XII tablic, łuk, corvus, reforma Mariusza,
   kalendarz juliański, beton, hypokaustum, testudo, limes, prawo rzymskie, solidus, edykt mediolański…).
-- **Bitwy kartami** w 3D: pytanie rady wojennej (60 pytań z 4 epok), potem rundy – piechota ▸ jazda ▸ strzelcy ▸ piechota
-  (+3 za przewagę), 43 karty (hastati, triarii, legioniści, balista, katafrakci… oraz Galowie, słonie Hannibala,
+- **Bitwy kartami** w 3D: pytanie rady wojennej (66 pytań z 4 epok), potem rundy – piechota ▸ jazda ▸ strzelcy ▸ piechota
+  (+3 za przewagę), 48 kart (hastati, triarii, legioniści, balista, katafrakci… oraz Galowie, słonie Hannibala,
   Germanie, Dakowie, Hunowie), dowódca rozdziału i **taktyki historyczne** (Gęsi Junony, korytarze dla słoni pod Zamą,
   podwójny wał Alezji, „In hoc signo vinces”, szarża Wizygotów).
 - **Zagony wroga** z obozów palą budynki; mury chronią, zagon można przechwycić.
-- **15 wydarzeń-dylematów** z komentarzem „co było naprawdę” (secesja plebejuszy, Kanny i Fabiusz Zwlekający,
+- **17 wydarzeń-dylematów** z komentarzem „co było naprawdę” (secesja plebejuszy, Kanny i Fabiusz Zwlekający,
   Grakchowie, Rubikon, klęska Warusa, chleba i igrzysk, **psucie monety i inflacja**, edykt mediolański, Goci nad Dunajem,
   podział cesarstwa) oraz zdarzenia losowe z lekcjami ekonomii.
-- **Księga Wiedzy**: 49 haseł, 14 postaci z portretami z Blendera, oś czasu; ukryte **pamiątki** na mapach
+- **Księga Wiedzy**: 52 hasła, 16 postaci (w tym Kleopatra i Marek Antoniusz) z portretami z Blendera, oś czasu; ukryte **pamiątki** na mapach
   (denar, amfora, bulla, bursztyn znad Bałtyku – szlak bursztynowy i Calisia).
 - **Chwała** jako wynik, gwiazdki za tempo, tytuł honorowy na koniec kampanii; zapis gry w każdej chwili.
 
@@ -243,7 +263,7 @@ python narzedzia/eksportuj_mape.py               # mapy imperium (pip install sh
 python narzedzia/generuj_dzwieki.py              # efekty i 6 motywów muzycznych (numpy)
 python narzedzia/generuj_lektora.py              # lektor Piper (w GitHub Actions)
 blender -b -P blender/generuj_modele.py          # modele .glb, portrety, karty, ikony, tła
-godot --headless --path godot -- --samotest      # autotest: 8 rozdziałów, 8 bitew, hot-seat, zapis, sieć
+godot --headless --path godot -- --samotest      # autotest: 9 rozdziałów, 9 bitew, hot-seat, zapis, sieć
 godot --path godot -- --zrzuty ../zrzuty         # zrzuty ekranu
 ```
 
