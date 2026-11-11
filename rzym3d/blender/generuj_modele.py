@@ -2095,7 +2095,7 @@ DOMYSLNE = dict(skora=SKORA, wlosy=(70, 50, 36), fryzura="krotkie", broda=None, 
 POSTACIE = {
     # Damian Ścisły — kronikarz serii, fioletowy płaszcz z kapturem, księga
     "damian": dict(stroj="kaptur", kaptur=FIOLET, tunika=KREM, spodnie=(86, 64, 52), buty=(70, 46, 30),
-                   wlosy=(120, 80, 44), bron="ksiega", skora=SKORA_J, pioro=True, realny=True),
+                   wlosy=(226, 190, 118), bron="ksiega", skora=SKORA_J, pioro=True, realny=True),
     # Romulus (legenda) — wojownik-założyciel: brązowy hełm, napierśnik, włócznia
     "romulus": dict(tunika=(150, 56, 40), zbroja="miesniowa", zbroja_kol=BRAZ, plaszcz=(120, 40, 30),
                     helm="brazowy", helm_kol=BRAZ, grzebien=CZERWIEN, broda="krotka", wlosy=(80, 54, 36),
