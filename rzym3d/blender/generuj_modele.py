@@ -2093,7 +2093,7 @@ DOMYSLNE = dict(skora=SKORA, wlosy=(70, 50, 36), fryzura="krotkie", broda=None, 
                 mlody=False, pioro=False)
 
 POSTACIE = {
-    # Damian Ścisły — kronikarz serii, fioletowy płaszcz z kapturem, księga
+    # Damian Ściseł — kronikarz serii, fioletowy płaszcz z kapturem, księga
     "damian": dict(stroj="kaptur", kaptur=FIOLET, tunika=KREM, spodnie=(86, 64, 52), buty=(70, 46, 30),
                    wlosy=(226, 190, 118), bron="ksiega", skora=SKORA_J, pioro=True, realny=True),
     # Romulus (legenda) — wojownik-założyciel: brązowy hełm, napierśnik, włócznia
