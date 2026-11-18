@@ -31,3 +31,10 @@ https://adscisel-alt.github.io/gry-historyczne/
 
 Wszystkie strony są samowystarczalne (działają offline, bez zależności sieciowych).
 Deploy: `.github/workflows/pages.yml` publikuje główną gałąź przy każdym pushu.
+
+## Licencja
+
+© Damian Ścisł. **Wszelkie prawa zastrzeżone** – szczegóły w pliku [`LICENSE`](LICENSE).
+Publiczne udostępnienie repozytorium i gier nie oznacza zgody na kopiowanie, modyfikowanie
+ani wykorzystywanie komercyjne. Materiały osób trzecich (three.js, historical-basemaps,
+DejaVu, Godot) zachowują własne licencje.
