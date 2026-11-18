@@ -1,0 +1,29 @@
+Copyright (c) 2025–2026 Damian Ścisł
+Wszelkie prawa zastrzeżone. / All rights reserved.
+
+Gry, programy, modele 3D, grafiki, dźwięki, teksty i inne materiały w tym repozytorium
+(w tym „Kroniki Damiana Ścisła”, „Roman Empire – od narodzin przez rozkwit aż po upadek”,
+„Roman Dmowski. Droga do Wersalu 3D”, „Jan Zamoyski i Miasto Idealne”, „Damian Teacher:
+Cyberdetektyw” oraz osie czasu) są utworami chronionymi prawem autorskim (ustawa z dnia
+4 lutego 1994 r. o prawie autorskim i prawach pokrewnych).
+
+Udostępnienie kodu i gier w serwisie GitHub ani w GitHub Pages NIE oznacza udzielenia
+licencji. Bez pisemnej zgody autora zabronione jest w szczególności:
+  - kopiowanie, rozpowszechnianie i publikowanie materiałów w całości lub w części,
+  - modyfikowanie, tłumaczenie i tworzenie utworów zależnych,
+  - wykorzystywanie komercyjne, w tym sprzedaż, wynajem i włączanie do innych produktów
+    lub serwisów,
+  - wykorzystywanie materiałów do trenowania modeli sztucznej inteligencji.
+
+Dozwolone jest jedynie uruchamianie gier w opublikowanej formie w celach osobistych
+i niekomercyjnych w ramach dozwolonego użytku przewidzianego przez prawo.
+
+Materiały osób trzecich zachowują własne licencje i nie są objęte tym zastrzeżeniem, m.in.:
+  - three.js (katalog vendor/) – licencja MIT,
+  - dane granic z projektu historical-basemaps (pliki map w dmowski3d/ i rzym3d/) –
+    licencja GPL-3.0, tekst w plikach LICENSE-*-GPL3.txt,
+  - czcionka DejaVu Serif (kroniki-damiana-scisla/assets/fonts/) – licencja DejaVu,
+  - silnik Godot – licencja MIT.
+
+W sprawie licencji, współpracy lub zgody na wykorzystanie materiałów prosimy o kontakt
+z autorem.
