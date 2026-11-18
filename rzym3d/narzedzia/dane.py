@@ -346,7 +346,7 @@ TAKTYKI = {
 
 # ------------------------------------------------------------------------------------------------ postacie
 POSTACIE = {
-    "damian": {"imie": "Damian Ścisł", "lata": "kronikarz wędrujący przez wieki", "rola": "Twój doradca",
+    "damian": {"imie": "Damian Ściseł", "lata": "kronikarz wędrujący przez wieki", "rola": "Twój doradca",
                "opis": "Wędrowny kronikarz w fioletowym płaszczu. Przeszedł już przez Polskę Piastów – teraz spisuje dzieje Rzymu.",
                "fakty": ["Zapisuje wszystko w Kronice", "Doradza, co zbudować i jak walczyć", "Zna łacinę i grekę", "Postać fikcyjna"],
                "ciekawostka": "Słowo „kronika” pochodzi od greckiego chronos – czas."},
@@ -941,7 +941,7 @@ ROZDZIALY = [
                   "opis": "Król Sabinów Tytus Tacjusz prowadzi wojsko pod Kapitol. Według legendy zdradziła go Tarpeja i Sabinowie weszli na wzgórze.",
                   "po": "Według legendy walkę przerwały Sabinki, stając między ojcami i mężami. Oba ludy połączyły się w jedno państwo, a Romulus rządził razem z Tytusem Tacjuszem."},
         "wstep": [
-            "Witaj! Jestem Damian Ścisł, kronikarz. Przeszedłem przez wieki Polski Piastów – teraz przenosimy się dużo dalej w przeszłość.",
+            "Witaj! Jestem Damian Ściseł, kronikarz. Przeszedłem przez wieki Polski Piastów – teraz przenosimy się dużo dalej w przeszłość.",
             "Jest rok 753 przed naszą erą. Nad rzeką Tyber, wśród siedmiu wzgórz, pasterze wznoszą chaty.",
             "Legenda mówi, że bliźnięta Romulusa i Remusa wykarmiła wilczyca. Romulus wytyczył pługiem bruzdę wokół Palatynu – tak narodził się Rzym.",
             "Zbuduj chaty i pola, wznieś mury, a z pomocą Etrusków osusz bagno pod przyszłe Forum. Potem zmierz się z Sabinami.",
