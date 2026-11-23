@@ -16,6 +16,9 @@ import tempfile
 import urllib.request
 import wave
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from liczebniki import slownie  # noqa: E402
+
 TU = os.path.dirname(os.path.abspath(__file__))
 DANE = os.path.join(TU, "..", "godot", "dane", "dane.json")
 WYJSCIE = os.path.join(TU, "..", "godot", "audio", "glos")
@@ -65,6 +68,10 @@ def kwestie(d):
     w += [("narrator", r[4]) for r in d["granice"]["regiony"]]
     for lista in d["znajdzki"].values():
         w += [("narrator", z[4]) for z in lista]
+    h = d["hanna"]
+    w += [("hanna", t) for t in [h["pytanie"], h["list_juz"], h["list_brak"], h["zagadki_koniec"]] + h["ciekawostki"]]
+    for lst in h["listy"].values():
+        w += [("hanna", lst["od_hanny"]), (lst["do"], lst["odpowiedz"])]
     for m in d["mapy_podrozy"].values():
         w += [("narrator", t) for t in m["podpisy"]]
         w += [("narrator", t[3]) for t in m["trasa"]]
@@ -76,7 +83,19 @@ def kwestie(d):
     return wynik
 
 
+def _pw(m):
+    n = int(m.group(1))
+    if n == 1:
+        return "1 Punkt Wiedzy"
+    if n % 10 in (2, 3, 4) and n % 100 not in (12, 13, 14):
+        return "%d Punkty Wiedzy" % n
+    return "%d Punktów Wiedzy" % n
+
+
 def oczysc(t):
+    """Tekst dla syntezatora: liczby i daty słownie z odmianą („1918 r.” -> „… osiemnastego roku”), bez skrótów."""
+    t = re.sub(r"(\d+)\s*PW\b", _pw, t)
+    t = slownie(t)
     t = t.replace("—", ",").replace("–", " do ").replace("„", "").replace("”", "").replace("…", ".")
     t = re.sub(r"(\d{4})–(\d{4})", r"\1 do \2", t)
     t = t.replace("PW", "Punktów Wiedzy").replace("KNP", "Ka En Pe").replace("USA", "U Es A")

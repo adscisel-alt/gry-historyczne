@@ -21,7 +21,8 @@ python narzedzia/dane.py                         # treść -> JSON (sprawdza te�
 python narzedzia/generuj_ikony_i_dzwieki.py      # ikony i dźwięki
 python narzedzia/eksportuj_mape_europy.py        # mapa Europy 1914/1920 (pip install shapely)
 python narzedzia/generuj_lektora.py              # lektor (pip install piper-tts, ffmpeg) -> godot/audio/glos
-blender -b -P blender/generuj_modele.py          # modele i rendery (-- --bez-renderow: tylko .glb)
+blender -b -P blender/generuj_modele.py          # modele i rendery (-- --bez-renderow: tylko .glb,
+                                                 #  -- --postacie hanna: tylko wybrana postać i portret)
 godot --headless --path godot -- --samotest      # autotest: oczekiwane "TEST_WYNIK: OK"
 godot --path godot -- --zrzuty ../zrzuty         # 11 zrzutów ekranu
 godot --headless --path godot --export-release "Windows" ../build/DmowskiDrogaDoWersalu3D.exe
@@ -42,6 +43,14 @@ godot --headless --path godot --export-release "Web" ../build/web/index.html   #
 - Dylematy: `DYLEMATY` (opcje z efektami na zaufanie `fr`/`uk`/`usa` i zasoby, flaga „jak w historii”);
   gazety: `GAZETY`; mini-gra granic: `GRANICE`; pamiątki: `ZNAJDZKI` (pozycje sprawdzane w `main()`);
   odznaki: `OSIAGNIECIA` (warunki w `sprawdz_odznaki()` w `gra.gd`).
+- Hanna: rozmowa z wyborem (`HANNA` w `dane.py`: podpowiedź celu, zagadki, list do doręczenia w każdej kampanii,
+  ciekawostki); w `gra.gd` `menu_hanny()` i tryb dialogu `"wybor"` (klawisze 1–5).
+- Ruch uliczny: pojazdy hamują przed pieszymi, postaciami i innymi pojazdami, a zablokowane zawracają; piesi
+  nie wchodzą pod koła (`_przeszkoda_przed()`, `_pole_przy_pojezdzie()`). Autotest liczy kolizje (musi być 0).
+- Budowa: nie wolno stawiać budynków na bohaterze, postaciach (ani tuż obok nich) i pamiątkach
+  (`postac_na_polu()`); postawione budynki zatrzymują bohatera.
+- Lektor czyta liczby słownie z odmianą (`narzedzia/liczebniki.py`: „1918 r.” → „… osiemnastego roku”);
+  `python narzedzia/liczebniki.py` sprawdza przykłady.
 - Oś czasu: `OS_CZASU`; mapy podróży: `MAPY_PODROZY` (`dane.py`), dane granic: `godot/dane/mapa_europy.json`.
 
 ## Jak dodać kampanię lub budynek

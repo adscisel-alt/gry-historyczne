@@ -581,6 +581,9 @@ func odswiez_dialog() -> void:
 	if dl == null:
 		return
 	var quiz: bool = dl.tryb != "tekst"
+	if dl.tryb == "wybor":
+		_dialog_wybor(dl)
+		return
 	dialog_panel.position = Vector2(20, 720 - (330 if quiz else 236) - 56)
 	dialog_panel.size = Vector2(910, 0)
 	dialog_panel.custom_minimum_size = Vector2(910, 320 if quiz else 226)
@@ -647,6 +650,41 @@ func odswiez_dialog() -> void:
 			var b2 := _btn("Dalej »", func(): g.zamknij_dialog(), "", 18)
 			b2.size_flags_horizontal = Control.SIZE_SHRINK_END
 			vb.add_child(b2)
+
+
+func _dialog_wybor(dl: Dictionary) -> void:
+	## Rozmowa z wyborem (Hanna): pytanie postaci i lista odpowiedzi gracza (klawisze 1–5).
+	var n: int = dl.opcje.size()
+	d_tekst = null
+	dialog_panel.position = Vector2(20, 720 - (96 + n * 46) - 56)
+	dialog_panel.size = Vector2(910, 0)
+	dialog_panel.custom_minimum_size = Vector2(910, 96 + n * 46)
+	var hb := HBoxContainer.new()
+	hb.add_theme_constant_override("separation", 16)
+	dialog_panel.add_child(hb)
+	var kw: Array = dl.kwestie[min(dl.i, dl.kwestie.size() - 1)]
+	var portret := TextureRect.new()
+	portret.custom_minimum_size = Vector2(170, 170)
+	portret.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	portret.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	portret.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	if ResourceLoader.exists("res://ui/portret_%s.png" % kw[0]):
+		portret.texture = load("res://ui/portret_%s.png" % kw[0])
+	hb.add_child(portret)
+	var vb := VBoxContainer.new()
+	vb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	vb.add_theme_constant_override("separation", 6)
+	hb.add_child(vb)
+	vb.add_child(_label(g.D.postacie[kw[0]].imie if g.D.postacie.has(kw[0]) else kw[0], 24, C_CZERW))
+	var p := _label(kw[1], 20)
+	p.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	p.custom_minimum_size.x = 680
+	vb.add_child(p)
+	g.lektor(kw[1])
+	for i in n:
+		var b := _btn("%d.  %s" % [i + 1, dl.opcje[i][0]], func(): g.wybierz_w_dialogu(i), "", 18)
+		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		vb.add_child(b)
 
 
 # ===================================================================== okna

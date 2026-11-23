@@ -258,7 +258,8 @@ func nowy_stan() -> void:
 func _uzupelnij_stan() -> void:
 	## Nowe pola stanu (także dla starszych zapisów gry).
 	var domyslne := {"zaufanie": {"fr": 50, "uk": 50, "usa": 50}, "dylematy": {}, "dzien_kampanii": 0,
-		"znajdzki": [], "odznaki": [], "zbudowane": 0, "granice_bledy": 0, "gwiazdki_mowa": 0, "karty_postaci": []}
+		"znajdzki": [], "odznaki": [], "zbudowane": 0, "granice_bledy": 0, "gwiazdki_mowa": 0, "karty_postaci": [],
+		"list_hanny": "", "hanna_ciekawostka": 0}
 	for k in domyslne:
 		if not stan.has(k):
 			stan[k] = domyslne[k]
@@ -620,10 +621,37 @@ func stac(typ: String) -> bool:
 	return true
 
 
+func postac_na_polu(typ: String, tx: int, ty: int) -> String:
+	## Czy na działce (a przy zwykłych budynkach także pole obok postaci) stoi ktoś — wtedy nie budujemy.
+	var d := bud(typ)
+	var x0 := tx * T - 0.45
+	var z0 := ty * T - 0.45
+	var x1 := (tx + int(d.w)) * T + 0.45
+	var z1 := (ty + int(d.h)) * T + 0.45
+	var hp := Vector2(stan.bohater[0], stan.bohater[1])
+	if hp.x > x0 and hp.x < x1 and hp.y > z0 and hp.y < z1:
+		return "Stoisz na tym miejscu — odsuń się, zanim zaczniesz budować."
+	var margines := 0 if d.get("zabytek", false) else 1
+	for k in npc_wezly:
+		var np: Vector3 = npc_wezly[k].position
+		var px := floori(np.x / T)
+		var pz := floori(np.z / T)
+		if px >= tx - margines and px < tx + int(d.w) + margines and pz >= ty - margines and pz < ty + int(d.h) + margines:
+			return "Tu stoi %s — nie zabudowuj postaci, zostaw jej trochę miejsca." % D.postacie[k].imie
+	for n in znajdzki_wezel.get_children():
+		var zp: Vector3 = n.position
+		if zp.x > tx * T and zp.x < (tx + int(d.w)) * T and zp.z > ty * T and zp.z < (ty + int(d.h)) * T:
+			return "Tu leży pamiątka — najpierw ją podnieś."
+	return ""
+
+
 func moze_budowac(typ: String, tx: int, ty: int) -> Array:
 	var d := bud(typ)
 	if d.get("min_pw", 0) > stan.pw:
 		return [false, "Potrzeba %d Punktów Wiedzy!" % d.min_pw]
+	var kto := postac_na_polu(typ, tx, ty)
+	if kto != "":
+		return [false, kto]
 	if d.get("zabytek", false):
 		if not Vector2i(tx, ty) in dzialki_typu(typ):
 			return [false, "To miejsce jest gdzie indziej — użyj kompasu (K)!"]
@@ -994,6 +1022,12 @@ func rozmawiaj(npc: String) -> void:
 	var flaga := "rozm_%s_%d" % [npc, rozd]
 	var klucz := "%s:%d" % [npc, rozd]
 	dzwiek("rozmowa")
+	if list_dla(npc):
+		dorecz_list()
+		return
+	if npc == "hanna" and not (D.rozmowy.has(klucz) and not flaga in stan.flagi):
+		menu_hanny()
+		return
 	if D.rozmowy.has(klucz) and not flaga in stan.flagi:
 		var r = D.rozmowy[klucz]
 		var q = D.quiz_glowny.get(klucz)
@@ -1026,6 +1060,100 @@ func rozmawiaj(npc: String) -> void:
 	otworz_dialog(kw)
 
 
+# ----------------------------------------------------------------- Hanna: rozmowa z wyborem
+func menu_hanny(powitanie := true) -> void:
+	var h: Dictionary = D.hanna
+	var o: Dictionary = h.opcje
+	var opcje := [
+		[o.rada, func(): _hanna_rada()],
+		[o.zagadka, func(): _hanna_zagadka()],
+		[o.list, func(): _hanna_list()],
+		[o.ciekawostka, func(): _hanna_ciekawostka()],
+		[o.zegnaj, Callable()],
+	]
+	otworz_dialog([["hanna", h.pytanie]] if powitanie else [["hanna", "Coś jeszcze, panie Romanie?"]])
+	dialog.opcje = opcje
+	dialog.tryb = "wybor"
+	ui.odswiez_dialog()
+
+
+func _hanna_dalej(kwestie: Array) -> void:
+	## Hanna mówi swoje, a potem znów pyta, w czym pomóc.
+	otworz_dialog(kwestie, null, func(): menu_hanny(false))
+
+
+func _hanna_rada() -> void:
+	var c := cel_kompasu()
+	var tekst: String
+	if c[0] == null:
+		tekst = "Teraz najważniejsze: %s." % c[1]
+	else:
+		var d: Vector3 = c[0] - bohater.position
+		var kroki := int(round(Vector2(d.x, d.z).length() / T))
+		if kroki <= 1:
+			tekst = "%s jest tuż obok pana!" % c[1]
+		else:
+			tekst = "Proszę iść %s, około %s. Tam czeka: %s. Kompas (K) wskaże drogę." % [
+				kierunek_slownie(d.x, d.z), kroki_slownie(kroki), c[1]]
+	_hanna_dalej([["hanna", tekst]])
+
+
+func _hanna_zagadka() -> void:
+	var pula = D.zagadki.get("hanna", [])
+	for i in pula.size():
+		var id := "hanna:%d" % i
+		if not id in stan.zagadki:
+			var dobrze := func(pierwsza):
+				stan.zagadki.append(id)
+				pw_za_zagadke(pierwsza, 3)
+			otworz_dialog([["hanna", "Mam dla pana zagadkę! Za dobrą odpowiedź dostanie pan Punkty Wiedzy."]], pula[i],
+				func(): menu_hanny(false), dobrze)
+			return
+	_hanna_dalej([["hanna", D.hanna.zagadki_koniec]])
+
+
+func _hanna_list() -> void:
+	var rozd := str(int(stan.rozdzial))
+	var lst: Dictionary = D.hanna.listy.get(rozd, {})
+	if stan.get("list_hanny", "") != "":
+		_hanna_dalej([["hanna", D.hanna.list_juz]])
+	elif lst.is_empty() or ("list_hanny_" + rozd) in stan.flagi:
+		_hanna_dalej([["hanna", D.hanna.list_brak]])
+	else:
+		stan.list_hanny = lst.do
+		dzwiek("przedmiot")
+		ui.toast("Masz list do doręczenia: %s" % D.postacie[lst.do].imie)
+		_hanna_dalej([["hanna", lst.od_hanny]])
+
+
+func _hanna_ciekawostka() -> void:
+	var lista: Array = D.hanna.ciekawostki
+	var i := int(stan.get("hanna_ciekawostka", 0)) % lista.size()
+	stan.hanna_ciekawostka = i + 1
+	var flaga := "hanna_ciek_%d" % i
+	if not flaga in stan.flagi:
+		stan.flagi.append(flaga)
+		pw_za_zagadke(true, 1)
+	_hanna_dalej([["hanna", lista[i]]])
+
+
+func list_dla(npc: String) -> bool:
+	return stan.get("list_hanny", "") == npc and npc != ""
+
+
+func dorecz_list() -> void:
+	var rozd := str(int(stan.rozdzial))
+	var lst: Dictionary = D.hanna.listy[rozd]
+	stan.list_hanny = ""
+	stan.flagi.append("list_hanny_" + rozd)
+	var n: Array = lst.nagroda
+	stan.zasoby[n[0]] = int(stan.zasoby.get(n[0], 0)) + int(n[1])
+	stan.pw += 4
+	dzwiek("dobrze")
+	napis(bohater.position + Vector3(0, 3.2, 0), "+%d %s  +4 PW" % [int(n[1]), D.zasoby_nazwy[n[0]]], Color(1, 0.8, 0.25))
+	otworz_dialog([["dmowski", "Mam dla pana list od Hanny."], [lst.do, lst.odpowiedz]])
+
+
 func pw_za_zagadke(pierwsza: bool, ile: int) -> void:
 	var zysk := ile if pierwsza else max(1, ile / 2)
 	stan.pw += zysk
@@ -1038,7 +1166,7 @@ func otworz_dialog(kwestie: Array, zagadka = null, na_koniec := Callable(), na_d
 		odp = [zagadka.poprawna] + zagadka.zle
 		odp.shuffle()
 	dialog = {"kwestie": kwestie, "i": 0, "znaki": 0.0, "zagadka": zagadka, "odp": odp, "zle": [],
-		"proby": 0, "tryb": "tekst", "na_koniec": na_koniec, "na_dobrze": na_dobrze}
+		"proby": 0, "tryb": "tekst", "na_koniec": na_koniec, "na_dobrze": na_dobrze, "opcje": []}
 	nakladka = "dialog"
 	ui.odswiez_dialog()
 
@@ -1056,12 +1184,29 @@ func dalej_dialog() -> void:
 		if dialog.i >= dialog.kwestie.size():
 			if dialog.zagadka != null:
 				dialog.tryb = "zagadka"
+			elif not dialog.opcje.is_empty():
+				dialog.tryb = "wybor"
+				dialog.i = dialog.kwestie.size() - 1
 			else:
 				zamknij_dialog()
 				return
 		ui.odswiez_dialog()
 	elif dialog.tryb == "wynik":
 		zamknij_dialog()
+
+
+func wybierz_w_dialogu(idx: int) -> void:
+	## Rozmowa z wyborem (Hanna): zamyka bieżący dialog i wykonuje wybraną opcję.
+	if dialog == null or dialog.tryb != "wybor" or idx < 0 or idx >= dialog.opcje.size():
+		return
+	var akcja: Callable = dialog.opcje[idx][1]
+	dzwiek("klik")
+	ucisz_lektora()
+	dialog = null
+	nakladka = ""
+	ui.odswiez_dialog()
+	if akcja.is_valid():
+		akcja.call()
 
 
 func odpowiedz(idx: int) -> void:
@@ -1166,6 +1311,7 @@ func zakoncz_rozdzial() -> void:
 				ui.pokaz_ekran())
 		else:
 			stan.rozdzial = int(stan.rozdzial) + 1
+			stan.list_hanny = ""
 			stan.budynki = []
 			stan.zasoby.fundusze += 60
 			stan.ludnosc = 6.0
@@ -1364,6 +1510,10 @@ func _klawisz(k: int) -> void:
 			dalej_dialog()
 		elif dialog != null and dialog.tryb == "zagadka" and k in [KEY_1, KEY_2, KEY_3]:
 			odpowiedz(k - KEY_1)
+		elif dialog != null and dialog.tryb == "wybor" and k >= KEY_1 and k <= KEY_9:
+			wybierz_w_dialogu(k - KEY_1)
+		elif dialog != null and dialog.tryb == "wybor" and k == KEY_ESCAPE:
+			wybierz_w_dialogu(dialog.opcje.size() - 1)
 		return
 	if k == KEY_ESCAPE:
 		if nakladka != "":
@@ -1465,15 +1615,16 @@ func _process(dt: float) -> void:
 
 
 func _ruch_bohatera(dt: float) -> void:
-	var ix := Input.get_axis("ui_left", "ui_right")
-	var iy := Input.get_axis("ui_up", "ui_down")
-	if Input.is_physical_key_pressed(KEY_A):
+	# WASD albo strzałki (sprawdzane bezpośrednio, żeby działały też, gdy interfejs przejmie akcje ui_*)
+	var ix := 0.0
+	var iy := 0.0
+	if Input.is_physical_key_pressed(KEY_A) or Input.is_physical_key_pressed(KEY_LEFT):
 		ix -= 1
-	if Input.is_physical_key_pressed(KEY_D):
+	if Input.is_physical_key_pressed(KEY_D) or Input.is_physical_key_pressed(KEY_RIGHT):
 		ix += 1
-	if Input.is_physical_key_pressed(KEY_W):
+	if Input.is_physical_key_pressed(KEY_W) or Input.is_physical_key_pressed(KEY_UP):
 		iy -= 1
-	if Input.is_physical_key_pressed(KEY_S):
+	if Input.is_physical_key_pressed(KEY_S) or Input.is_physical_key_pressed(KEY_DOWN):
 		iy += 1
 	if Input.is_physical_key_pressed(KEY_Q):
 		yaw += 1.8 * dt
@@ -1488,20 +1639,36 @@ func _ruch_bohatera(dt: float) -> void:
 	var prawo := Vector3(cos(yaw), 0, -sin(yaw))
 	var ruch := (prawo * v.x - przod * v.y) * 6.0 * dt
 	var hp := Vector2(stan.bohater[0], stan.bohater[1])
+	# jeśli bohater utknął (np. w starym zapisie stoi w budynku), pozwól mu wyjść
+	var uwiezony := not _przechodnie(hp.x, hp.y)
 	var nx := hp.x + ruch.x
-	if _przechodnie(nx, hp.y):
+	if _przechodnie(nx, hp.y) or (uwiezony and _na_mapie(nx, hp.y)):
 		hp.x = nx
 	var nz := hp.y + ruch.z
-	if _przechodnie(hp.x, nz):
+	if _przechodnie(hp.x, nz) or (uwiezony and _na_mapie(hp.x, nz)):
 		hp.y = nz
 	stan.bohater = [hp.x, hp.y]
 	bohater.rotation.y = lerp_angle(bohater.rotation.y, atan2(ruch.x, ruch.z), 0.25)
 
 
+func _na_mapie(x: float, z: float) -> bool:
+	return x >= 0.4 and z >= 0.4 and x <= map_w * T - 0.4 and z <= map_h * T - 0.4
+
+
 func _przechodnie(x: float, z: float) -> bool:
-	if x < 0.4 or z < 0.4 or x > map_w * T - 0.4 or z > map_h * T - 0.4:
+	if not _na_mapie(x, z):
 		return false
-	return not teren_w(floori(x / T), floori(z / T)) in ["~", "K", "D", "^"]
+	if teren_w(floori(x / T), floori(z / T)) in ["~", "K", "D", "^"]:
+		return false
+	# postawione budynki są przeszkodą (sprawdzamy też brzegi sylwetki bohatera)
+	for o in [Vector2(0, 0), Vector2(0.35, 0), Vector2(-0.35, 0), Vector2(0, 0.35), Vector2(0, -0.35)]:
+		if zajete.has(Vector2i(floori((x + o.x) / T), floori((z + o.y) / T))):
+			return false
+	var p := Vector3(x, 0, z)
+	for zz in zycie:
+		if zz.typ == "pojazd" and _w_pojezdzie(p, zz, 0.3):
+			return false
+	return true
 
 
 func _aktualizuj_postacie() -> void:
@@ -1524,7 +1691,11 @@ func _aktualizuj_postacie() -> void:
 			n.rotation.y = lerp_angle(n.rotation.y, atan2(hp.x, hp.z), 0.08)
 		var klucz := "%s:%d" % [k, int(stan.rozdzial)]
 		var wyk: Label3D = n.get_node("wykrzyknik")
-		wyk.visible = D.rozmowy.has(klucz) and not ("rozm_%s_%d" % [k, int(stan.rozdzial)]) in stan.flagi
+		var list := list_dla(k)
+		wyk.visible = list or (D.rozmowy.has(klucz) and not ("rozm_%s_%d" % [k, int(stan.rozdzial)]) in stan.flagi)
+		wyk.modulate = Color(0.55, 0.8, 1.0) if list else Color(1, 1, 1)
+		var pp: Label3D = n.get_node("podpowiedz")
+		pp.text = "[E] oddaj list od Hanny" if list else ("[E] porozmawiaj z Hanną" if k == "hanna" else "[E] rozmowa")
 		wyk.position.y = 4.2 + sin(t * 5) * 0.15
 		n.get_node("podpowiedz").visible = obok == k
 
@@ -1621,11 +1792,44 @@ func _zycie_miasta() -> void:
 		for x in map_w:
 			if mapa[y][x] in ["=", "B"]:
 				ulice.append(Vector2i(x, y))
+	# pojazdy jeżdżą po długich prostych ulicach
+	var pojazdy: Array = {1: ["dorozka", "automobil"], 2: ["dorozka", "automobil"], 3: ["automobil"], 4: ["automobil", "dorozka", "automobil"]}[r]
+	var trasy := []
+	for tr in _trasy():
+		# trasa nie może prowadzić przez miejsce, w którym stoi postać (auto czekałoby w nieskończoność)
+		var wolna := true
+		for k in npc_wezly:
+			var np: Vector3 = npc_wezly[k].position
+			var t0: Vector3 = tr[0]
+			var t1: Vector3 = tr[1]
+			var rzut := Geometry3D.get_closest_point_to_segment(np, t0, t1)
+			if rzut.distance_to(np) < POJAZD_POL_SZ + 1.4:
+				wolna = false
+		for inna in trasy:
+			# nie dwie trasy obok siebie na szerokiej ulicy (auta jechałyby przez siebie)
+			var i0: Vector3 = inna[0]
+			var i1: Vector3 = inna[1]
+			if (i1 - i0).normalized().is_equal_approx((tr[1] - tr[0]).normalized()) and Geometry3D.get_closest_point_to_segment(tr[0], i0, i1).distance_to(tr[0]) < 2 * T + 0.5:
+				wolna = false
+		if wolna:
+			trasy.append(tr)
+	for i in min(pojazdy.size(), trasy.size()):
+		var tr: Array = trasy[i]
+		var w := instancja(pojazdy[i])
+		w.scale = Vector3.ONE * 1.3
+		zycie_wezel.add_child(w)
+		zycie.append({"typ": "pojazd", "w": w, "a": tr[0], "b": tr[1], "s": rng.randf(), "v": 3.2, "vt": 3.2,
+			"kier": 1, "stoi": 0.0})
+		_ustaw_pojazd(zycie[-1])
 	var modele_pieszych: Array = {1: [0, 1, 2, 0], 2: [0, 1, 5, 1], 3: [3, 3, 3, 0], 4: [1, 2, 5, 5]}[r]
 	for i in 14:
 		if ulice.is_empty():
 			break
 		var start: Vector2i = ulice[rng.randi_range(0, ulice.size() - 1)]
+		for proba in 20:
+			if not _pole_przy_pojezdzie(start):
+				break
+			start = ulice[rng.randi_range(0, ulice.size() - 1)]
 		var w := Node3D.new()
 		var m := instancja("przechodzien_%d" % modele_pieszych[i % modele_pieszych.size()])
 		m.name = "model"
@@ -1633,17 +1837,8 @@ func _zycie_miasta() -> void:
 		w.add_child(m)
 		w.position = Vector3((start.x + 0.5) * T, 0, (start.y + 0.5) * T)
 		zycie_wezel.add_child(w)
-		zycie.append({"typ": "pieszy", "w": w, "pole": start, "cel": w.position, "kier": Vector2i(1, 0),
+		zycie.append({"typ": "pieszy", "w": w, "pole": start, "poprz": start, "cel": w.position, "kier": Vector2i(1, 0),
 			"v": rng.randf_range(1.2, 1.9), "faza": rng.randf() * TAU})
-	# pojazdy jeżdżą po długich prostych ulicach
-	var pojazdy: Array = {1: ["dorozka", "automobil"], 2: ["dorozka", "automobil"], 3: ["automobil"], 4: ["automobil", "dorozka", "automobil"]}[r]
-	var trasy := _trasy()
-	for i in min(pojazdy.size(), trasy.size()):
-		var tr: Array = trasy[i]
-		var w := instancja(pojazdy[i])
-		w.scale = Vector3.ONE * 1.3
-		zycie_wezel.add_child(w)
-		zycie.append({"typ": "pojazd", "w": w, "a": tr[0], "b": tr[1], "s": rng.randf(), "v": 3.2, "kier": 1})
 	# dym z kominów
 	if r != 2:
 		var licz := 0
@@ -1742,26 +1937,49 @@ func _aktualizuj_zycie(dt: float) -> void:
 		match z.typ:
 			"pieszy":
 				var d: Vector3 = z.cel - w.position
-				if d.length() < 0.1:
-					z.pole = _nastepne_pole(z.pole, z.kier)
-					var nowy: Vector2i = z.pole
-					z.kier = nowy - Vector2i(floori(w.position.x / T), floori(w.position.z / T))
-					z.cel = Vector3((nowy.x + 0.5) * T + randf_range(-0.4, 0.4), 0, (nowy.y + 0.5) * T + randf_range(-0.4, 0.4))
+				var idzie_p := true
+				if _pojazd_przy(w.position, 0.0):
+					# pieszy znalazł się w obrysie pojazdu — odskakuje na bok
+					_odsun_od_pojazdu(w)
+					idzie_p = false
+				elif d.length() < 0.1:
+					var nowy: Vector2i = _nastepne_pole(z.pole, z.kier, true)
+					if nowy == z.pole:
+						idzie_p = false          # czeka, aż przejedzie pojazd
+					else:
+						z.poprz = z.pole
+						z.pole = nowy
+						z.kier = nowy - Vector2i(floori(w.position.x / T), floori(w.position.z / T))
+						z.cel = Vector3((nowy.x + 0.5) * T + randf_range(-0.4, 0.4), 0, (nowy.y + 0.5) * T + randf_range(-0.4, 0.4))
 				else:
-					w.position += d.normalized() * min(d.length(), z.v * dt)
-					w.rotation.y = lerp_angle(w.rotation.y, atan2(d.x, d.z), 0.2)
-				z.faza += dt * z.v * 5.5
+					var nowa: Vector3 = w.position + d.normalized() * min(d.length(), z.v * dt)
+					if _pojazd_przy(nowa, 0.35) and not _pojazd_przy(w.position, 0.35):
+						# przed nami pojazd — przechodzień nie wchodzi pod koła, tylko zawraca
+						idzie_p = false
+						var wstecz: Vector2i = z.poprz
+						z.poprz = z.pole
+						z.pole = wstecz
+						z.kier = -z.kier
+						z.cel = Vector3((wstecz.x + 0.5) * T + randf_range(-0.4, 0.4), 0, (wstecz.y + 0.5) * T + randf_range(-0.4, 0.4))
+					else:
+						w.position = nowa
+						w.rotation.y = lerp_angle(w.rotation.y, atan2(d.x, d.z), 0.2)
+				if idzie_p:
+					z.faza += dt * z.v * 5.5
 				animuj(w.get_node("model"), z.faza, 0.9)
 			"pojazd":
+				# pojazd hamuje, gdy przed nim jest pieszy, bohater, postać lub inny pojazd
+				var przeszkoda := _przeszkoda_przed(z)
+				z.vt = move_toward(z.vt, 0.0 if przeszkoda else z.v, dt * (9.0 if przeszkoda else 2.5))
+				z.stoi = z.stoi + dt if z.vt < 0.05 else 0.0
+				if z.stoi > 2.5:
+					_zawroc_pojazd(z)
 				var dl: float = z.a.distance_to(z.b)
-				z.s += z.kier * z.v * dt / dl
+				z.s += z.kier * z.vt * dt / dl
 				if z.s > 1.0 or z.s < 0.0:
 					z.kier = -z.kier
 					z.s = clampf(z.s, 0.0, 1.0)
-				var kier: Vector3 = (z.b - z.a) * z.kier
-				var bok := Vector3(kier.z, 0, -kier.x).normalized() * 0.6
-				w.position = z.a.lerp(z.b, z.s) + bok
-				w.rotation.y = atan2(kier.x, kier.z)
+				_ustaw_pojazd(z)
 			"ptak":
 				z.f += z.v * dt
 				var c := Vector3(map_w * T / 2, 0, map_h * T / 2)
@@ -1772,11 +1990,109 @@ func _aktualizuj_zycie(dt: float) -> void:
 		deszcz.position = Vector3(kamera.position.x, 18, kamera.position.z - 8)
 
 
-func _nastepne_pole(p: Vector2i, kier: Vector2i) -> Vector2i:
+const POJAZD_POL_DL := 2.3     # połowa długości pojazdu (m)
+const POJAZD_POL_SZ := 1.05    # połowa szerokości pojazdu (m)
+
+
+func _ustaw_pojazd(z: Dictionary) -> void:
+	var w: Node3D = z.w
+	var kier: Vector3 = (z.b - z.a) * z.kier
+	var bok := Vector3(kier.z, 0, -kier.x).normalized() * 0.6
+	w.position = z.a.lerp(z.b, z.s) + bok
+	w.rotation.y = atan2(kier.x, kier.z)
+
+
+func _zawroc_pojazd(z: Dictionary) -> void:
+	## Droga zablokowana dłużej niż chwilę — pojazd zawraca, jeśli ma miejsce (nikogo w nowym obrysie ani przed nim).
+	z.stoi = 0.0
+	z.kier = -z.kier
+	_ustaw_pojazd(z)
+	var wolne := not _przeszkoda_przed(z) and not bohater.position.distance_to(z.w.position) < POJAZD_POL_DL + 1.0
+	for o in zycie:
+		if wolne and o.typ == "pieszy" and _w_pojezdzie(o.w.position, z, 0.3):
+			wolne = false
+		elif wolne and o.typ == "pojazd" and not is_same(o, z) and o.w.position.distance_to(z.w.position) < 2 * POJAZD_POL_DL + 0.5:
+			wolne = false
+	if not wolne:
+		z.kier = -z.kier
+		_ustaw_pojazd(z)
+
+
+func _w_pojezdzie(p: Vector3, z: Dictionary, zapas: float) -> bool:
+	## Czy punkt p leży w obrysie pojazdu (prostokąt wzdłuż kierunku jazdy) powiększonym o zapas.
+	var w: Node3D = z.w
+	var przod := Vector3(sin(w.rotation.y), 0, cos(w.rotation.y))
+	var d := p - w.position
+	d.y = 0
+	return absf(d.dot(przod)) < POJAZD_POL_DL + zapas and absf(d.dot(Vector3(przod.z, 0, -przod.x))) < POJAZD_POL_SZ + zapas
+
+
+func _pojazd_przy(p: Vector3, zapas: float) -> bool:
+	for z in zycie:
+		if z.typ == "pojazd" and _w_pojezdzie(p, z, zapas):
+			return true
+	return false
+
+
+func _przeszkoda_przed(z: Dictionary) -> bool:
+	var w: Node3D = z.w
+	var przod := Vector3(sin(w.rotation.y), 0, cos(w.rotation.y))
+	var bok := Vector3(przod.z, 0, -przod.x)
+	var punkty: Array = [bohater.position]
+	for k in npc_wezly:
+		punkty.append(npc_wezly[k].position)
+	for o in zycie:
+		if o.typ == "pieszy":
+			punkty.append(o.w.position)
+		elif o.typ == "pojazd" and not is_same(o, z):
+			# inny pojazd: środek oraz przód i tył (auto w poprzek skrzyżowania też blokuje drogę)
+			var ow: Node3D = o.w
+			var op := Vector3(sin(ow.rotation.y), 0, cos(ow.rotation.y)) * POJAZD_POL_DL
+			punkty.append_array([ow.position, ow.position + op, ow.position - op, ow.position + op * 0.5, ow.position - op * 0.5])
+	for p in punkty:
+		var d: Vector3 = p - w.position
+		var a := d.dot(przod)
+		if a > 0.0 and a < POJAZD_POL_DL + 2.4 and absf(d.dot(bok)) < POJAZD_POL_SZ + 0.55:
+			return true
+	return false
+
+
+func _pole_przy_pojezdzie(p: Vector2i) -> bool:
+	## Czy na pole wjeżdża pojazd (jest w jego obrysie albo tuż przed nim) — pieszy tam nie wchodzi.
+	var c := Vector3((p.x + 0.5) * T, 0, (p.y + 0.5) * T)
+	for z in zycie:
+		if z.typ != "pojazd":
+			continue
+		if _w_pojezdzie(c, z, 0.9):
+			return true
+		var w: Node3D = z.w
+		var przod := Vector3(sin(w.rotation.y), 0, cos(w.rotation.y))
+		var d := c - w.position
+		var a := d.dot(przod)
+		if z.vt > 0.3 and a > 0.0 and a < POJAZD_POL_DL + 5.0 and absf(d.dot(Vector3(przod.z, 0, -przod.x))) < POJAZD_POL_SZ + 1.0:
+			return true
+	return false
+
+
+func _odsun_od_pojazdu(w: Node3D) -> void:
+	for z in zycie:
+		if z.typ == "pojazd" and _w_pojezdzie(w.position, z, 0.0):
+			var v: Node3D = z.w
+			var przod := Vector3(sin(v.rotation.y), 0, cos(v.rotation.y))
+			var bok := Vector3(przod.z, 0, -przod.x)
+			var d := w.position - v.position
+			var strona := 1.0 if d.dot(bok) >= 0.0 else -1.0
+			w.position = v.position + przod * d.dot(przod) + bok * strona * (POJAZD_POL_SZ + 0.4)
+			return
+
+
+func _nastepne_pole(p: Vector2i, kier: Vector2i, omijaj_pojazdy := false) -> Vector2i:
 	var opcje := []
-	for d in [kier, Vector2i(kier.y, kier.x), Vector2i(-kier.y, -kier.x), Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0), Vector2i(0, -1)]:
+	for d in [kier, Vector2i(kier.y, kier.x), Vector2i(-kier.y, -kier.x), Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0), Vector2i(0, -1), -kier]:
 		var n: Vector2i = p + d
-		if teren_w(n.x, n.y) in ["=", "B"] and d != Vector2i.ZERO:
+		if teren_w(n.x, n.y) in ["=", "B"] and d != Vector2i.ZERO and not n in opcje:
+			if omijaj_pojazdy and _pole_przy_pojezdzie(n):
+				continue
 			opcje.append(n)
 	if opcje.is_empty():
 		return p
@@ -2315,7 +2631,7 @@ func _zrzuty() -> void:
 	stan.pw = 22
 	stan.zasoby = {"fundusze": 146, "poparcie": 28, "prasa": 34, "ochotnicy": 0}
 	stan.ludnosc = 18.0
-	for b in [["kwatera", 13, 14], ["kwatera", 14, 14], ["kwatera", 13, 16], ["redakcja", 21, 13],
+	for b in [["kwatera", 13, 14], ["kwatera", 14, 14], ["kwatera", 13, 16], ["redakcja", 25, 13],
 			["komitet", 15, 19], ["knp_warszawa", 19, 15]]:
 		stan.budynki.append({"typ": b[0], "x": b[1], "y": b[2], "postep": 9 if b[0] != "knp_warszawa" else 2, "wariant": 0})
 	odswiez_swiat()
@@ -2340,10 +2656,19 @@ func _zrzuty() -> void:
 	odl = 16
 	yaw = -0.4
 	rozmawiaj("hanna")
+	await zrob("04a_hanna_rozmowa")
+	wybierz_w_dialogu(1)
 	dialog.znaki = 999
 	dalej_dialog()
 	await zrob("04_zagadka")
 	zamknij_dialog()
+	if nakladka == "dialog":
+		zamknij_dialog()
+	# Hanna z bliska (model 3D z plikiem listów)
+	stan.bohater = [22.5 * T, 15.3 * T]
+	odl = 7
+	yaw = 0.35
+	await zrob("04b_hanna")
 	# Kampania II — Lozanna
 	_przejdz_do(2)
 	stan.budynki = [{"typ": "biuro", "x": 14, "y": 9, "postep": 9, "wariant": 0},
@@ -2462,10 +2787,15 @@ func _test() -> void:
 	wejdz_do_gry()
 	var dni := 0
 	var starty := {}
+	var kolizje_ruchu := 0
 	while scena != "koniec" and dni < 3000:
 		if scena == "intro":
 			starty[int(stan.rozdzial)] = dni
 			wejdz_do_gry()
+		if not starty.has(-int(stan.rozdzial)):
+			starty[-int(stan.rozdzial)] = true
+			kolizje_ruchu += _test_ruch()
+			kolizje_ruchu += _test_budowa_na_postaciach()
 		_test_dialogi()
 		for c in cele():
 			var s := stan_celu(c)
@@ -2498,7 +2828,7 @@ func _test() -> void:
 				var pw = _test_miejsce(para[0])
 				if pw != null:
 					postaw(para[0], pw.x, pw.y)
-		if dni % 5 == 0:
+		if dni % 3 == 0:
 			for n in R.npc:
 				rozmawiaj(n)
 				_test_dialogi()
@@ -2513,21 +2843,86 @@ func _test() -> void:
 		if rozdzial_ukonczony() and nakladka == "":
 			zakoncz_rozdzial()
 		_test_dialogi()
+	for k in starty.keys():
+		if k < 0:
+			starty.erase(k)
 	print("TEST scena=%s dni=%d starty=%s PW=%d ekwipunek=%s zasoby=%s" % [scena, dni, str(starty), stan.pw, str(stan.ekwipunek), str(stan.zasoby)])
+	print("TEST Hanna: listy doręczone=%d, ciekawostki=%d, zagadki Hanny=%d" % [
+		stan.flagi.filter(func(f): return f.begins_with("list_hanny_")).size(),
+		stan.flagi.filter(func(f): return f.begins_with("hanna_ciek_")).size(),
+		stan.zagadki.filter(func(z): return z.begins_with("hanna:")).size()])
 	print("TEST zaufanie=%s decyzje=%s znajdzki=%d odznaki=%s wynik=%d" % [str(stan.zaufanie), str(decyzje_historyczne()), stan.znajdzki.size(), str(stan.odznaki), wynik_koncowy()])
 	if scena != "koniec":
 		for c in cele():
 			print("  cel: ", c[0], " ", stan_celu(c))
-	print("TEST_WYNIK: ", "OK" if scena == "koniec" else "BLAD")
-	get_tree().quit(0 if scena == "koniec" else 1)
+	var ok := scena == "koniec" and kolizje_ruchu == 0
+	print("TEST_WYNIK: ", "OK" if ok else "BLAD")
+	get_tree().quit(0 if ok else 1)
+
+
+func _test_ruch() -> int:
+	## Symulacja ruchu ulicznego (2 min): ile razy pieszy znalazł się w obrysie pojazdu.
+	var kolizje := 0
+	var ruch_aut := 0.0
+	var poz_bohatera: Array = stan.bohater.duplicate()
+	stan.bohater = [-50.0, -50.0]
+	bohater.position = Vector3(-50, 0, -50)
+	for i in 3600:
+		var przed := {}
+		for z in zycie:
+			if z.typ == "pojazd":
+				przed[z.w] = z.w.position
+		_aktualizuj_zycie(1.0 / 30.0)
+		for z in zycie:
+			if z.typ == "pojazd":
+				ruch_aut += (z.w.position - przed[z.w]).length()
+				for o in zycie:
+					if o.typ == "pieszy" and _w_pojezdzie(o.w.position, z, -0.1):
+						kolizje += 1
+					elif o.typ == "pojazd" and not is_same(o, z) and _w_pojezdzie(o.w.position, z, 0.0):
+						kolizje += 1
+	stan.bohater = poz_bohatera
+	print("TEST ruch: rozdział %d, kolizje (piesi i pojazdy)=%d, droga pojazdów=%d m" % [int(stan.rozdzial), kolizje, int(ruch_aut)])
+	return kolizje
+
+
+func _test_budowa_na_postaciach() -> int:
+	## Nie wolno budować na bohaterze ani na postaciach (ani tuż obok nich); budynek zatrzymuje bohatera.
+	var bledy := 0
+	var zasoby: Dictionary = stan.zasoby.duplicate()
+	for a in stan.zasoby:
+		stan.zasoby[a] = 9999
+	var hx := floori(float(stan.bohater[0]) / T)
+	var hz := floori(float(stan.bohater[1]) / T)
+	if moze_budowac("biuro", hx, hz)[0]:
+		bledy += 1
+	for k in npc_wezly:
+		var np: Vector3 = npc_wezly[k].position
+		for dz in [-1, 0, 1]:
+			for dx in [-1, 0, 1]:
+				if moze_budowac("biuro", floori(np.x / T) + dx, floori(np.z / T) + dz)[0]:
+					bledy += 1
+	var zajete_przed := zajete.duplicate()
+	zajete[Vector2i(hx + 1, hz)] = 0
+	if _przechodnie((hx + 1.5) * T, (hz + 0.5) * T):
+		bledy += 1
+	zajete = zajete_przed
+	stan.zasoby = zasoby
+	print("TEST budowa na postaciach: rozdział %d, błędy=%d" % [int(stan.rozdzial), bledy])
+	return bledy
 
 
 func _test_dialogi() -> void:
 	var licznik := 0
+	var wybory := 0
 	while nakladka == "dialog" and licznik < 100:
 		licznik += 1
 		if dialog.tryb == "zagadka":
 			odpowiedz(dialog.odp.find(dialog.zagadka.poprawna))
+		elif dialog.tryb == "wybor":
+			# menu Hanny: kolejno rada, zagadka, poczta, ciekawostka — potem pożegnanie
+			wybory += 1
+			wybierz_w_dialogu([0, 1, 2, 3, 1, 1, 1][wybory - 1] if wybory <= 7 else dialog.opcje.size() - 1)
 		else:
 			dialog.znaki = 9999
 			dalej_dialog()

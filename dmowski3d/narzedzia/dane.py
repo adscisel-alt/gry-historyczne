@@ -534,6 +534,45 @@ ROZMOWY = {
         po=[["wilson", "Liga Narodów będzie strzec pokoju. Good luck!"]]),
 }
 
+# Hanna — rozmowa z wyborem: podpowiedź, zagadka, list do doręczenia, ciekawostki z jej pracy (postać fikcyjna)
+HANNA = dict(
+    pytanie="W czym mogę pomóc, panie Romanie?",
+    opcje=dict(rada="Co mam teraz zrobić?", zagadka="Masz dla mnie zagadkę?", list="Czy jest jakaś poczta do doręczenia?",
+               ciekawostka="Opowiedz mi o swojej pracy", zegnaj="Dziękuję, do zobaczenia!"),
+    # list do doręczenia w każdej kampanii: adresat, słowa Hanny, odpowiedź adresata, nagroda
+    listy={
+        "1": dict(do="zamoyski", od_hanny="Mam list z prowincji: ludzie zebrali datki na pomoc dla rodzin, które wojna "
+                                         "pozbawiła domów. Proszę zanieść go hrabiemu Zamoyskiemu.",
+                  odpowiedz="Datki z prowincji! Dziękuję, panie Romanie — te pieniądze trafią do najbardziej "
+                            "potrzebujących.", nagroda=["fundusze", 15]),
+        "2": dict(do="zamoyski", od_hanny="Przyszła depesza od naszych ludzi w Londynie. Hrabia Zamoyski bardzo na "
+                                         "nią czeka!",
+                  odpowiedz="Wieści z Londynu! Brytyjczycy coraz uważniej słuchają naszych racji. Świetna robota.",
+                  nagroda=["poparcie", 12]),
+        "3": dict(do="haller", od_hanny="To paczka listów od rodzin ochotników z Ameryki. Proszę zanieść ją generałowi "
+                                       "Hallerowi.",
+                  odpowiedz="Listy z domu! Nic tak nie podnosi ducha żołnierzy. Dziękuję w ich imieniu!",
+                  nagroda=["ochotnicy", 15]),
+        "4": dict(do="paderewski", od_hanny="Telegram od Polonii amerykańskiej do pana Paderewskiego. Proszę go "
+                                           "doręczyć, zanim zacznie się posiedzenie.",
+                  odpowiedz="Polonia w Ameryce wciąż nas wspiera. Proszę podziękować pannie Hannie!",
+                  nagroda=["prasa", 15]),
+    },
+    list_juz="Ma pan już ode mnie list — adresat czeka!",
+    list_brak="Na dziś to cała poczta. Wszystko doręczone — dziękuję!",
+    zagadki_koniec="Rozwiązał pan wszystkie moje zagadki. Brawo!",
+    ciekawostki=[
+        "Piszę na maszynie do pisania. Kopię listu robię przez kalkę — kserokopiarek jeszcze nie ma!",
+        "Najszybciej wiadomość wysyła się telegrafem. Za telegram płaci się od słowa, więc piszemy krótko.",
+        "W czasie wojny wiele listów czyta cenzura. Dlatego ważne sprawy przewożą zaufani kurierzy.",
+        "28 listopada 1918 r. kobiety w Polsce otrzymały prawa wyborcze. W styczniu 1919 r. po raz pierwszy "
+        "mogły głosować w wyborach do Sejmu!",
+        "W Sejmie Ustawodawczym wybranym w 1919 r. zasiadło osiem kobiet — pierwsze polskie posłanki.",
+        "Jestem postacią wymyśloną do gry. Ale w Komitecie Narodowym Polskim naprawdę pracowało wielu sekretarzy, "
+        "tłumaczy i kurierów.",
+    ],
+)
+
 LUZNE = {
     "hanna": [["hanna", "Jestem Hanna, sekretarka Komitetu. Pilnuję, by każdy list trafił do adresata."]],
     "zamoyski": [["zamoyski", "Polska odrodzi się dzięki pracy wielu ludzi — nie tylko polityków."]],
@@ -959,7 +998,7 @@ def main():
         zagadki=ZAGADKI, rozmowy=ROZMOWY, przerywniki=PRZERYWNIKI, przemowienie=PRZEMOWIENIE,
         os_czasu=OS_CZASU, os_czasu_klasa7=OS_CZASU_KLASA7, mapy_podrozy=MAPY_PODROZY, powitanie=POWITANIE,
         karty_postaci=KARTY_POSTACI, dylematy=DYLEMATY, zaufanie_nazwy=ZAUFANIE_NAZWY, gazety=GAZETY,
-        granice=GRANICE, znajdzki=ZNAJDZKI, osiagniecia=OSIAGNIECIA, luzne=LUZNE, pomoc=POMOC, start_ekwipunek=["kompas", "datki", "paczka"],
+        granice=GRANICE, znajdzki=ZNAJDZKI, osiagniecia=OSIAGNIECIA, luzne=LUZNE, hanna=HANNA, pomoc=POMOC, start_ekwipunek=["kompas", "datki", "paczka"],
         rozdzialy={str(k): dict(v, mapa=["".join(w) for w in v["mapa"]]) for k, v in ROZDZIALY.items()},
         liczba_rozdzialow=len(ROZDZIALY),
     )
@@ -978,6 +1017,8 @@ def main():
                   for xx in range(x, x + BUDYNKI[typ]["w"])}
         for z in ZNAJDZKI[str(k)]:
             assert mapa[z[2]][z[1]] in ".PB=#" and (z[1], z[2]) not in zajete, (k, z[3], mapa[z[2]][z[1]])
+        assert HANNA["listy"][str(k)]["do"] in r["npc"], (k, "adresat listu Hanny")
+        assert HANNA["listy"][str(k)]["nagroda"][0] in {z["id"] for z in ZASOBY}
     tu = os.path.dirname(os.path.abspath(__file__))
     cel = os.path.join(tu, "..", "godot", "dane", "dane.json")
     os.makedirs(os.path.dirname(cel), exist_ok=True)

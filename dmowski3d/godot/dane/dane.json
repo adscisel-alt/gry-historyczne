@@ -2262,6 +2262,65 @@
    ]
   ]
  },
+ "hanna": {
+  "pytanie": "W czym mogę pomóc, panie Romanie?",
+  "opcje": {
+   "rada": "Co mam teraz zrobić?",
+   "zagadka": "Masz dla mnie zagadkę?",
+   "list": "Czy jest jakaś poczta do doręczenia?",
+   "ciekawostka": "Opowiedz mi o swojej pracy",
+   "zegnaj": "Dziękuję, do zobaczenia!"
+  },
+  "listy": {
+   "1": {
+    "do": "zamoyski",
+    "od_hanny": "Mam list z prowincji: ludzie zebrali datki na pomoc dla rodzin, które wojna pozbawiła domów. Proszę zanieść go hrabiemu Zamoyskiemu.",
+    "odpowiedz": "Datki z prowincji! Dziękuję, panie Romanie — te pieniądze trafią do najbardziej potrzebujących.",
+    "nagroda": [
+     "fundusze",
+     15
+    ]
+   },
+   "2": {
+    "do": "zamoyski",
+    "od_hanny": "Przyszła depesza od naszych ludzi w Londynie. Hrabia Zamoyski bardzo na nią czeka!",
+    "odpowiedz": "Wieści z Londynu! Brytyjczycy coraz uważniej słuchają naszych racji. Świetna robota.",
+    "nagroda": [
+     "poparcie",
+     12
+    ]
+   },
+   "3": {
+    "do": "haller",
+    "od_hanny": "To paczka listów od rodzin ochotników z Ameryki. Proszę zanieść ją generałowi Hallerowi.",
+    "odpowiedz": "Listy z domu! Nic tak nie podnosi ducha żołnierzy. Dziękuję w ich imieniu!",
+    "nagroda": [
+     "ochotnicy",
+     15
+    ]
+   },
+   "4": {
+    "do": "paderewski",
+    "od_hanny": "Telegram od Polonii amerykańskiej do pana Paderewskiego. Proszę go doręczyć, zanim zacznie się posiedzenie.",
+    "odpowiedz": "Polonia w Ameryce wciąż nas wspiera. Proszę podziękować pannie Hannie!",
+    "nagroda": [
+     "prasa",
+     15
+    ]
+   }
+  },
+  "list_juz": "Ma pan już ode mnie list — adresat czeka!",
+  "list_brak": "Na dziś to cała poczta. Wszystko doręczone — dziękuję!",
+  "zagadki_koniec": "Rozwiązał pan wszystkie moje zagadki. Brawo!",
+  "ciekawostki": [
+   "Piszę na maszynie do pisania. Kopię listu robię przez kalkę — kserokopiarek jeszcze nie ma!",
+   "Najszybciej wiadomość wysyła się telegrafem. Za telegram płaci się od słowa, więc piszemy krótko.",
+   "W czasie wojny wiele listów czyta cenzura. Dlatego ważne sprawy przewożą zaufani kurierzy.",
+   "28 listopada 1918 r. kobiety w Polsce otrzymały prawa wyborcze. W styczniu 1919 r. po raz pierwszy mogły głosować w wyborach do Sejmu!",
+   "W Sejmie Ustawodawczym wybranym w 1919 r. zasiadło osiem kobiet — pierwsze polskie posłanki.",
+   "Jestem postacią wymyśloną do gry. Ale w Komitecie Narodowym Polskim naprawdę pracowało wielu sekretarzy, tłumaczy i kurierów."
+  ]
+ },
  "pomoc": [
   "STEROWANIE",
   "WASD / strzałki — chodzenie · Q / R lub prawy przycisk myszy — obrót kamery",

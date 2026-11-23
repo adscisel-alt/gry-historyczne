@@ -79,8 +79,8 @@ też rolę Piłsudskiego, Paderewskiego i powstańców oraz to, że część pog
 - **Blender:** `blender -b -P blender/generuj_modele.py` (z folderu `dmowski3d`).
 - **Antigravity:** otwórz folder `dmowski3d` — `AGENTS.md` opisuje strukturę i polecenia dla agenta.
 
-Sterowanie: WASD — chodzenie, Q/R lub prawy przycisk myszy — obrót kamery, kółko — zoom, E — rozmowa,
-LPM/PPM — postaw/anuluj, K — kompas, I — ekwipunek, L — Księga Wiedzy, H — pomoc, M — muzyka, F11 — pełny ekran.
+Sterowanie: WASD lub strzałki — chodzenie, Q/R lub prawy przycisk myszy — obrót kamery, kółko — zoom, E — rozmowa,
+LPM/PPM — postaw/anuluj, K — kompas, I — ekwipunek, L — Księga Wiedzy, H — pomoc, 1–5 — wybór w rozmowie z Hanną, M — muzyka, F11 — pełny ekran.
 
 Autotest: `godot --headless --path godot -- --samotest` (przejście 4 kampanii). Workflow
 `.github/workflows/dmowski3d-exe.yml` buduje EXE dla Windows, uruchamia autotest i robi zrzuty ekranu.
