@@ -350,9 +350,12 @@ POSTACIE = {
     "dmowski": dict(stroj="garnitur", kolor=GRAFIT, spodnie=GRAFIT, krawat=(120, 30, 40), skora=SKORA,
                     wlosy=(70, 54, 44), fryzura="lysiejace", wasy="male", broda=False, kapelusz="melonik",
                     kapelusz_kol=(30, 28, 30), okulary=False, trzyma="teczka", buty=(30, 24, 22)),
-    "hanna": dict(stroj="sukienka", kolor=(40, 60, 110), spodnie=(40, 60, 110), krawat=None, skora=(244, 206, 172),
+    # Hanna (postać fikcyjna) — granatowa spódnica, bluzka z kołnierzykiem i broszką, kok ze wstążką,
+    # w dłoni plik kopert przewiązany sznurkiem z lakową pieczęcią
+    "hanna": dict(stroj="sukienka", kolor=(38, 56, 108), spodnie=(38, 56, 108), krawat=None, skora=(244, 206, 172),
                   wlosy=(120, 76, 44), fryzura="kok", wasy=None, broda=False, kapelusz=None, okulary=False,
-                  trzyma="papiery", buty=(40, 30, 28), bluzka=BIEL),
+                  trzyma="listy", buty=(52, 34, 28), bluzka=(246, 242, 232), brwi=True, usta=(186, 84, 84),
+                  kolnierzyk=BIEL, broszka=ZLOTO, pasek=(30, 30, 40), wstazka=(150, 40, 60), grzywka=True),
     "zamoyski": dict(stroj="garnitur", kolor=(150, 140, 120), spodnie=(110, 104, 92), krawat=(40, 50, 90),
                      skora=SKORA, wlosy=(60, 44, 34), fryzura="krotkie", wasy="male", broda=False,
                      kapelusz="cylinder", kapelusz_kol=(30, 28, 30), okulary=False, trzyma="laska", buty=(30, 24, 22)),
@@ -460,11 +463,23 @@ def m_postac(p, ox=0, oy=0, czesci=False):
                 cyl(ox + sx, oy, wys_butow, 0.08, 0.78 - wys_butow, p["spodnie"], v=8)
     if st == "sukienka":
         stozek(ox, oy, 0.08, 0.32, 0.2, 0.72, p["kolor"], v=12)
+        if p.get("pasek"):
+            stozek(ox, oy, 0.06, 0.34, 0.32, 0.05, tuple(int(c * .8) for c in p["kolor"]), v=12)   # lamówka
     if st == "plaszcz":
         stozek(ox, oy, 0.3, 0.29, 0.22, 0.6, p["kolor"], v=10)
     # tułów
     gora = p.get("bluzka", p["kolor"]) if st == "sukienka" else p["kolor"]
     cyl(ox, oy, 0.76, 0.2, 0.5, gora, v=10)
+    if p.get("pasek"):
+        cyl(ox, oy, 0.76, 0.205, 0.06, p["pasek"], v=10)
+        box(ox, oy - 0.2, 0.765, 0.06, 0.02, 0.05, ZLOTO, metal=0.5)                          # klamra
+        for z in (0.9, 1.0, 1.1):
+            kula(ox, oy - 0.2, z, 0.014, (220, 214, 200), seg=4, ringi=3)                     # guziki
+    if p.get("kolnierzyk"):
+        for s_ in (-1, 1):
+            box(ox + s_ * 0.06, oy - 0.15, 1.2, 0.13, 0.1, 0.035, p["kolnierzyk"], rot=(0.35, 0, s_ * 0.5))
+        if p.get("broszka"):
+            kula(ox, oy - 0.2, 1.19, 0.025, p["broszka"], seg=6, ringi=4, metal=0.6)
     if st in ("garnitur", "plaszcz"):
         stozek(ox, oy, 0.62, 0.22, 0.2, 0.16, p["kolor"], v=10)          # poły marynarki
         box(ox, oy - 0.18, 1.0, 0.13, 0.05, 0.26, BIEL)                    # koszula
@@ -483,6 +498,9 @@ def m_postac(p, ox=0, oy=0, czesci=False):
                                                 location=(ox + s * 0.27, oy - 0.04, 0.98),
                                                 rotation=(0.15, -s * 0.12, 0))
             _nadaj(bpy.context.active_object, gora)
+            if p.get("kolnierzyk"):
+                kula(ox + s * 0.26, oy - 0.03, 1.17, 0.085, gora, seg=8, ringi=5)                 # bufka
+                cyl(ox + s * 0.295, oy - 0.07, 0.76, 0.07, 0.04, gora, v=8)                      # mankiet
             kula(ox + s * 0.3, oy - 0.08, 0.72, 0.065, p.get("rekawiczki", sk), seg=6, ringi=4)
             if s > 0:
                 przedmiot_w_dloni(p, ox, oy)
@@ -494,6 +512,12 @@ def m_postac(p, ox=0, oy=0, czesci=False):
         if p.get("brwi"):
             box(ox + sx, oy - 0.165, 1.51, 0.08, 0.03, 0.035, p["wlosy"])
     box(ox, oy - 0.18, 1.4, 0.04, 0.04, 0.06, tuple(int(c * .86) for c in sk))
+    if p.get("usta"):
+        box(ox, oy - 0.168, 1.345, 0.07, 0.02, 0.022, p["usta"])
+        for sx in (-0.1, 0.1):
+            kula(ox + sx, oy - 0.135, 1.39, 0.03, (240, 170, 150), seg=6, ringi=4)            # rumieńce
+        for sx in (-0.18, 0.18):
+            kula(ox + sx, oy - 0.01, 1.37, 0.017, ZLOTO, seg=4, ringi=3, metal=0.6)             # kolczyki
     if p["okulary"]:
         for sx in (-0.065, 0.065):
             bpy.ops.mesh.primitive_torus_add(major_radius=0.04, minor_radius=0.008, major_segments=10,
@@ -522,6 +546,14 @@ def m_postac(p, ox=0, oy=0, czesci=False):
     elif f == "kok":
         kula(ox, oy + 0.02, 1.5, 0.19, p["wlosy"], seg=10, ringi=6, skala=(1.02, 1.0, 0.75))
         kula(ox, oy + 0.16, 1.55, 0.09, p["wlosy"], seg=8, ringi=5)
+        if p.get("grzywka"):
+            for s_ in (-1, 1):                                                                   # upięte pasma
+                kula(ox + s_ * 0.13, oy - 0.04, 1.52, 0.08, p["wlosy"], seg=8, ringi=5, skala=(0.8, 1, 0.9))
+            kula(ox, oy + 0.2, 1.62, 0.07, p["wlosy"], seg=8, ringi=5)                         # wyższy kok
+        if p.get("wstazka"):
+            for s_ in (-1, 1):
+                box(ox + s_ * 0.07, oy + 0.21, 1.56, 0.1, 0.03, 0.06, p["wstazka"], rot=(0, s_ * 0.4, 0))
+            kula(ox, oy + 0.22, 1.585, 0.025, p["wstazka"], seg=6, ringi=4)
     k = p["kapelusz"]
     c = p.get("kapelusz_kol")
     if k == "melonik":
@@ -562,6 +594,15 @@ def przedmiot_w_dloni(p, ox, oy):
         kula(hx + 0.08, hy - 0.1, 0.62, 0.02, ZLOTO, seg=4, ringi=3)
     elif t == "papiery":
         box(hx, hy - 0.05, 0.62, 0.05, 0.24, 0.3, BIEL)
+    elif t == "listy":
+        # plik kopert (bryła, nie płaski kartonik): trzy koperty, sznurek na krzyż i lakowa pieczęć
+        cx, cy = hx + 0.03, hy - 0.04
+        for i, (k, dz) in enumerate([((232, 222, 196), 0.0), ((214, 226, 236), 0.012), ((244, 236, 214), 0.024)]):
+            box(cx + (i - 1) * 0.035, cy + (i - 1) * 0.008, 0.5 + dz, 0.035, 0.26, 0.18, k, rot=(0, 0, 0.05 * (i - 1)))
+        box(cx, cy, 0.5, 0.12, 0.018, 0.21, (150, 40, 40))                                     # sznurek pionowo
+        box(cx, cy, 0.58, 0.12, 0.27, 0.018, (150, 40, 40))                                    # sznurek poziomo
+        kula(cx + 0.065, cy, 0.59, 0.03, (170, 30, 36), seg=8, ringi=5, skala=(0.5, 1, 1))     # pieczęć
+        box(cx - 0.065, cy - 0.06, 0.56, 0.01, 0.08, 0.05, (60, 60, 70))                       # znaczek
     elif t == "laska":
         cyl(hx + 0.03, hy - 0.05, 0.0, 0.02, 0.75, (60, 40, 26), v=6)
         kula(hx + 0.03, hy - 0.05, 0.76, 0.035, ZLOTO, seg=6, ringi=4)
@@ -1213,6 +1254,14 @@ def main():
     if "--ilustracje" in ARGS:
         for nazwa in ARGS[ARGS.index("--ilustracje") + 1].split(","):
             ilustracja(nazwa)
+        return
+    if "--postacie" in ARGS:                       # tylko wybrane postacie (model + portret), np. hanna
+        for nazwa in ARGS[ARGS.index("--postacie") + 1].split(","):
+            czysc()
+            m_postac(POSTACIE[nazwa], czesci=True)
+            eksportuj_postac("postac_" + nazwa)
+            if RENDERY:
+                portret(nazwa)
         return
     if "--podglad" in ARGS:
         podglad(ARGS[ARGS.index("--podglad") + 1].split(","), ARGS[ARGS.index("--podglad") + 2])
